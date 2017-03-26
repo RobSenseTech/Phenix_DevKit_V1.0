@@ -20,12 +20,12 @@
 #include <AP_Common/AP_Common.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
+#include <fcntl.h>
 #include <assert.h>
 #include <AP_Math/AP_Math.h>
 #include <stdio.h>
@@ -38,7 +38,6 @@
 #elif !DATAFLASH_FILE_MINIMAL
 #include <sys/statfs.h>
 #endif
-
 
 extern const AP_HAL::HAL& hal;
 
@@ -128,7 +127,7 @@ void DataFlash_File::Init()
         ret = mkdir(_log_directory, 0777);
     }
     if (ret == -1) {
-        hal.console->printf("Failed to create log directory %s\n", _log_directory);
+        Print_Err("Failed to create log directory %s\n", _log_directory);
         return;
     }
 #endif
@@ -152,14 +151,14 @@ void DataFlash_File::Init()
       until we can allocate it
      */
     while (_writebuf == NULL && _writebuf_size >= _writebuf_chunk) {
-        hal.console->printf("DataFlash_File: buffer size=%u\n", (unsigned)_writebuf_size);
+        Print_Info("DataFlash_File: buffer size=%u\n", (unsigned)_writebuf_size);
         _writebuf = (uint8_t *)pvPortMalloc(_writebuf_size);
         if (_writebuf == NULL) {
             _writebuf_size /= 2;
         }
     }
     if (_writebuf == NULL) {
-        hal.console->printf("Out of memory for logging\n");
+        Print_Err("Out of memory for logging\n");
         return;        
     }
     _writebuf_head = _writebuf_tail = 0;
@@ -212,6 +211,7 @@ uint16_t DataFlash_File::bufferspace_available()
 // return true for CardInserted() if we successfully initialised
 bool DataFlash_File::CardInserted(void)
 {
+    Print_Info("_initialised=%d _open_error=%d\n", _initialised, _open_error);
     return _initialised && !_open_error;
 }
 
@@ -996,7 +996,7 @@ void DataFlash_File::ListAvailableLogs(AP_HAL::BetterStream *port)
         if (filename != NULL) {
                 struct stat st;
                 if (stat(filename, &st) == 0) {
-                    struct tm *tm = gmtime(&st.st_mtime);
+    /*                struct tm *tm = gmtime(&st.st_mtime);
                     port->printf("Log %u in %s of size %u %u/%u/%u %u:%u\n",
                                    (unsigned)i,
                                    filename,
@@ -1006,6 +1006,7 @@ void DataFlash_File::ListAvailableLogs(AP_HAL::BetterStream *port)
                                    (unsigned)tm->tm_mday,
                                    (unsigned)tm->tm_hour,
                                    (unsigned)tm->tm_min);
+                                   */
                 }
             vPortFree(filename);
         }

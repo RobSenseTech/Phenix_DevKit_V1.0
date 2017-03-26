@@ -43,7 +43,7 @@
 #include "drv_sensor.h"
 
 /* XXX for ORB_DECLARE used in many drivers */
-#include "../modules/uORB/uORB.h"
+#include "../src/modules/uORB/uORB.h"
 
 /*
  * ioctl() definitions
@@ -59,7 +59,7 @@
 #define ORB_MAXNAME		32
 
 #define _ORBIOCBASE		(0x2600)
-#define _ORB_IOC(type,nr)   _IO(type,nr)
+#define _ORB_IOC(type,nr)   _IOC(type,nr)
 #define _ORBIOC(_n)		(_ORB_IOC(_ORBIOCBASE, _n))
 
 /*

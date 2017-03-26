@@ -1,47 +1,40 @@
 /******************************************************************************
 *
-* (c) Copyright 2010-12 Xilinx, Inc. All rights reserved.
+* Copyright (C) 2010 - 2015 Xilinx, Inc.  All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
 *
 ******************************************************************************/
 /****************************************************************************/
 /**
 *
 * @file xscutimer_hw.h
+* @addtogroup scutimer_v2_1
+* @{
 *
 * This file contains the hardware interface to the Timer.
 *
@@ -57,6 +50,7 @@
 *		     when the xstatus.h in the common driver overwrites
 *		     the xstatus.h of the standalone BSP during the
 *		     libgen.
+* 2.1 	sk  02/26/15 Modified the code for MISRA-C:2012 compliance.
 * </pre>
 *
 ******************************************************************************/
@@ -78,10 +72,10 @@ extern "C" {
  * @{
  */
 
-#define XSCUTIMER_LOAD_OFFSET		0x00 /**< Timer Load Register */
-#define XSCUTIMER_COUNTER_OFFSET	0x04 /**< Timer Counter Register */
-#define XSCUTIMER_CONTROL_OFFSET	0x08 /**< Timer Control Register */
-#define XSCUTIMER_ISR_OFFSET		0x0C /**< Timer Interrupt
+#define XSCUTIMER_LOAD_OFFSET		0x00U /**< Timer Load Register */
+#define XSCUTIMER_COUNTER_OFFSET	0x04U /**< Timer Counter Register */
+#define XSCUTIMER_CONTROL_OFFSET	0x08U /**< Timer Control Register */
+#define XSCUTIMER_ISR_OFFSET		0x0CU /**< Timer Interrupt
 						  Status Register */
 /* @} */
 
@@ -91,11 +85,11 @@ extern "C" {
  * @{
  */
 
-#define XSCUTIMER_CONTROL_PRESCALER_MASK	0x0000FF00 /**< Prescaler */
-#define XSCUTIMER_CONTROL_PRESCALER_SHIFT	8
-#define XSCUTIMER_CONTROL_IRQ_ENABLE_MASK	0x00000004 /**< Intr enable */
-#define XSCUTIMER_CONTROL_AUTO_RELOAD_MASK	0x00000002 /**< Auto-reload */
-#define XSCUTIMER_CONTROL_ENABLE_MASK		0x00000001 /**< Timer enable */
+#define XSCUTIMER_CONTROL_PRESCALER_MASK	0x0000FF00U /**< Prescaler */
+#define XSCUTIMER_CONTROL_PRESCALER_SHIFT	8U
+#define XSCUTIMER_CONTROL_IRQ_ENABLE_MASK	0x00000004U /**< Intr enable */
+#define XSCUTIMER_CONTROL_AUTO_RELOAD_MASK	0x00000002U /**< Auto-reload */
+#define XSCUTIMER_CONTROL_ENABLE_MASK		0x00000001U /**< Timer enable */
 /* @} */
 
 /** @name Interrupt Status register
@@ -103,7 +97,7 @@ extern "C" {
  * @{
  */
 
-#define XSCUTIMER_ISR_EVENT_FLAG_MASK		0x00000001 /**< Event flag */
+#define XSCUTIMER_ISR_EVENT_FLAG_MASK		0x00000001U /**< Event flag */
 /*@}*/
 
 /**************************** Type Definitions *******************************/
@@ -127,7 +121,7 @@ extern "C" {
 *
 ******************************************************************************/
 #define XScuTimer_SetLoadReg(BaseAddr, Value)				\
-	XScuTimer_WriteReg(BaseAddr, XSCUTIMER_LOAD_OFFSET, Value)
+	XScuTimer_WriteReg(BaseAddr, XSCUTIMER_LOAD_OFFSET, (Value))
 
 /****************************************************************************/
 /**
@@ -160,7 +154,7 @@ extern "C" {
 *
 ******************************************************************************/
 #define XScuTimer_SetCounterReg(BaseAddr, Value)			\
-	XScuTimer_WriteReg(BaseAddr, XSCUTIMER_COUNTER_OFFSET, Value)
+	XScuTimer_WriteReg(BaseAddr, XSCUTIMER_COUNTER_OFFSET, (Value))
 
 /****************************************************************************/
 /**
@@ -195,7 +189,7 @@ extern "C" {
 *
 ******************************************************************************/
 #define XScuTimer_SetControlReg(BaseAddr, Value)			\
-	XScuTimer_WriteReg(BaseAddr, XSCUTIMER_CONTROL_OFFSET, Value)
+	XScuTimer_WriteReg(BaseAddr, XSCUTIMER_CONTROL_OFFSET, (Value))
 
 /****************************************************************************/
 /**
@@ -228,7 +222,7 @@ extern "C" {
 *
 ******************************************************************************/
 #define XScuTimer_SetIntrReg(BaseAddr, Value)				\
-	XScuTimer_WriteReg(BaseAddr, XSCUTIMER_ISR_OFFSET, Value)
+	XScuTimer_WriteReg(BaseAddr, XSCUTIMER_ISR_OFFSET, (Value))
 
 /****************************************************************************/
 /**
@@ -290,3 +284,4 @@ extern "C" {
 #endif
 
 #endif	/* end of protection macro */
+/** @} */

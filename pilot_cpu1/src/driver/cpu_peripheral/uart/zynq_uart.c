@@ -6,9 +6,11 @@
 #include "xuartps.h"
 #include "xil_exception.h"
 #include "FreeRTOS_Print.h"
-#include "driver.h"
 #include "ringbuffer.h"
 #include "gic/zynq_gic.h"
+#include <fs/fs.h>
+#include <fs/ioctl.h>
+#include "driver.h"
 
 /************************** Constant Definitions **************************/
 
@@ -46,18 +48,20 @@ typedef struct{
 
 /************************** Function Prototypes *****************************/
 void vUartPs_InterruptHandler(void *pvArg);
+
+int Uart_Open(struct file *filp);
 	
-size_t Uart_Read(Handle_t *pHandle, char *pcBuf, size_t xReadLen);
+ssize_t Uart_Read(struct file *filp, char *buffer, size_t buflen);
 
-size_t Uart_Write(Handle_t *pHandle, const char *pcBuf, size_t xWriteLen);
+ssize_t Uart_Write(struct file *filp, const char *buffer, size_t buflen);
 
-int Uart_Ioctl(Handle_t *pHandle, int iCmd, void *pvArg);
+int Uart_Ioctl(file_t *filp, int iCmd, unsigned long ulArg);
 
 /************************** Variable Definitions ***************************/
 
 static XUartPs UartPs[XPAR_XUARTPS_NUM_INSTANCES];		/* Instance of the UART Device */
 
-const DriverOps_t xUart_ops = {
+const struct file_operations xUart_ops = {
 	.read = Uart_Read,
 	.write = Uart_Write,
 	.ioctl = Uart_Ioctl,
@@ -107,7 +111,7 @@ uint32_t UartPsInit(int32_t iUartId)
 	XUartPs *UartInstPtr = &UartPs[iUartId];
 	UartDrvPrivate_t *pxUartDrvPrivate = NULL;
 	int UartIntrId = UartHwIntID[iUartId];
-    char DevName[MAX_DRIVER_NAME_LEN] = {0};
+    char DevName[64] = {0};
 
 	if(iUartId >= XPAR_XUARTPS_NUM_INSTANCES)
 	{
@@ -196,8 +200,9 @@ uint32_t UartPsInit(int32_t iUartId)
 	/*
 	 * step8: 注册串口驱动
 	 */
-    snprintf(DevName, sizeof(DevName), "%s%d", "/dev/uart", iUartId);
-	DriverRegister(DevName, &xUart_ops, pxUartDrvPrivate);
+    snprintf(DevName, sizeof(DevName), "%s%d", "/dev/uart", (int)iUartId);
+//	DriverRegister(DevName, &xUart_ops, pxUartDrvPrivate);
+    register_driver(DevName, &xUart_ops, 0666, pxUartDrvPrivate);
 
 	/*
 	 * step9: 使能串口中断
@@ -207,16 +212,16 @@ uint32_t UartPsInit(int32_t iUartId)
 	return XST_SUCCESS;
 }
 
-size_t Uart_Read(Handle_t *pHandle, char *pcBuf, size_t xReadLen)
+ssize_t Uart_Read(struct file *filp, char *buffer, size_t buflen)
 {
 	size_t xLen = 0;
-	UartDrvPrivate_t *pxUartDrvPrivate = (UartDrvPrivate_t *)pHandle->xInode.pvPrivate;
+	UartDrvPrivate_t *pxUartDrvPrivate = (UartDrvPrivate_t *)filp->f_inode->i_private;
 
     irqstate_t state = irqsave();
-	while(xLen < xReadLen)
+	while(xLen < buflen)
 	{
 //        Print_Info("head=%x tail=%x\n", pxUartDrvPrivate->xUartRxRingBuf._Head, pxUartDrvPrivate->xUartRxRingBuf._Tail); 
-		if(xRingBufferGet(&pxUartDrvPrivate->xUartRxRingBuf, &pcBuf[xLen], pxUartDrvPrivate->xUartRxRingBuf._ItemSize) == 0)
+		if(xRingBufferGet(&pxUartDrvPrivate->xUartRxRingBuf, &buffer[xLen], pxUartDrvPrivate->xUartRxRingBuf._ItemSize) == 0)
         {
 			xLen++;
         }
@@ -228,10 +233,10 @@ size_t Uart_Read(Handle_t *pHandle, char *pcBuf, size_t xReadLen)
 	return xLen;
 }
 
-size_t Uart_Write(Handle_t *pHandle, const char *pcBuf, size_t xWriteLen)
+ssize_t Uart_Write(struct file *filp, const char *buffer, size_t buflen)
 {
 	size_t xLen = 0;
-	UartDrvPrivate_t *pxUartDrvPrivate = (UartDrvPrivate_t *)pHandle->xInode.pvPrivate;
+	UartDrvPrivate_t *pxUartDrvPrivate = (UartDrvPrivate_t *)filp->f_inode->i_private;
 	XUartPs *InstancePtr = pxUartDrvPrivate->pxUartInstPtr;
     uint8_t ucVal;
 
@@ -240,10 +245,10 @@ size_t Uart_Write(Handle_t *pHandle, const char *pcBuf, size_t xWriteLen)
      */
     irqstate_t state = irqsave();
 //    xSemaphoreTake(pxUartDrvPrivate->UartTxMutex, portMAX_DELAY);
-	while (xLen < xWriteLen) 
+	while (xLen < buflen) 
 	{
 		
-        if(xRingBufferPut(&pxUartDrvPrivate->xUartTxRingBuf, &pcBuf[xLen], sizeof(uint8_t)) == 0)
+        if(xRingBufferPut(&pxUartDrvPrivate->xUartTxRingBuf, &buffer[xLen], sizeof(uint8_t)) == 0)
             xLen++;
         else
             break;
@@ -285,71 +290,51 @@ size_t Uart_Write(Handle_t *pHandle, const char *pcBuf, size_t xWriteLen)
 	return xLen;
 }
 
-int Uart_Ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
+int Uart_Ioctl(file_t *filp, int iCmd, unsigned long ulArg)
 {
 	int32_t iRet = 0;
-	UartDrvPrivate_t *pxUartDrvPrivate = (UartDrvPrivate_t *)pHandle->xInode.pvPrivate;
+	UartDrvPrivate_t *pxUartDrvPrivate = (UartDrvPrivate_t *)filp->f_inode->i_private;
 	switch(iCmd)
 	{
-		case UART_IOC_NREAD:
+		case FIONREAD:
 		{
 			int iFilledCount = 0;
 
-            if(pvArg == NULL)
-            {
-                Print_Err("Invald Param!!\n");
-                return -1;
-            }
-			
             irqstate_t state = irqsave();
-			iFilledCount = iRingBufferGetFilledCount(&pxUartDrvPrivate->xUartRxRingBuf);
-			*(int *)pvArg = iFilledCount;
+			iFilledCount = iRingBufferGetAvailable(&pxUartDrvPrivate->xUartRxRingBuf);
+			*(int *)ulArg = iFilledCount;
             irqrestore(state);
 			break;
 		}
-		case UART_IOC_NWRITE:
+		case FIONWRITE:
 		{
 			int iEmptyCount = 0;
 
-            if(pvArg == NULL)
-            {
-                Print_Err("Invald Param!!\n");
-                return -1;
-            }
-
             irqstate_t state = irqsave();
-			iEmptyCount = iRingBufferGetEmptyCount(&pxUartDrvPrivate->xUartTxRingBuf);
-			*(int *)pvArg = iEmptyCount;
+			iEmptyCount = iRingBufferGetSpace(&pxUartDrvPrivate->xUartTxRingBuf);
+			*(int *)ulArg = iEmptyCount;
             irqrestore(state);
-			break;
-		}
-		case UART_IOC_SET_BAUDRATE:
-		{
-            if(pvArg == NULL)
-            {
-                Print_Err("Invald Param!!\n");
-                return -1;
-            }
-		
-            uint32_t uiBaudRate = *(uint32_t *)(pvArg);
-			
-            Print_Info("uart set baudrate=%d\n", uiBaudRate);
-			iRet = XUartPs_SetBaudRate(pxUartDrvPrivate->pxUartInstPtr, uiBaudRate);
-			if(iRet != XST_SUCCESS)
-			{
-				Print_Err("Set Uart%d baud rate:%d failed:%d!!\n", pxUartDrvPrivate->iUartID, uiBaudRate, iRet);
-			}
 			break;
 		}
 		case UART_IOC_SET_MODE:
 		{
-            if(pvArg == NULL)
+            if((uint32_t *)ulArg == NULL)
             {
                 Print_Err("Invald Param!!\n");
                 return -1;
             }
 		
-            uint32_t uiUartOperMode = *(uint32_t *)(pvArg);
+            uint32_t uiUartOperMode = *(uint32_t *)(ulArg);
+
+            if(uiUartOperMode == UART_MODE_LOOP)
+            {
+                uiUartOperMode = XUARTPS_OPER_MODE_LOCAL_LOOP; 
+            }
+            else
+            {
+                uiUartOperMode = XUARTPS_OPER_MODE_NORMAL; 
+            }
+
 
 			pxUartDrvPrivate->iUartOperMode = uiUartOperMode;
 			XUartPs_SetOperMode(pxUartDrvPrivate->pxUartInstPtr, uiUartOperMode);
@@ -357,50 +342,30 @@ int Uart_Ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
 		}	
         case UART_IOC_SET_DATA_FORMAT:
         {
-	        uint32_t ModeRegister;
-
-            if(pvArg == NULL)
+            if((UartDataFormat_t *)ulArg == NULL)
             {
                 Print_Err("Invald Param!!\n");
                 return -1;
             }
 
-            XUartPs *InstancePtr = pxUartDrvPrivate->pxUartInstPtr;
-            UartDataFormat_t *pDataFormat = (UartDataFormat_t *)pvArg;
+            UartDataFormat_t *data_format = (UartDataFormat_t *)ulArg;
+            XUartPsFormat xil_format = {0};
 
-            ModeRegister =
-                XUartPs_ReadReg(InstancePtr->Config.BaseAddress,
-                          XUARTPS_MR_OFFSET);
+            XUartPs_GetDataFormat(pxUartDrvPrivate->pxUartInstPtr, &xil_format);
 
-            /*
-             * Set the length of data (8,7,6) by first clearing out the bits
-             * that control it in the register, then set the length in the register
-             */
-            ModeRegister &= ~XUARTPS_MR_CHARLEN_MASK;
-            ModeRegister |= (pDataFormat->iDataBits << XUARTPS_MR_CHARLEN_SHIFT);
+            if(data_format->iBaudRate != 0)
+                xil_format.BaudRate = data_format->iBaudRate;
+            
+            if(data_format->iDataBits != 0)
+                xil_format.DataBits = data_format->iDataBits;
+            
+            if(data_format->iParity != 0)
+                xil_format.Parity = data_format->iParity;
+       
+            if(data_format->iStopBits != 0)
+                xil_format.StopBits = data_format->iStopBits;
 
-            /*
-             * Set the number of stop bits in the mode register by first clearing
-             * out the bits that control it in the register, then set the number
-             * of stop bits in the register.
-             */
-            ModeRegister &= ~XUARTPS_MR_STOPMODE_MASK;
-            ModeRegister |= (pDataFormat->iStopBits << XUARTPS_MR_STOPMODE_SHIFT);
-
-            /*
-             * Set the parity by first clearing out the bits that control it in the
-             * register, then set the bits in the register, the default is no parity
-             * after clearing the register bits
-             */
-            ModeRegister &= ~XUARTPS_MR_PARITY_MASK;
-            ModeRegister |= (pDataFormat->iParity << XUARTPS_MR_PARITY_SHIFT);
-
-            /*
-             * Update the mode register
-             */
-            XUartPs_WriteReg(InstancePtr->Config.BaseAddress, XUARTPS_MR_OFFSET,
-                       ModeRegister);
-                   
+            XUartPs_SetDataFormat(pxUartDrvPrivate->pxUartInstPtr, &xil_format);
             break;
         }
 		default:
@@ -441,7 +406,7 @@ void vUartPs_InterruptHandler(void *pvArg)
 		/* Recieved data interrupt */
 		while(XUartPs_IsReceiveData(InstancePtr->Config.BaseAddress))
 		{
-            if(iRingBufferGetEmptyCount(&pxUartDrvPrivate->xUartRxRingBuf) > 0) 
+            if(iRingBufferGetSpace(&pxUartDrvPrivate->xUartRxRingBuf) > 0) 
             {
             	ucVal = XUartPs_ReadReg(InstancePtr->Config.BaseAddress, XUARTPS_FIFO_OFFSET);
 //            Print_Warn("IsrStatus=%x val=%d\n", IsrStatus, ucVal);

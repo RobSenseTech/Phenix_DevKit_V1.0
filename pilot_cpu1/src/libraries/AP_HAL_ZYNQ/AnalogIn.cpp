@@ -10,7 +10,6 @@
 #include <uORB/topics/system_power.h>
 //#include <GCS_MAVLink/GCS_MAVLink.h>
 #include "GPIO.h"
-#include "driver.h"
 
 #define ANLOGIN_DEBUGGING 0
 

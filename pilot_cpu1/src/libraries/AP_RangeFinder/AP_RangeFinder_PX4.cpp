@@ -20,6 +20,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 
 
@@ -55,7 +57,7 @@ AP_RangeFinder_PX4::AP_RangeFinder_PX4(RangeFinder &_ranger, uint8_t instance, R
 	}
 
     // average over up to 20 samples
-    if (ioctl(_fd, SENSORIOCSQUEUEDEPTH, (void*)20) != 0) {
+    if (ioctl(_fd, SENSORIOCSQUEUEDEPTH, 20) != 0) {
         hal.console->printf("Failed to setup range finder queue\n");
         set_status(RangeFinder::RangeFinder_NotConnected);
         return;
@@ -114,8 +116,8 @@ void AP_RangeFinder_PX4::update(void)
         _last_min_distance_cm != ranger._min_distance_cm[state.instance]) {
         float max_distance = ranger._max_distance_cm[state.instance]*0.01f;
         float min_distance = ranger._min_distance_cm[state.instance]*0.01f;
-        if (ioctl(_fd, RANGEFINDERIOCSETMAXIUMDISTANCE, &max_distance) == 0 &&
-            ioctl(_fd, RANGEFINDERIOCSETMINIUMDISTANCE, &min_distance) == 0) {
+        if (ioctl(_fd, RANGEFINDERIOCSETMAXIUMDISTANCE, (unsigned long)&max_distance) == 0 &&
+            ioctl(_fd, RANGEFINDERIOCSETMINIUMDISTANCE, (unsigned long)&min_distance) == 0) {
             _last_max_distance_cm = ranger._max_distance_cm[state.instance];
             _last_min_distance_cm = ranger._min_distance_cm[state.instance];
         }

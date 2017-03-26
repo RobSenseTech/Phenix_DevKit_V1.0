@@ -40,14 +40,14 @@
 #ifndef _DRV_DEVICE_H
 #define _DRV_DEVICE_H
 
-#include <ioctl.h>
+#include <sys/ioctl.h>
 
 /*
  * ioctl() definitions
  */
 
 #define _DEVICEIOCBASE		(0x100)
-#define _DRV_DEVICE_IOC(type,nr)   _IO(type,nr)
+#define _DRV_DEVICE_IOC(type,nr)   _IOC(type,nr)
 #define _DEVICEIOC(_n)		(_DRV_DEVICE_IOC(_DEVICEIOCBASE, _n))
 
 /** ask device to stop publishing */

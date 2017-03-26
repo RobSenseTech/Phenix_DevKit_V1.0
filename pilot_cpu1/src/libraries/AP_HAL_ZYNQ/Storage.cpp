@@ -1,12 +1,27 @@
-#include <AP_HAL/AP_HAL.h>
-
+#include <AP_HAL/AP_HAL.h> 
 #include <assert.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+
 
 #include "device/cdev.h"
 #include "Storage.h"
 using namespace PX4;
+/*
+  This stores eeprom data in the PX4 MTD interface with a 4k size, and
+  a in-memory buffer. This keeps the latency and devices IOs down.
+ */
 
+// name the storage file after the sketch so you can use the same sd
+// card for ArduCopter and ArduPlane
+#define STORAGE_DIR     "/fs/microsd/APM"
+#define MTD_PARAMS_FILE "/fs/microsd/param"
+#define OLD_STORAGE_FILE STORAGE_DIR "/" SKETCHNAME ".stg"
+#define OLD_STORAGE_FILE_BAK STORAGE_DIR "/" SKETCHNAME ".bak"
 //#define SAVE_STORAGE_FILE STORAGE_DIR "/" SKETCHNAME ".sav"
 #define MTD_SIGNATURE 0x14012014
 #define MTD_SIGNATURE_OFFSET (8192-4)
@@ -48,19 +63,18 @@ uint32_t PX4Storage::_mtd_signature(void)
  */
 void PX4Storage::_mtd_write_signature(void)
 {
+    int ret = 0;
     int mtd_fd = open(MTD_PARAMS_FILE, O_WRONLY);
     if (mtd_fd == -1) {
-        Print_Err("Failed to open " MTD_PARAMS_FILE);
         AP_HAL::panic("Failed to open " MTD_PARAMS_FILE);
     }
     uint32_t v = MTD_SIGNATURE;
-    if (lseek(mtd_fd, MTD_SIGNATURE_OFFSET, SEEK_SET) != MTD_SIGNATURE_OFFSET) {
-        Print_Err("Failed to seek in " MTD_PARAMS_FILE);
-        AP_HAL::panic("Failed to seek in " MTD_PARAMS_FILE);
+    ret = lseek(mtd_fd, MTD_SIGNATURE_OFFSET, SEEK_SET);
+    if (ret != MTD_SIGNATURE_OFFSET) {
+        Print_Err("Failed to seek in %s ret=%d\n", MTD_PARAMS_FILE, ret);
     }
     bus_lock(true);
     if (write(mtd_fd, (char *)&v, sizeof(v)) != sizeof(v)) {
-        Print_Err("Failed to write signature in " MTD_PARAMS_FILE);
         AP_HAL::panic("Failed to write signature in " MTD_PARAMS_FILE);
     }
     bus_lock(false);
@@ -112,18 +126,27 @@ void PX4Storage::_storage_open(void)
 	if (_initialised) {
 		return;
 	}
-        _have_mtd = (DriverDevExists(MTD_PARAMS_FILE) == 0);
+        struct stat st;
+        _have_mtd = (stat(MTD_PARAMS_FILE, &st) == 0);
 
-        // PX4 should always have /fs/mtd_params
         if (!_have_mtd) {
-            AP_HAL::panic("Failed to find " MTD_PARAMS_FILE);
+            int fd = 0;
+            int pos = 0;
+            uint8_t v[128] = {0};
+            fd = open(MTD_PARAMS_FILE, O_CREAT|O_RDWR|O_SYNC, S_IRWXU|S_IRWXG|S_IRWXO); 
+            for(pos = 0; pos < HAL_STORAGE_SIZE; pos += 128)
+            {
+                write(fd, v, sizeof(v));
+            }
+            close(fd);
+            Print_Info("Failed to find %s, create it\n", MTD_PARAMS_FILE);
         }
 
         /*
           cope with upgrading from OLD_STORAGE_FILE to MTD
          */
         bool good_signature = (_mtd_signature() == MTD_SIGNATURE);
-        if (DriverDevExists(OLD_STORAGE_FILE) == 0) {
+        if (stat(OLD_STORAGE_FILE, &st) == 0) {
             if (good_signature) {
 #if STORAGE_RENAME_OLD_FILE
                 rename(OLD_STORAGE_FILE, OLD_STORAGE_FILE_BAK);
@@ -142,16 +165,13 @@ void PX4Storage::_storage_open(void)
 	_dirty_mask = 0;
 	int fd = open(MTD_PARAMS_FILE, O_RDONLY);
 	if (fd == -1) {
-            Print_Err("Failed to open " MTD_PARAMS_FILE);
             AP_HAL::panic("Failed to open " MTD_PARAMS_FILE);
 	}
-        lseek(fd, 0, SEEK_SET);
+     //   lseek(fd, 0, SEEK_SET);
         const uint16_t chunk_size = 128;
         for (uint16_t ofs=0; ofs<sizeof(_buffer); ofs += chunk_size) {
             bus_lock(true);
             ssize_t ret = read(fd, (char *)&_buffer[ofs], chunk_size);
-            if(ofs == 0)
-                Print_Info(">>>>%x %x %x\n", _buffer[0], _buffer[1], _buffer[2]);
             bus_lock(false);
             if (ret != chunk_size) {
                 Print_Err("storage read of %u bytes at %u to %p failed - got %d ret=%d\n",
@@ -194,10 +214,12 @@ void PX4Storage::read_block(void *dst, uint16_t loc, size_t n)
 	if (loc >= sizeof(_buffer)-(n-1)) {
 		return;
 	}
+    xSemaphoreTake(dirty_sem, portMAX_DELAY);
 	_storage_open();
 //    if(n == 4)
   //      Print_Info("loc=%d: %x %x %x\n", loc, _buffer[0], _buffer[1], _buffer[2]);
 	memcpy(dst, &_buffer[loc], n);
+    xSemaphoreGive(dirty_sem);
 }
 
 void PX4Storage::write_block(uint16_t loc, const void *src, size_t n) 
@@ -245,7 +267,9 @@ void PX4Storage::_timer_tick(void)
 			return;	
 		}
 	}
-
+	/*
+	 * Nuttx has pthread with SCHED_FIFO,but freertos don't have, so need to be locked
+	 */
     xSemaphoreTake(dirty_sem, portMAX_DELAY);
 	// write out the first dirty set of lines. We don't write more
 	// than one to keep the latency of this call to a minimum
@@ -275,8 +299,7 @@ void PX4Storage::_timer_tick(void)
 	  because this is a SCHED_FIFO thread it will not be preempted
 	  by the main task except during blocking calls. This means we
 	  don't need a semaphore around the _dirty_mask updates.
-      nuttx中可以 不需要，但是freertos中没有phtread，没有SCHED_FIFO
-      这种调度方法，所以要加锁
+      
 	 */
 	if (lseek(_fd, i<<PX4_STORAGE_LINE_SHIFT, SEEK_SET) == (i<<PX4_STORAGE_LINE_SHIFT)) {
 		_dirty_mask &= ~write_mask;

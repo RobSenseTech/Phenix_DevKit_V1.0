@@ -42,10 +42,12 @@
  * API for the uORB lightweight object broker.
  */
 
+#include <sys/types.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include "FreeRTOS.h"
+#include <unistd.h>
 
 
 /**

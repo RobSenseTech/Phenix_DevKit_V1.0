@@ -24,6 +24,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 
 
@@ -47,7 +49,7 @@ void AP_OpticalFlow_PX4::init(void)
     }
 
     // change to 10Hz update
-    if (ioctl(_fd, SENSORIOCSPOLLRATE, (void*)10) != 0) {
+    if (ioctl(_fd, SENSORIOCSPOLLRATE, 10) != 0) {
         hal.console->printf("Unable to set flow rate to 10Hz\n");        
     }
 }

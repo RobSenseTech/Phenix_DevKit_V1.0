@@ -31,7 +31,12 @@
  *
  ****************************************************************************/
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <stdarg.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 #include "uORBUtils.hpp"
 #include "uORBManager.hpp"
 
@@ -66,11 +71,14 @@ int uORB::Manager::orb_exists(const struct orb_metadata *meta, int instance)
 	int inst = instance;
 	int ret = uORB::Utils::node_mkpath(path, PUBSUB, meta, &inst);
 
-	if (ret != 0) {
+	if (ret != OK) {
+		errno = -ret;
 		return uORB::ERROR;
 	}
 
-	return DriverDevExists(path);
+	struct stat buffer;
+
+	return stat(path, &buffer);
 }
 
 orb_advert_t uORB::Manager::orb_advertise(const struct orb_metadata *meta, const void *data)
@@ -88,14 +96,13 @@ orb_advert_t uORB::Manager::orb_advertise_multi(const struct orb_metadata *meta,
 	/* open the node as an advertiser */
 	fd = node_open(PUBSUB, meta, data, true, instance, priority);
 
-	if (fd == -1) {
+	if (fd == ERROR) {
         Print_Err("node open failed\n");
 		return NULL;
 	}
 
 	/* get the advertiser handle and close the node */
-	result = ioctl(fd, ORBIOCGADVERTISER, (void *)&advertiser);
-    //Print_Info("advertiser=%x\n", (int)advertiser);
+	result = ioctl(fd, ORBIOCGADVERTISER, (unsigned long)&advertiser);
 	close(fd);
 
 	if (result == ERROR) {
@@ -139,13 +146,14 @@ int uORB::Manager::orb_copy(const struct orb_metadata *meta, int handle, void *b
 {
 	int ret;
 
-	ret = read(handle, (char *)buffer, meta->o_size);
+	ret = read(handle, buffer, meta->o_size);
 
 	if (ret < 0) {
 	    return ERROR;
 	}
 
 	if (ret != (int)meta->o_size) {
+	    errno = EIO;
 	    return ERROR;
 	}
 
@@ -154,23 +162,22 @@ int uORB::Manager::orb_copy(const struct orb_metadata *meta, int handle, void *b
 
 int uORB::Manager::orb_check(int handle, bool *updated)
 {
-	return ioctl(handle, ORBIOCUPDATED, (void *)updated);
+	return ioctl(handle, ORBIOCUPDATED, (unsigned long)(uintptr_t)updated);
 }
 
 int uORB::Manager::orb_stat(int handle, uint64_t *time)
 {
-	return ioctl(handle, ORBIOCLASTUPDATE, (void *)time);
+	return ioctl(handle, ORBIOCLASTUPDATE, (unsigned long)(uintptr_t)time);
 }
 
 int uORB::Manager::orb_priority(int handle, int32_t *priority)
 {
-	return ioctl(handle, ORBIOCGPRIORITY, (void *)priority);
+	return ioctl(handle, ORBIOCGPRIORITY, (unsigned long)(uintptr_t)priority);
 }
 
 int uORB::Manager::orb_set_interval(int handle, unsigned interval)
 {
-    unsigned tmp_interval = interval*1000;
-	return ioctl(handle, ORBIOCSETINTERVAL, (void *)&tmp_interval);
+	return ioctl(handle, ORBIOCSETINTERVAL, interval * 1000);
 }
 
 
@@ -190,19 +197,22 @@ int uORB::Manager::node_advertise
 	/* open the control device */
 	fd = open(TOPIC_MASTER_DEVICE_PATH, 0);
 
-	if (fd == -1) {
+	if (fd < 0) {
         Print_Err("open %s failed, uorb may not start!!\n", TOPIC_MASTER_DEVICE_PATH);
 		goto out;
 	}
 
 	/* advertise the object */
-	ret = ioctl(fd, ORBIOCADVERTISE, (void *)&adv);
+	ret = ioctl(fd, ORBIOCADVERTISE, (unsigned long)(uintptr_t)&adv);
 
-	/* it's 0 if it already exists */
+	/* it's OK if it already exists */
+	if ((OK != ret) && (EEXIST == errno)) {
+		ret = OK;
+	}
 
 out:
 
-	if (fd != 0) {
+	if (fd >= 0) {
 		close(fd);
 	}
 
@@ -226,17 +236,17 @@ int uORB::Manager::node_open
 	 * If meta is null, the object was not defined, i.e. it is not
 	 * known to the system.  We can't advertise/subscribe such a thing.
 	 */
-	if (NULL == meta) {
-	    Print_Err("meta is null\n");	
-        goto OUT;
+	if (nullptr == meta) {
+		errno = ENOENT;
+		return ERROR;
 	}
 
 	/*
 	 * Advertiser must publish an initial value.
 	 */
-	if (advertiser && (data == NULL)) {
-	    Print_Err("Invalid argument:advertiser=%d data=0x%x\n", advertiser, (int)data);	
-        goto OUT;
+	if (advertiser && (data == nullptr)) {
+		errno = EINVAL;
+		return ERROR;
 	}
 
 	/*
@@ -244,17 +254,16 @@ int uORB::Manager::node_open
 	 */
 	ret = uORB::Utils::node_mkpath(path, f, meta, instance);
 
-	if (ret != 0) {
-	    Print_Err("node mkpath failed\n");	
-        goto OUT;
+	if (ret != OK) {
+		errno = -ret;
+		return ERROR;
 	}
 
 	/* open the path as either the advertiser or the subscriber */
 	fd = open(path, (advertiser) ? O_WRONLY : O_RDONLY);
 
 	/* if we want to advertise and the node existed, we have to re-try again */
-	if ((fd != -1) && (instance != NULL) && (advertiser)) {
-      //  Print_Info("advertiser=%d\n", advertiser);
+	if ((fd >= 0) && (instance != nullptr) && (advertiser)) {
 		/* close the fd, we want a new one */
 		close(fd);
 		/* the node_advertise call will automatically go for the next free entry */
@@ -262,33 +271,33 @@ int uORB::Manager::node_open
 	}
 
 	/* we may need to advertise the node... */
-	if (fd == -1) {
+	if (fd < 0) {
 
 		/* try to create the node */
 		ret = node_advertise(meta, instance, priority);
 
-		if (ret == 0) {
+		if (ret == OK) {
 			/* update the path, as it might have been updated during the node_advertise call */
 			ret = uORB::Utils::node_mkpath(path, f, meta, instance);
 
-			if (ret != 0) {
-                goto OUT;
+			if (ret != OK) {
+				errno = -ret;
+				return ERROR;
 			}
 		}
 
 		/* on success, try the open again */
-		if (ret == 0) {
+		if (ret == OK) {
 			fd = open(path, (advertiser) ? O_WRONLY : O_RDONLY);
 		}
 	}
 
-	if (fd == -1) {
-	    Print_Err("node open failed!!\n");
-        goto OUT;
+	if (fd < 0) {
+		errno = EIO;
+		return ERROR;
 	}
 
-OUT:
-	/* everything has been 0, we can return the handle now */
+	/* everything has been OK, we can return the handle now */
 	return fd;
 }
 
@@ -320,7 +329,7 @@ int16_t uORB::Manager::process_add_subscription(const char *messageName,
 	char nodepath[orb_maxpath];
 	int ret = uORB::Utils::node_mkpath(nodepath, PUBSUB, messageName);
 
-	if (ret == 0) {
+	if (ret == OK) {
 		// get the node name.
 		uORB::DeviceNode *node = uORB::DeviceMaster::GetDeviceNode(nodepath);
 

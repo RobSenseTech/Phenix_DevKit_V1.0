@@ -10,6 +10,17 @@
 #include "uORB/topics/sensor_baro.h"
 #include "task.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
+#include <poll.h>
+
+
 static void prvGyroTask(void *pvParameters)
 {
     int gyro_sub = orb_subscribe_multi(ORB_ID(sensor_gyro), 0);//订阅第一个陀螺仪的数据

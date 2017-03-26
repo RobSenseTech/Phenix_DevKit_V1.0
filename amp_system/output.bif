@@ -1,7 +1,7 @@
 the_ROM_image:
 {
 	[bootloader] ./amp_system/fsbl/phenix/fsbl.elf
-	./amp_system/pl_image/zed_board_wrapper.bit
+	./amp_system/pl_image/phenix_devkit_wrapper.bit
 	./amp_system/linux_image/u-boot.elf
 	./pilot_cpu1/bin/freeRTOS.elf
 }

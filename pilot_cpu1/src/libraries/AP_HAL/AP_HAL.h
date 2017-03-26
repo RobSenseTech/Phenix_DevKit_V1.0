@@ -35,8 +35,7 @@
 
 // zynq add head files
 #include "FreeRTOS_Print.h"
-#include "ioctl.h"
-#include "driver.h"
+#include "fs/ioctl.h"
 #include "FreeRTOS.h"
 
 #define OK 0

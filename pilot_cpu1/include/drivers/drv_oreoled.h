@@ -49,7 +49,7 @@
  */
 
 #define _OREOLEDIOCBASE		(0x2d00)
-#define _OREOLEDIOC(_n)		(_IO(_OREOLEDIOCBASE, _n))
+#define _OREOLEDIOC(_n)		(_IOC(_OREOLEDIOCBASE, _n))
 
 /** set constant RGB values */
 #define OREOLED_SET_RGB			_OREOLEDIOC(1)

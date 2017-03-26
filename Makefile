@@ -19,9 +19,7 @@ pilot:
 clean:
 	make -C pilot_cpu1/build clean
 	make -C cpu1_bsp clean
-	rm pilot_cpu1/include/standalone/*
 bsp-clean:
 	make -C cpu1_bsp clean
-	rm pilot_cpu1/include/standalone/*
 pilot-clean:
 	make -C pilot_cpu1/build clean

@@ -6,6 +6,8 @@
  */
 #include <stdarg.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <hrt/drv_hrt.h>        //等待底层提供
 
@@ -25,6 +27,7 @@ void init()
 
 void panic(const char *errormsg, ...)
 {
+    Print_Err("%s\n", errormsg);
     return;
     va_list ap;
 

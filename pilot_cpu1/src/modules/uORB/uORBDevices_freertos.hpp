@@ -73,12 +73,12 @@ public:
 	 * Method to create a subscriber instance and return the struct
 	 * pointing to the subscriber as a file pointer.
 	 */
-	virtual int  open(Handle_t *pHandle);
+	virtual int  open(struct file *filp);
 
 	/**
 	 * Method to close a subscriber for this topic.
 	 */
-	virtual int   close(Handle_t *pHandle);
+	virtual int   close(struct file *filp);
 
 	/**
 	 * reads data from a subscriber node to the buffer provided.
@@ -89,9 +89,9 @@ public:
 	 * @param buflen
 	 *   the length of the buffer
 	 * @return
-	 *   size_t the number of bytes read.
+	 *   ssize_t the number of bytes read.
 	 */
-	virtual size_t  read(Handle_t *pHandle, char *pcBuffer, size_t xBufLen);
+	virtual ssize_t  read(struct file *filp, char *buffer, size_t buflen);
 
 	/**
 	 * writes the published data to the internal buffer to be read by
@@ -102,20 +102,20 @@ public:
 	 *   The buffer for the input data
 	 * @param buflen
 	 *   the length of the buffer.
-	 * @return size_t
+	 * @return ssize_t
 	 *   The number of bytes that are written
 	 */
-	virtual size_t   write(Handle_t *pHandle, const char *pcBuffer, size_t xBufLen);
+	virtual ssize_t   write(struct file *filp, const char *buffer, size_t buflen);
 
 	/**
 	 * IOCTL control for the subscriber.
 	 */
-	virtual int   ioctl(Handle_t *pHandle, int iCmd, void *pvArg);
+	virtual int   ioctl(struct file *filp, int cmd, unsigned long arg);
 
 	/**
 	 * Method to publish a data to this node.
 	 */
-	static size_t publish
+	static ssize_t publish
 	(
 		const orb_metadata *meta,
 		orb_advert_t handle,
@@ -167,7 +167,7 @@ public:
 	bool is_published();
 
 protected:
-	virtual pollevent_t poll_state(Handle_t *pHandle);
+	virtual pollevent_t poll_state(struct file *filp);
 	virtual void poll_notify_one(struct pollfd *fds, pollevent_t events);
 
 private:
@@ -190,9 +190,9 @@ private:
 
 private: // private class methods.
 
-	SubscriberData    *handle_to_sd(Handle_t *pHandle)
+	SubscriberData    *filp_to_sd(struct file *filp)
 	{
-		SubscriberData *sd = (SubscriberData *)(pHandle->pvDriverPrivate);
+		SubscriberData *sd = (SubscriberData *)(filp->f_priv);
 		return sd;
 	}
 
@@ -237,7 +237,7 @@ public:
 	virtual ~DeviceMaster();
 
 	static uORB::DeviceNode *GetDeviceNode(const char *node_name);
-	virtual int   ioctl(Handle_t *pHandle, int iCmd, void *pvArg);
+	virtual int   ioctl(struct file *filp, int cmd, unsigned long arg);
 private:
 	Flavor      _flavor;
 	static ORBMap _node_map;

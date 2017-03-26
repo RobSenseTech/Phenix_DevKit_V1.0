@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include "driver.h"
 #include "drv_accel.h"
 #include "drv_gyro.h"
 #include "device/cdev.h"
@@ -18,10 +17,10 @@ public:
     virtual ~MPU6000();
 
     virtual int init();
-	virtual size_t	read(Handle_t *pHandle, char *pcBuffer, size_t xBufLen);
-	virtual size_t	write(Handle_t *pHandle, const char *pcBuffer, size_t xBufLen);
-	virtual int	ioctl(Handle_t *pHandle, int iCmd, void *pvArg);
-	virtual int	poll(Handle_t *pHandle, struct pollfd *fds, bool setup);
+	virtual size_t	read(file_t *filp, char *pcBuffer, size_t xBufLen);
+	virtual size_t	write(file_t *filp, const char *pcBuffer, size_t xBufLen);
+	virtual int	ioctl(file_t *filp, int iCmd, void *pvArg);
+	virtual int	poll(file_t *filp, struct pollfd *fds, bool setup);
 
     void measure_trampoline(void *arg);
     RingBuffer_t *_accel_reports;
@@ -89,25 +88,25 @@ out:
     return ret;
 }
 
-size_t MPU6000::read(Handle_t *pHandle, char *pcBuffer, size_t xBufLen)
+size_t MPU6000::read(file_t *filp, char *pcBuffer, size_t xBufLen)
 {
     Print_Info("mpu6000 read\n");
     return 0;
 }
 
-size_t MPU6000::write(Handle_t *pHandle, const char *pcBuffer, size_t xBufLen)
+size_t MPU6000::write(file_t *filp, const char *pcBuffer, size_t xBufLen)
 {
     Print_Info("mpu6000 write\n");
     return 0;
 }
 
-int MPU6000::ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
+int MPU6000::ioctl(file_t *filp, int iCmd, void *pvArg)
 {
     Print_Info("mpu6000 ioctl\n");
     return 0;
 }
 
-int	MPU6000::poll(Handle_t *pHandle, struct pollfd *fds, bool setup)
+int	MPU6000::poll(file_t *filp, struct pollfd *fds, bool setup)
 {
     Print_Info("mpu6000 poll\n");
     return 0;

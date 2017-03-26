@@ -2,8 +2,8 @@
 PRJ_NAME = freeRTOS.elf
 
 #set your project type : choose one below
-CC = arm-xilinx-eabi-gcc
-CXX = arm-xilinx-eabi-g++
+CC = arm-none-eabi-gcc
+CXX = arm-none-eabi-g++
 #CC = 
 #CC = ar -r 
 
@@ -30,6 +30,9 @@ LIBPATH := -L../libs
 INCLUDEPATH := -I../src/FreeRTOS \
 			   -I../src/FreeRTOS/FreeRTOS_Source/include/ \
 			   -I../src/FreeRTOS/FreeRTOS_Source/portable/GCC/ARM_CA9 \
+			   -I../src/FreeRTOS/robsense_custom/ \
+			   -I../src/FreeRTOS/robsense_custom/include/ \
+			   -I../src/FreeRTOS/robsense_custom/fs \
 			   -I../include/standalone \
 			   -I../include/print \
 			   -I../include/drivers\
@@ -50,8 +53,8 @@ INCLUDEPATH := -I../src/FreeRTOS \
 LSCRIPT := ../src/lscript.ld
 
 #flags in makefile
-DEBUG_FLAG = -O2 -g3 -Wall -c -fmessage-length=0 
-RELEASE_FLAG = -O2 -Wall -c -fmessage-length=0
+DEBUG_FLAG = -g3 -O2 -Wall -c -fmessage-length=0 -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard
+RELEASE_FLAG =   -O2 -Wall -c -fmessage-length=0 -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard
 RM := rm -rf
 
 #list all dirs

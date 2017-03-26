@@ -93,7 +93,7 @@
  * applications using GPIOs should be aware of this.
  */
 #define _GPIOCBASE	0x2700
-#define _GPIO_IOC(type,nr)   _IO(type,nr)
+#define _GPIO_IOC(type,nr)   _IOC(type,nr)
 #define GPIOC(_x)	_GPIO_IOC(_GPIOCBASE, _x)
 
 /** reset all board GPIOs to their default state */

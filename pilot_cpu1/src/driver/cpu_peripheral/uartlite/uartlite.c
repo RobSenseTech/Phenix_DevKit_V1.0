@@ -3,8 +3,10 @@
 #include "xuartlite_i.h"
 #include "xuartlite_l.h"
 #include "xparameters.h"
-#include "driver.h"
 #include "ringbuffer.h"
+#include <fs/fs.h>
+#include <fs/ioctl.h>
+#include "driver.h"
 
 typedef struct{
 	int32_t iUartID;	//uart编号
@@ -27,13 +29,13 @@ int32_t UartLiteHwIntID[XPAR_XUARTLITE_NUM_INSTANCES]={
 
 void vUartLite_InterruptHandler(void *pvArg);
 
-size_t UartLite_Read(Handle_t *pHandle, char *pcBuf, size_t xReadLen);
+ssize_t UartLite_Read(struct file *filp, char *buffer, size_t buflen);
 
-size_t UartLite_Write(Handle_t *pHandle, const char *pcBuf, size_t xWriteLen);
+ssize_t UartLite_Write(struct file *filp, const char *buffer, size_t buflen);
 
-int UartLite_Ioctl(Handle_t *pHandle, int iCmd, void *pvArg);
+int UartLite_Ioctl(file_t *filp, int iCmd, unsigned long ulArg);
 
-DriverOps_t xUartLite_ops = {
+const struct file_operations xUartLite_ops = {
 	.read = UartLite_Read,
 	.write = UartLite_Write,
 	.ioctl = UartLite_Ioctl,
@@ -45,7 +47,7 @@ uint32_t UartLiteInit(int32_t iUartLiteId)
 	XUartLite *UartLiteInstPtr = &UartLite[iUartLiteId];
 	UartLitePrivate_t *pxUartLitePrivate = NULL;
 	int UartLiteIntrId = UartLiteHwIntID[iUartLiteId];
-    char DevName[MAX_DRIVER_NAME_LEN] = {0};
+    char DevName[64] = {0};
 
 	if(iUartLiteId >= XPAR_XUARTLITE_NUM_INSTANCES)
 	{
@@ -112,8 +114,9 @@ uint32_t UartLiteInit(int32_t iUartLiteId)
 	/*
 	 * step6: 注册串口驱动
 	 */
-    snprintf(DevName, sizeof(DevName), "%s%d", "/dev/uartlite", iUartLiteId);
-	DriverRegister(DevName, &xUartLite_ops, pxUartLitePrivate);
+    snprintf(DevName, sizeof(DevName), "%s%d", "/dev/uartlite", (int)iUartLiteId);
+	//DriverRegister(DevName, &xUartLite_ops, pxUartLitePrivate);
+    register_driver(DevName, &xUartLite_ops, 0666, pxUartLitePrivate);
 
 	/*
 	 * step7:
@@ -147,7 +150,7 @@ void vUartLite_InterruptHandler(void *pvArg)
 	{
 		while(XUartLite_GetStatusReg(InstancePtr->RegBaseAddress) & XUL_SR_RX_FIFO_VALID_DATA)
 		{
-            if(iRingBufferGetEmptyCount(&pxUartLitePrivate->xUartRxRingBuf) > 0)
+            if(iRingBufferGetSpace(&pxUartLitePrivate->xUartRxRingBuf) > 0)
             {
 			    ucVal = XUartLite_ReadReg(InstancePtr->RegBaseAddress, XUL_RX_FIFO_OFFSET);
 			    iRet = xRingBufferPut(&pxUartLitePrivate->xUartRxRingBuf, &ucVal, sizeof(uint8_t));
@@ -157,7 +160,7 @@ void vUartLite_InterruptHandler(void *pvArg)
                 /*
                  * 如果rx fifo和ringbuffer都满了，则强行写一个数据到ringbuffer，防止rx中断再也进不来
                  */
-                if(IsrStatus & XUL_SR_RX_FIFO_FULL != 0)
+                if((IsrStatus & XUL_SR_RX_FIFO_FULL) != 0)
                 {
 			        ucVal = XUartLite_ReadReg(InstancePtr->RegBaseAddress, XUL_RX_FIFO_OFFSET);
 			        iRet = xRingBufferForce(&pxUartLitePrivate->xUartRxRingBuf, &ucVal, sizeof(uint8_t));
@@ -170,8 +173,8 @@ void vUartLite_InterruptHandler(void *pvArg)
 
     if((IsrStatus & XUL_SR_TX_FIFO_EMPTY) != 0)
     {
-        portBASE_TYPE xHigherPriorityTaskWoken;
-        xHigherPriorityTaskWoken = pdFALSE;
+    //  portBASE_TYPE xHigherPriorityTaskWoken;
+    //  xHigherPriorityTaskWoken = pdFALSE;
         
 //        xSemaphoreTakeFromISR(pxUartLitePrivate->UartLiteTxMutex, &xHigherPriorityTaskWoken);
         while(!(XUartLite_GetStatusReg(InstancePtr->RegBaseAddress) & XUL_SR_TX_FIFO_FULL))
@@ -197,15 +200,15 @@ void vUartLite_InterruptHandler(void *pvArg)
 
 }
 
-size_t UartLite_Read(Handle_t *pHandle, char *pcBuf, size_t xReadLen)
+ssize_t UartLite_Read(struct file *filp, char *buffer, size_t buflen)
 {
 	size_t xLen = 0;
-	UartLitePrivate_t *pxUartLitePrivate = (UartLitePrivate_t *)pHandle->xInode.pvPrivate;
+	UartLitePrivate_t *pxUartLitePrivate = (UartLitePrivate_t *)filp->f_inode->i_private;
 
     irqstate_t state = irqsave();
-	while(xLen < xReadLen)
+	while(xLen < buflen)
 	{
-		if(xRingBufferGet(&pxUartLitePrivate->xUartRxRingBuf, &pcBuf[xLen], pxUartLitePrivate->xUartRxRingBuf._ItemSize) == 0)
+		if(xRingBufferGet(&pxUartLitePrivate->xUartRxRingBuf, &buffer[xLen], pxUartLitePrivate->xUartRxRingBuf._ItemSize) == 0)
 			xLen++;
         else
             break;
@@ -215,18 +218,18 @@ size_t UartLite_Read(Handle_t *pHandle, char *pcBuf, size_t xReadLen)
 	return xLen;
 }
 
-size_t UartLite_Write(Handle_t *pHandle, const char *pcBuf, size_t xWriteLen)
+ssize_t UartLite_Write(struct file *filp, const char *buffer, size_t buflen)
 {
 	size_t xLen = 0;
-	UartLitePrivate_t *pxUartLitePrivate = (UartLitePrivate_t *)pHandle->xInode.pvPrivate;
+	UartLitePrivate_t *pxUartLitePrivate = (UartLitePrivate_t *)filp->f_inode->i_private;
 	XUartLite *InstancePtr = pxUartLitePrivate->pxUartInstPtr;
     uint8_t ucVal;
 
     irqstate_t state = irqsave();
     //xSemaphoreTake(pxUartLitePrivate->UartLiteTxMutex, portMAX_DELAY);
-	while (xLen < xWriteLen) 
+	while (xLen < buflen) 
 	{
-        if(xRingBufferPut(&pxUartLitePrivate->xUartTxRingBuf, &pcBuf[xLen], sizeof(uint8_t)) == 0)
+        if(xRingBufferPut(&pxUartLitePrivate->xUartTxRingBuf, &buffer[xLen], sizeof(uint8_t)) == 0)
             xLen++;
         else
             break;
@@ -239,7 +242,7 @@ size_t UartLite_Write(Handle_t *pHandle, const char *pcBuf, size_t xWriteLen)
 			 */
 			XUartLite_WriteReg(InstancePtr->RegBaseAddress,
 					   XUL_TX_FIFO_OFFSET,
-					   pcBuf[xLen]);
+					   buffer[xLen]);
 
 			xLen++;
 		}
@@ -270,45 +273,31 @@ size_t UartLite_Write(Handle_t *pHandle, const char *pcBuf, size_t xWriteLen)
 	return xLen;
 }
 
-int UartLite_Ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
+int UartLite_Ioctl(file_t *filp, int iCmd, unsigned long ulArg)
 {
-	UartLitePrivate_t *pxUartLitePrivate = (UartLitePrivate_t *)pHandle->xInode.pvPrivate;
+	UartLitePrivate_t *pxUartLitePrivate = (UartLitePrivate_t *)filp->f_inode->i_private;
 	switch(iCmd)
 	{
-		case UART_IOC_NREAD:
+		case FIONREAD:
 		{
 			int iFilledCount = 0;
-
-            if(pvArg == NULL)
-            {
-                Print_Err("Invald Param!!\n");
-                return -1;
-            }
-			
+		
             irqstate_t state = irqsave();
-			iFilledCount = iRingBufferGetFilledCount(&pxUartLitePrivate->xUartRxRingBuf);
-			*(int *)pvArg = iFilledCount;
+			iFilledCount = iRingBufferGetAvailable(&pxUartLitePrivate->xUartRxRingBuf);
+			*(int *)ulArg = iFilledCount;
             irqrestore(state);
 			break;
 		}
-		case UART_IOC_NWRITE:
+		case FIONWRITE:
 		{
 			int iEmptyCount = 0;
 
-            if(pvArg == NULL)
-            {
-                Print_Err("Invald Param!!\n");
-                return -1;
-            }
-	
             irqstate_t state = irqsave();
-			iEmptyCount = iRingBufferGetEmptyCount(&pxUartLitePrivate->xUartTxRingBuf);
-			*(int *)pvArg = iEmptyCount;
+			iEmptyCount = iRingBufferGetSpace(&pxUartLitePrivate->xUartTxRingBuf);
+			*(int *)ulArg = iEmptyCount;
             irqrestore(state);
 			break;
 		}
-        case UART_IOC_SET_BAUDRATE:
-            break;
 		default:
 			Print_Err("Unknow Command\n");
 	}

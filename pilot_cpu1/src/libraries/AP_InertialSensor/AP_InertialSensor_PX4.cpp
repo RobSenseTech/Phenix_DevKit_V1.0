@@ -8,6 +8,8 @@ const extern AP_HAL::HAL& hal;
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 
 
@@ -80,37 +82,37 @@ bool AP_InertialSensor_PX4::_init_sensor(void)
 
     for (uint8_t i=0; i<_num_gyro_instances; i++) {
         int fd = _gyro_fd[i];
-        int devid = (ioctl(fd, DEVIOCGDEVICEID, (void*)0) & 0x00FF0000)>>16;
+        int devid = (ioctl(fd, DEVIOCGDEVICEID, 0) & 0x00FF0000)>>16;
 
         // software LPF off
-        ioctl(fd, GYROIOCSLOWPASS, (void*)0);
+        ioctl(fd, GYROIOCSLOWPASS, 0);
         // 2000dps range
-        ioctl(fd, GYROIOCSRANGE, (void*)2000);
+        ioctl(fd, GYROIOCSRANGE, 2000);
 
         switch(devid) {
             case DRV_GYR_DEVTYPE_MPU6000:
             case DRV_GYR_DEVTYPE_MPU9250:
                 // hardware LPF off
-                ioctl(fd, GYROIOCSHWLOWPASS, (void*)256);
+                ioctl(fd, GYROIOCSHWLOWPASS, 256);
                 // khz sampling
-                ioctl(fd, GYROIOCSSAMPLERATE, (void*)1000);
+                ioctl(fd, GYROIOCSSAMPLERATE, 1000);
                 // set queue depth
-                ioctl(fd, SENSORIOCSQUEUEDEPTH, (void*)(_queue_depth(1000)));
+                ioctl(fd, SENSORIOCSQUEUEDEPTH, _queue_depth(1000));
                 break;
             case DRV_GYR_DEVTYPE_L3GD20:
 			case DRV_GYR_DEVTYPE_I3G4250D:
                 // hardware LPF as high as possible
-                ioctl(fd, GYROIOCSHWLOWPASS, (void*)100);
+                ioctl(fd, GYROIOCSHWLOWPASS, 100);
                 // ~khz sampling
-                ioctl(fd, GYROIOCSSAMPLERATE, (void*)800);
+                ioctl(fd, GYROIOCSSAMPLERATE, 800);
                 // 10ms queue depth
-                ioctl(fd, SENSORIOCSQUEUEDEPTH, (void*)(_queue_depth(800)));
+                ioctl(fd, SENSORIOCSQUEUEDEPTH, _queue_depth(800));
                 break;
             default:
                 break;
         }
         // calculate gyro sample time
-        int samplerate = ioctl(fd,  GYROIOCGSAMPLERATE, (void*)0);
+        int samplerate = ioctl(fd,  GYROIOCGSAMPLERATE, 0);
         if (samplerate < 100 || samplerate > 10000) {
             AP_HAL::panic("Invalid gyro sample rate");
         }
@@ -120,47 +122,47 @@ bool AP_InertialSensor_PX4::_init_sensor(void)
 
     for (uint8_t i=0; i<_num_accel_instances; i++) {
         int fd = _accel_fd[i];
-        int devid = (ioctl(fd, DEVIOCGDEVICEID, (void*)0) & 0x00FF0000)>>16;
+        int devid = (ioctl(fd, DEVIOCGDEVICEID, 0) & 0x00FF0000)>>16;
 
         // software LPF off
-        ioctl(fd, ACCELIOCSLOWPASS, (void*)0);
+        ioctl(fd, ACCELIOCSLOWPASS, 0);
         // 16g range
-        ioctl(fd, ACCELIOCSRANGE, (void*)16);
+        ioctl(fd, ACCELIOCSRANGE, 16);
 
         switch(devid) {
             case DRV_ACC_DEVTYPE_MPU6000:
             case DRV_ACC_DEVTYPE_MPU9250:
                 // hardware LPF off
-                ioctl(fd, ACCELIOCSHWLOWPASS, (void*)256);
+                ioctl(fd, ACCELIOCSHWLOWPASS, 256);
                 // khz sampling
-                ioctl(fd, ACCELIOCSSAMPLERATE, (void*)1000);
+                ioctl(fd, ACCELIOCSSAMPLERATE, 1000);
                 // 10ms queue depth
-                ioctl(fd, SENSORIOCSQUEUEDEPTH, (void*)(_queue_depth(1000)));
+                ioctl(fd, SENSORIOCSQUEUEDEPTH, _queue_depth(1000));
                 break;
             case DRV_ACC_DEVTYPE_LSM303D:
                 // hardware LPF to ~1/10th sample rate for antialiasing
-                ioctl(fd, ACCELIOCSHWLOWPASS, (void*)194);
+                ioctl(fd, ACCELIOCSHWLOWPASS, 194);
                 // ~khz sampling
-                ioctl(fd, ACCELIOCSSAMPLERATE, (void*)1600);
-                ioctl(fd,SENSORIOCSPOLLRATE, (void*)1600);
+                ioctl(fd, ACCELIOCSSAMPLERATE, 1600);
+                ioctl(fd,SENSORIOCSPOLLRATE, 1600);
                 // 10ms queue depth
-                ioctl(fd, SENSORIOCSQUEUEDEPTH, (void*)(_queue_depth(1600)));
+                ioctl(fd, SENSORIOCSQUEUEDEPTH, _queue_depth(1600));
                 break;
 			case DRV_ACC_DEVTYPE_IIS328DQ:
 				// hardware LPF to ~1/10th sample rate for antialiasing
-                ioctl(fd, ACCELIOCSHWLOWPASS, (void*)780);
+                ioctl(fd, ACCELIOCSHWLOWPASS, 780);
                 // ~khz sampling
-                ioctl(fd, ACCELIOCSSAMPLERATE, (void*)1000);
-                ioctl(fd,SENSORIOCSPOLLRATE, (void*)1000);
+                ioctl(fd, ACCELIOCSSAMPLERATE, 1000);
+                ioctl(fd,SENSORIOCSPOLLRATE, 1000);
                 // 10ms queue depth
-                ioctl(fd, SENSORIOCSQUEUEDEPTH, (void*)(_queue_depth(1000)));
+                ioctl(fd, SENSORIOCSQUEUEDEPTH, _queue_depth(1000));
                 break;
 
             default:
                 break;
         }
         // calculate accel sample time
-        int samplerate = ioctl(fd,  ACCELIOCGSAMPLERATE, (void*)0);
+        int samplerate = ioctl(fd,  ACCELIOCGSAMPLERATE, 0);
         if (samplerate < 100 || samplerate > 10000) {
             AP_HAL::panic("Invalid accel sample rate");
         }

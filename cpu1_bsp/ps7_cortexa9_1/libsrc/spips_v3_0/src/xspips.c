@@ -33,6 +33,8 @@
 /**
 *
 * @file xspips.c
+* @addtogroup spips_v3_0
+* @{
 *
 * Contains implements the interface functions of the XSpiPs driver.
 * See xspips.h for a detailed description of the device and driver.
@@ -64,6 +66,8 @@
 *                       Added extended slave select support - CR#722569.
 *                       Added check for MODF in polled transfer function.
 * 3.00  kvn    02/13/15 Modified code for MISRA-C:2012 compliance.
+* 3.02  raw    11/23/15 Updated XSpiPs_Abort() to read all RXFIFO entries.
+* 			This change is to tackle CR#910231.
 *
 * </pre>
 *
@@ -181,7 +185,6 @@ s32 XSpiPs_CfgInitialize(XSpiPs *InstancePtr, XSpiPs_Config *ConfigPtr,
 		InstancePtr->IsBusy = FALSE;
 
 		InstancePtr->Config.BaseAddress = EffectiveAddr;
-		InstancePtr->Config.DeviceId = ConfigPtr->DeviceId;
 		InstancePtr->StatusHandler = StubStatusHandler;
 
 		InstancePtr->SendBufferPtr = NULL;
@@ -928,7 +931,6 @@ void XSpiPs_InterruptHandler(XSpiPs *InstancePtr)
 
 	Xil_AssertVoid(InstancePtr != NULL);
 	Xil_AssertVoid(SpiPtr->IsReady == XIL_COMPONENT_IS_READY);
-	xil_printf(" interrupt happened\r\n");
 
 	/*
 	 * Immediately clear the interrupts in case the ISR causes another
@@ -1145,6 +1147,7 @@ void XSpiPs_Abort(XSpiPs *InstancePtr)
 
 	u8 Temp;
 	u32 Check;
+	u32 Count;
 	XSpiPs_Disable(InstancePtr);
 
 	/*
@@ -1161,6 +1164,14 @@ void XSpiPs_Abort(XSpiPs *InstancePtr)
 	}
 
 	/*
+	 * Read all RX_FIFO entries
+	 */
+	for (Count = 0; Count < XSPIPS_FIFO_DEPTH; Count++) {
+		(void)XSpiPs_ReadReg(InstancePtr->Config.BaseAddress,
+			XSPIPS_RXD_OFFSET);
+	}
+
+	/*
 	 * Clear mode fault condition.
 	 */
 	XSpiPs_WriteReg(InstancePtr->Config.BaseAddress,
@@ -1171,3 +1182,5 @@ void XSpiPs_Abort(XSpiPs *InstancePtr)
 	InstancePtr->RequestedBytes = 0U;
 	InstancePtr->IsBusy = FALSE;
 }
+
+/** @} */

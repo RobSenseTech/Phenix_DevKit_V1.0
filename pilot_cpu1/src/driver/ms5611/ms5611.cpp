@@ -37,7 +37,6 @@
  */
 
 #include "device/cdev.h"
-#include "driver.h"
 #include "ringbuffer.h"
 #include "drv_baro.h"
 #include "FreeRTOS_Print.h"
@@ -52,8 +51,17 @@
 #include "Phx_define.h"
 #include "sleep.h"
 #include "timers.h"
+#include "driver.h"
 
-
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <errno.h>
 
 #define MS5611_MAX_INSTANCE 2 //若联飞控，目前最多一款传感器接两??
 #define MS5611_BARO_DEVICE_PATH_EXT	"/dev/ms5611_ext"
@@ -97,8 +105,9 @@ public:
 	virtual ~MS5611();
 
 	virtual int		init();
-	virtual size_t	read(struct xHANDLE *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(struct xHANDLE *filp, int cmd, void *pvArg);
+
+	virtual ssize_t		read(struct file *filp, char *buffer, size_t buflen);
+	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
@@ -491,8 +500,8 @@ out:
 	return ret;
 }
 
-size_t
-MS5611::read(struct xHANDLE *filp, char *buffer, size_t buflen)
+ssize_t
+MS5611::read(struct file *filp, char *buffer, size_t buflen)
 {
 	unsigned count = buflen / sizeof(struct baro_report);
 	struct baro_report *brp = reinterpret_cast<struct baro_report *>(buffer);
@@ -568,9 +577,8 @@ MS5611::read(struct xHANDLE *filp, char *buffer, size_t buflen)
 }
 
 int
-MS5611::ioctl(struct xHANDLE *filp, int cmd,void *pvArg)
+MS5611::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
-	unsigned long arg = (unsigned long)pvArg;
 	switch (cmd) {
 
 	case SENSORIOCSPOLLRATE: {
@@ -687,7 +695,7 @@ MS5611::ioctl(struct xHANDLE *filp, int cmd,void *pvArg)
 
 	/* give it to the bus-specific superclass */
 	// return bus_ioctl(filp, cmd, arg);
-	return CDev::ioctl(filp, cmd, (void*)arg);
+	return CDev::ioctl(filp, cmd, arg);
 }
 
 
@@ -1121,7 +1129,7 @@ start(bool external_bus)
 	
 	if (fd == -1)
 		goto fail;
-	if (ioctl(fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0)
+	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0)
 		goto fail;
 
 	close(fd);
@@ -1157,14 +1165,14 @@ test(bool external_bus)
 	if(external_bus)
 	{
 		fd = open(MS5611_BARO_DEVICE_PATH_EXT, O_RDONLY);
-		if (fd == -1)
+		if (fd < 0)
 			Print_Err("%s open failed\n", MS5611_BARO_DEVICE_PATH_EXT);
 			return;
 	}
 	else
 	{
 		fd = open(MS5611_BARO_DEVICE_PATH_INT, O_RDONLY);
-		if (fd == -1)
+		if (fd < 0)
 			Print_Err("%s open failed\n", MS5611_BARO_DEVICE_PATH_INT);
 			return;
 	}
@@ -1185,13 +1193,13 @@ test(bool external_bus)
 	Print_Info("time:        %lld\n", report.timestamp);
 
 	/* set the queue depth to 10 */
-	if (OK != ioctl(fd, SENSORIOCSQUEUEDEPTH,(void*)10)) {
+	if (OK != ioctl(fd, SENSORIOCSQUEUEDEPTH,10)) {
 		Print_Err("failed to set queue depth\n");
 		return ;
 	}
 
 	/* start the sensor polling at 2Hz */
-	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, (void*)2)) {
+	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2)) {
 		Print_Err("failed to set 2Hz poll rate\n");
 		return ;
 	}
@@ -1248,11 +1256,11 @@ reset(bool external_bus)
 		return;
 	}
 	
-	if (ioctl(fd, SENSORIOCRESET, (void*)0) < 0) {
+	if (ioctl(fd, SENSORIOCRESET, 0) < 0) {
 		err(1, "driver reset failed");
 		return;
 	}
-	if (ioctl(fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0) {
+	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
 		err(1, "driver poll restart failed");
 		return;
 	}
@@ -1300,7 +1308,7 @@ calibrate(unsigned altitude, bool external_bus)
 	}
 
 	/* start the sensor polling at max */
-	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, (void *)SENSOR_POLLRATE_MAX)) {
+	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_MAX)) {
 		errx(1, "failed to set poll rate");
 			return;
 	}
@@ -1351,10 +1359,8 @@ calibrate(unsigned altitude, bool external_bus)
 
 	/* save as integer Pa */
 	p1 *= 1000.0f;
-	
-    unsigned unsigned_p1 = (unsigned)p1;
-	
-	if (ioctl(fd, BAROIOCSMSLPRESSURE, (void *)unsigned_p1) != OK) {
+
+	if (ioctl(fd, BAROIOCSMSLPRESSURE, (unsigned long)p1) != OK) {
 		err(1, "BAROIOCSMSLPRESSURE");
 			return;
 	}

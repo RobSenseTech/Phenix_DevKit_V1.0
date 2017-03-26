@@ -1,47 +1,41 @@
-/*****************************************************************************
+/******************************************************************************
 *
-* (c) Copyright 2010-14 Xilinx, Inc. All rights reserved.
+* Copyright (C) 2010 - 2015 Xilinx, Inc.  All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
 *
-*****************************************************************************/
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
+*
+******************************************************************************/
 /****************************************************************************/
 /**
 *
 * @file xuartps.h
+* @addtogroup uartps_v3_1
+* @{
+* @details
 *
 * This driver supports the following features:
 *
@@ -159,6 +153,15 @@
 *			constant definitions.
 * 2.0   hk      03/07/14 Version number revised.
 * 2.1   hk     04/16/14 Change XUARTPS_MAX_RATE to 921600. CR# 780625.
+* 2.2   hk     06/23/14 SW reset of RX and TX should be done when changing
+*                       baud rate. CR# 804281.
+* 3.0   vm     12/09/14 Modified source code according to misrac guideline.
+*			Support for Zynq Ultrascale Mp added.
+* 3.1	kvn    04/10/15 Modified code for latest RTL changes. Also added
+*						platform variable in driver instance structure.
+* 3.1   adk   14/03/16  Include interrupt examples in the peripheral test when
+*			uart is connected to a valid interrupt controller CR#946803.
+* 3.2   rk     07/20/16 Modified the logic for transmission break bit set
 *
 * </pre>
 *
@@ -177,6 +180,7 @@ extern "C" {
 #include "xil_assert.h"
 #include "xstatus.h"
 #include "xuartps_hw.h"
+#include "xplatform_info.h"
 
 /************************** Constant Definitions ****************************/
 
@@ -185,10 +189,10 @@ extern "C" {
  * numbers are based only on the testing that has been done. The hardware
  * is capable of other baud rates.
  */
-#define XUARTPS_MAX_RATE	 921600
-#define XUARTPS_MIN_RATE	 110
+#define XUARTPS_MAX_RATE	 921600U
+#define XUARTPS_MIN_RATE	 110U
 
-#define XUARTPS_DFT_BAUDRATE  115200   /* Default baud rate */
+#define XUARTPS_DFT_BAUDRATE  115200U   /* Default baud rate */
 
 /** @name Configuration options
  * @{
@@ -201,14 +205,14 @@ extern "C" {
  *
  */
 
-#define XUARTPS_OPTION_SET_BREAK	0x0080 /**< Starts break transmission */
-#define XUARTPS_OPTION_STOP_BREAK	0x0040 /**< Stops break transmission */
-#define XUARTPS_OPTION_RESET_TMOUT	0x0020 /**< Reset the receive timeout */
-#define XUARTPS_OPTION_RESET_TX		0x0010 /**< Reset the transmitter */
-#define XUARTPS_OPTION_RESET_RX		0x0008 /**< Reset the receiver */
-#define XUARTPS_OPTION_ASSERT_RTS	0x0004 /**< Assert the RTS bit */
-#define XUARTPS_OPTION_ASSERT_DTR	0x0002 /**< Assert the DTR bit */
-#define XUARTPS_OPTION_SET_FCM		0x0001 /**< Turn on flow control mode */
+#define XUARTPS_OPTION_SET_BREAK	0x0080U /**< Starts break transmission */
+#define XUARTPS_OPTION_STOP_BREAK	0x0040U /**< Stops break transmission */
+#define XUARTPS_OPTION_RESET_TMOUT	0x0020U /**< Reset the receive timeout */
+#define XUARTPS_OPTION_RESET_TX		0x0010U /**< Reset the transmitter */
+#define XUARTPS_OPTION_RESET_RX		0x0008U /**< Reset the receiver */
+#define XUARTPS_OPTION_ASSERT_RTS	0x0004U /**< Assert the RTS bit */
+#define XUARTPS_OPTION_ASSERT_DTR	0x0002U /**< Assert the DTR bit */
+#define XUARTPS_OPTION_SET_FCM		0x0001U /**< Turn on flow control mode */
 /*@}*/
 
 
@@ -220,10 +224,10 @@ extern "C" {
  * @{
  */
 
-#define XUARTPS_OPER_MODE_NORMAL	0x00	/**< Normal Mode */
-#define XUARTPS_OPER_MODE_AUTO_ECHO	0x01	/**< Auto Echo Mode */
-#define XUARTPS_OPER_MODE_LOCAL_LOOP	0x02	/**< Local Loopback Mode */
-#define XUARTPS_OPER_MODE_REMOTE_LOOP	0x03	/**< Remote Loopback Mode */
+#define XUARTPS_OPER_MODE_NORMAL		(u8)0x00U	/**< Normal Mode */
+#define XUARTPS_OPER_MODE_AUTO_ECHO		(u8)0x01U	/**< Auto Echo Mode */
+#define XUARTPS_OPER_MODE_LOCAL_LOOP	(u8)0x02U	/**< Local Loopback Mode */
+#define XUARTPS_OPER_MODE_REMOTE_LOOP	(u8)0x03U	/**< Remote Loopback Mode */
 
 /* @} */
 
@@ -235,19 +239,19 @@ extern "C" {
  *
  * @{
  */
-#define XUARTPS_FORMAT_8_BITS		0 /**< 8 data bits */
-#define XUARTPS_FORMAT_7_BITS		2 /**< 7 data bits */
-#define XUARTPS_FORMAT_6_BITS		3 /**< 6 data bits */
+#define XUARTPS_FORMAT_8_BITS		0U /**< 8 data bits */
+#define XUARTPS_FORMAT_7_BITS		2U /**< 7 data bits */
+#define XUARTPS_FORMAT_6_BITS		3U /**< 6 data bits */
 
-#define XUARTPS_FORMAT_NO_PARITY	4 /**< No parity */
-#define XUARTPS_FORMAT_MARK_PARITY	3 /**< Mark parity */
-#define XUARTPS_FORMAT_SPACE_PARITY	2 /**< parity */
-#define XUARTPS_FORMAT_ODD_PARITY	1 /**< Odd parity */
-#define XUARTPS_FORMAT_EVEN_PARITY	0 /**< Even parity */
+#define XUARTPS_FORMAT_NO_PARITY	4U /**< No parity */
+#define XUARTPS_FORMAT_MARK_PARITY	3U /**< Mark parity */
+#define XUARTPS_FORMAT_SPACE_PARITY	2U /**< parity */
+#define XUARTPS_FORMAT_ODD_PARITY	1U /**< Odd parity */
+#define XUARTPS_FORMAT_EVEN_PARITY	0U /**< Even parity */
 
-#define XUARTPS_FORMAT_2_STOP_BIT	2 /**< 2 stop bits */
-#define XUARTPS_FORMAT_1_5_STOP_BIT	1 /**< 1.5 stop bits */
-#define XUARTPS_FORMAT_1_STOP_BIT	0 /**< 1 stop bit */
+#define XUARTPS_FORMAT_2_STOP_BIT	2U /**< 2 stop bits */
+#define XUARTPS_FORMAT_1_5_STOP_BIT	1U /**< 1.5 stop bits */
+#define XUARTPS_FORMAT_1_STOP_BIT	0U /**< 1 stop bit */
 /*@}*/
 
 /** @name Callback events
@@ -258,11 +262,14 @@ extern "C" {
  *
  * @{
  */
-#define XUARTPS_EVENT_RECV_DATA		1 /**< Data receiving done */
-#define XUARTPS_EVENT_RECV_TOUT		2 /**< A receive timeout occurred */
-#define XUARTPS_EVENT_SENT_DATA		3 /**< Data transmission done */
-#define XUARTPS_EVENT_RECV_ERROR	4 /**< A receive error detected */
-#define XUARTPS_EVENT_MODEM		5 /**< Modem status changed */
+#define XUARTPS_EVENT_RECV_DATA			1U /**< Data receiving done */
+#define XUARTPS_EVENT_RECV_TOUT			2U /**< A receive timeout occurred */
+#define XUARTPS_EVENT_SENT_DATA			3U /**< Data transmission done */
+#define XUARTPS_EVENT_RECV_ERROR		4U /**< A receive error detected */
+#define XUARTPS_EVENT_MODEM				5U /**< Modem status changed */
+#define XUARTPS_EVENT_PARE_FRAME_BRKE	6U /**< A receive parity, frame, break
+											 *	error detected */
+#define XUARTPS_EVENT_RECV_ORERR		7U /**< A receive overrun error detected */
 /*@}*/
 
 
@@ -275,17 +282,15 @@ typedef struct {
 	u16 DeviceId;	 /**< Unique ID  of device */
 	u32 BaseAddress; /**< Base address of device (IPIF) */
 	u32 InputClockHz;/**< Input clock frequency */
-	int ModemPinsConnected; /** Specifies whether modem pins are connected
+	s32 ModemPinsConnected; /** Specifies whether modem pins are connected
 				 *  to MIO or FMIO */
 } XUartPs_Config;
 
-/*
- * Keep track of state information about a data buffer in the interrupt mode.
- */
+/* Keep track of state information about a data buffer in the interrupt mode. */
 typedef struct {
 	u8 *NextBytePtr;
-	unsigned int RequestedBytes;
-	unsigned int RemainingBytes;
+	u32 RequestedBytes;
+	u32 RemainingBytes;
 } XUartPsBuffer;
 
 /**
@@ -294,7 +299,7 @@ typedef struct {
 typedef struct {
 	u32 BaudRate;	/**< In bps, ie 1200 */
 	u32 DataBits;	/**< Number of data bits */
-	u32 Parity;	/**< Parity */
+	u32 Parity;		/**< Parity */
 	u8 StopBits;	/**< Number of stop bits */
 } XUartPsFormat;
 
@@ -315,7 +320,7 @@ typedef struct {
  *
  ******************************************************************************/
 typedef void (*XUartPs_Handler) (void *CallBackRef, u32 Event,
-				  unsigned int EventData);
+				  u32 EventData);
 
 /**
  * The XUartPs driver instance data structure. A pointer to an instance data
@@ -333,6 +338,8 @@ typedef struct {
 
 	XUartPs_Handler Handler;
 	void *CallBackRef;	/* Callback reference for event handler */
+	u32 Platform;
+	u8 is_rxbs_error;
 } XUartPs;
 
 
@@ -351,7 +358,7 @@ typedef struct {
 *
 ******************************************************************************/
 #define XUartPs_GetChannelStatus(InstancePtr)   \
-	Xil_In32(((InstancePtr)->Config.BaseAddress) + XUARTPS_SR_OFFSET)
+	Xil_In32(((InstancePtr)->Config.BaseAddress) + (u32)XUARTPS_SR_OFFSET)
 
 /****************************************************************************/
 /**
@@ -366,7 +373,7 @@ typedef struct {
 *
 ******************************************************************************/
 #define XUartPs_GetModeControl(InstancePtr)  \
-	Xil_In32(((InstancePtr)->Config.BaseAddress) + XUARTPS_CR_OFFSET)
+	Xil_In32(((InstancePtr)->Config.BaseAddress) + (u32)XUARTPS_CR_OFFSET)
 
 /****************************************************************************/
 /**
@@ -382,8 +389,8 @@ typedef struct {
 *
 ******************************************************************************/
 #define XUartPs_SetModeControl(InstancePtr, RegisterValue) \
-   Xil_Out32(((InstancePtr)->Config.BaseAddress) + XUARTPS_CR_OFFSET, \
-			(RegisterValue))
+   Xil_Out32(((InstancePtr)->Config.BaseAddress) + (u32)XUARTPS_CR_OFFSET, \
+			(u32)(RegisterValue))
 
 /****************************************************************************/
 /**
@@ -398,9 +405,9 @@ typedef struct {
 *
 ******************************************************************************/
 #define XUartPs_EnableUart(InstancePtr) \
-   Xil_Out32(((InstancePtr)->Config.BaseAddress + XUARTPS_CR_OFFSET), \
-	  ((Xil_In32((InstancePtr)->Config.BaseAddress + XUARTPS_CR_OFFSET) & \
-	  ~XUARTPS_CR_EN_DIS_MASK) | (XUARTPS_CR_RX_EN | XUARTPS_CR_TX_EN)))
+   Xil_Out32(((InstancePtr)->Config.BaseAddress + (u32)XUARTPS_CR_OFFSET), \
+	  ((Xil_In32((InstancePtr)->Config.BaseAddress + (u32)XUARTPS_CR_OFFSET) & \
+	  (u32)(~XUARTPS_CR_EN_DIS_MASK)) | ((u32)XUARTPS_CR_RX_EN | (u32)XUARTPS_CR_TX_EN)))
 
 /****************************************************************************/
 /**
@@ -415,9 +422,9 @@ typedef struct {
 *
 ******************************************************************************/
 #define XUartPs_DisableUart(InstancePtr) \
-   Xil_Out32(((InstancePtr)->Config.BaseAddress + XUARTPS_CR_OFFSET), \
-	  (((Xil_In32((InstancePtr)->Config.BaseAddress + XUARTPS_CR_OFFSET)) & \
-	  ~XUARTPS_CR_EN_DIS_MASK) | (XUARTPS_CR_RX_DIS | XUARTPS_CR_TX_DIS)))
+   Xil_Out32(((InstancePtr)->Config.BaseAddress + (u32)XUARTPS_CR_OFFSET), \
+	  (((Xil_In32((InstancePtr)->Config.BaseAddress + (u32)XUARTPS_CR_OFFSET)) & \
+	  (u32)(~XUARTPS_CR_EN_DIS_MASK)) | ((u32)XUARTPS_CR_RX_DIS | (u32)XUARTPS_CR_TX_DIS)))
 
 /****************************************************************************/
 /**
@@ -434,34 +441,28 @@ typedef struct {
 *
 ******************************************************************************/
 #define XUartPs_IsTransmitEmpty(InstancePtr)				\
-	((Xil_In32(((InstancePtr)->Config.BaseAddress) + XUARTPS_SR_OFFSET) & \
-	 XUARTPS_SR_TXEMPTY) == XUARTPS_SR_TXEMPTY)
+	((Xil_In32(((InstancePtr)->Config.BaseAddress) + (u32)XUARTPS_SR_OFFSET) & \
+	 (u32)XUARTPS_SR_TXEMPTY) == (u32)XUARTPS_SR_TXEMPTY)
 
 
 /************************** Function Prototypes *****************************/
 
-/*
- * Static lookup function implemented in xuartps_sinit.c
- */
+/* Static lookup function implemented in xuartps_sinit.c */
 XUartPs_Config *XUartPs_LookupConfig(u16 DeviceId);
 
-/*
- * Interface functions implemented in xuartps.c
- */
-int XUartPs_CfgInitialize(XUartPs *InstancePtr,
-				   XUartPs_Config * Config, u32 EffectiveAddr);
+/* Interface functions implemented in xuartps.c */
+s32 XUartPs_CfgInitialize(XUartPs *InstancePtr,
+				  XUartPs_Config * Config, u32 EffectiveAddr);
 
-unsigned int XUartPs_Send(XUartPs *InstancePtr, u8 *BufferPtr,
-			   unsigned int NumBytes);
+u32 XUartPs_Send(XUartPs *InstancePtr,u8 *BufferPtr,
+			   u32 NumBytes);
 
-unsigned int XUartPs_Recv(XUartPs *InstancePtr, u8 *BufferPtr,
-			   unsigned int NumBytes);
+u32 XUartPs_Recv(XUartPs *InstancePtr,u8 *BufferPtr,
+			   u32 NumBytes);
 
-int XUartPs_SetBaudRate(XUartPs *InstancePtr, u32 BaudRate);
+s32 XUartPs_SetBaudRate(XUartPs *InstancePtr, u32 BaudRate);
 
-/*
- * Options functions in xuartps_options.c
- */
+/* Options functions in xuartps_options.c */
 void XUartPs_SetOptions(XUartPs *InstancePtr, u16 Options);
 
 u16 XUartPs_GetOptions(XUartPs *InstancePtr);
@@ -486,12 +487,11 @@ u8 XUartPs_GetRecvTimeout(XUartPs *InstancePtr);
 
 void XUartPs_SetRecvTimeout(XUartPs *InstancePtr, u8 RecvTimeout);
 
-int XUartPs_SetDataFormat(XUartPs *InstancePtr, XUartPsFormat * Format);
-void XUartPs_GetDataFormat(XUartPs *InstancePtr, XUartPsFormat * Format);
+s32 XUartPs_SetDataFormat(XUartPs *InstancePtr, XUartPsFormat * FormatPtr);
 
-/*
- * interrupt functions in xuartps_intr.c
- */
+void XUartPs_GetDataFormat(XUartPs *InstancePtr, XUartPsFormat * FormatPtr);
+
+/* interrupt functions in xuartps_intr.c */
 u32 XUartPs_GetInterruptMask(XUartPs *InstancePtr);
 
 void XUartPs_SetInterruptMask(XUartPs *InstancePtr, u32 Mask);
@@ -501,13 +501,12 @@ void XUartPs_InterruptHandler(XUartPs *InstancePtr);
 void XUartPs_SetHandler(XUartPs *InstancePtr, XUartPs_Handler FuncPtr,
 			 void *CallBackRef);
 
-/*
- * self-test functions in xuartps_selftest.c
- */
-int XUartPs_SelfTest(XUartPs *InstancePtr);
+/* self-test functions in xuartps_selftest.c */
+s32 XUartPs_SelfTest(XUartPs *InstancePtr);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* end of protection macro */
+/** @} */

@@ -63,7 +63,7 @@
  * ioctl() definitions
  */
 #define _MIXERIOCBASE		(0x2500)
-#define _MIXER_IOC(type,nr)   _IO(type,nr)
+#define _MIXER_IOC(type,nr)   _IOC(type,nr)
 #define _MIXERIOC(_n)		(_MIXER_IOC(_MIXERIOCBASE, _n))
 
 /** get the number of mixable outputs */

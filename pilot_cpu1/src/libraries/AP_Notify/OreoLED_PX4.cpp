@@ -22,6 +22,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 
 #include <string.h>
@@ -339,13 +341,13 @@ void OreoLED_PX4::update_timer(void)
                 case OREOLED_MODE_MACRO:
                     {
                     oreoled_macrorun_t macro_run = {i, _state_desired[i].macro};
-                    ioctl(_oreoled_fd, OREOLED_RUN_MACRO, (void *)&macro_run);
+                    ioctl(_oreoled_fd, OREOLED_RUN_MACRO, (unsigned long)&macro_run);
                     }
                     break;
                 case OREOLED_MODE_RGB:
                     {
                     oreoled_rgbset_t rgb_set = {i, OREOLED_PATTERN_SOLID, _state_desired[i].red, _state_desired[i].green, _state_desired[i].blue};
-                    ioctl(_oreoled_fd, OREOLED_SET_RGB, (void*)&rgb_set);
+                    ioctl(_oreoled_fd, OREOLED_SET_RGB, (unsigned long)&rgb_set);
                     }
                     break;
                 case OREOLED_MODE_SYNC:

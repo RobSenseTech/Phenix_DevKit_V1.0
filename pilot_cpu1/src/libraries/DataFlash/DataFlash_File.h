@@ -12,6 +12,8 @@
 
 #include "DataFlash_Backend.h"
 
+#define DATAFLASH_FILE_MINIMAL 0
+
 class DataFlash_File : public DataFlash_Backend
 {
 public:

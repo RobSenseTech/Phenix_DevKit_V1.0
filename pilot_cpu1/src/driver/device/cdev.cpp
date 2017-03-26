@@ -1,5 +1,8 @@
 #include "device/cdev.h"
 #include "drv_device.h"
+#include <sys/ioctl.h>
+#include "FreeRTOS_Print.h"
+#include "irq.h"
 
 namespace device
 {
@@ -8,13 +11,14 @@ namespace device
  * The standard NuttX operation dispatch table can't call C++ member functions
  * directly, so we have to bounce them through this dispatch table.
  */
-static int	cdev_open(Handle_t *pHandle);
-static int	cdev_close(Handle_t *pHandle);
-static size_t	cdev_read(Handle_t *pHandle, char *pcBuffer, size_t xBufLen);
-static size_t	cdev_write(Handle_t *pHandle, const char *pcBuffer, size_t xBufLen);
-static int cdev_seek(Handle_t *pHandle, off_t xOffset, int iWhence);
-static int	cdev_ioctl(Handle_t *pHandle, int iCmd, void *pvArg);
-static int	cdev_poll(Handle_t *pHandle, struct pollfd *fds, bool setup);
+static int	cdev_open(file_t *filp);
+static int	cdev_close(file_t *filp);
+static ssize_t	cdev_read(file_t *filp, char *buffer, size_t buflen);
+static ssize_t	cdev_write(file_t *filp, const char *buffer, size_t buflen);
+static off_t	cdev_seek(file_t *filp, off_t offset, int whence);
+static int	cdev_ioctl(file_t *filp, int cmd, unsigned long arg);
+static int	cdev_poll(file_t *filp, struct pollfd *fds, bool setup);
+
 
 /**
  * Character device indirection table.
@@ -26,14 +30,14 @@ static int	cdev_poll(Handle_t *pHandle, struct pollfd *fds, bool setup);
  * initialisers in gcc 4.6.
  */
 /* C++结构体初始化必须按成员定义的顺序 */
-const DriverOps_t CDev::fops = {
+const struct file_operations CDev::fops = {
 open	: cdev_open,
 close	: cdev_close,
 read	: cdev_read,
 write	: cdev_write,
+seek	: cdev_seek,
 ioctl	: cdev_ioctl,
 poll	: cdev_poll,
-lseek	: cdev_seek,
 };
 
 CDev::CDev(const char *name,
@@ -57,7 +61,7 @@ CDev::CDev(const char *name,
 CDev::~CDev()
 {
 	if (_registered) {
-        DriverUnregister(_devname);
+		unregister_driver(_devname);
 	}
     
     vSemaphoreDelete(_lock);
@@ -76,10 +80,10 @@ CDev::register_class_devname(const char *class_devname)
 
     while(class_instance < 4)
     {
-        char name[MAX_DRIVER_NAME_LEN];
+        char name[32];
 
         snprintf(name, sizeof(name), "%s%d", class_devname, class_instance);
-        ret = DriverRegister(name, &fops, (void *)this);
+		ret = register_driver(name, &fops, 0666, (void *)this);
     
         if(ret == 0)
             break;
@@ -98,8 +102,7 @@ CDev::unregister_class_devname(const char *class_devname, unsigned class_instanc
 {
 	char name[32];
 	snprintf(name, sizeof(name), "%s%u", class_devname, class_instance);
-    Print_Info("unregister dev:%s\n", name);
-	return DriverUnregister(name);
+	return unregister_driver(name);
 }
 
 int
@@ -108,7 +111,7 @@ CDev::init()
     int ret = -ENOMEM;
 	// now register the driver
 	if (_devname != NULL) {
-		ret = DriverRegister(_devname, &fops, (void *)this);
+		ret = register_driver(_devname, &fops, 0666, (void *)this);
 
 		if (ret < 0) {
 			goto out;
@@ -125,7 +128,7 @@ out:
  * Default implementations of the character device interface
  */
 int
-CDev::open(Handle_t *pHandle)
+CDev::open(file_t *filp)
 {
 	int ret = 0;
 
@@ -136,7 +139,7 @@ CDev::open(Handle_t *pHandle)
 	if (_open_count == 1) {
 
 		/* first-open callback may decline the open */
-		ret = open_first(pHandle);
+		ret = open_first(filp);
 
 		if (ret != 0) {
 			_open_count--;
@@ -149,13 +152,13 @@ CDev::open(Handle_t *pHandle)
 }
 
 int
-CDev::open_first(Handle_t *pHandle)
+CDev::open_first(file_t *filp)
 {
 	return 0;
 }
 
 int
-CDev::close(Handle_t *pHandle)
+CDev::close(file_t *filp)
 {
 	int ret = 0;
 
@@ -167,7 +170,7 @@ CDev::close(Handle_t *pHandle)
 
 		/* callback cannot decline the close */
 		if (_open_count == 0) {
-			ret = close_last(pHandle);
+			ret = close_last(filp);
 		}
 
 	} else {
@@ -180,36 +183,36 @@ CDev::close(Handle_t *pHandle)
 }
 
 int
-CDev::close_last(Handle_t *pHandle)
+CDev::close_last(file_t *filp)
 {
 	return 0;
 }
 
-size_t
-CDev::read(Handle_t *pHandle, char *pcBuffer, size_t xBufLen)
+ssize_t
+CDev::read(file_t *filp, char *buffer, size_t buflen)
 {
     Print_Err("No such system api\n");
 	return -ENOSYS;
 }
 
-size_t
-CDev::write(Handle_t *pHandle, const char *pcBuffer, size_t xBufLen)
+ssize_t
+CDev::write(file_t *filp, const char *buffer, size_t buflen)
+{
+    Print_Err("No such system api\n");
+	return -ENOSYS;
+}
+
+off_t
+CDev::seek(file_t *filp, off_t offset, int whence)
 {
     Print_Err("No such system api\n");
 	return -ENOSYS;
 }
 
 int
-CDev::seek(Handle_t *pHandle, off_t xOffset, int iWhence)
+CDev::ioctl(file_t *filp, int cmd, unsigned long arg)
 {
-    Print_Err("No such system api\n");
-	return -ENOSYS;
-}
-
-int
-CDev::ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
-{
-    switch(iCmd)
+    switch(cmd)
     {
         case DEVIOCGDEVICEID:
            return (int)_device_id.devid; //各个传感器在构造函数中会个给这个赋值,上层通过获取id号来配置不同传感器,原先放在Device类中            
@@ -218,7 +221,7 @@ CDev::ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
 }
 
 int
-CDev::poll(Handle_t *pHandle, struct pollfd *fds, bool setup)
+CDev::poll(file_t *filp, struct pollfd *fds, bool setup)
 {
 	int ret = 0;
 
@@ -232,7 +235,7 @@ CDev::poll(Handle_t *pHandle, struct pollfd *fds, bool setup)
 		 * Save the file pointer in the pollfd for the subclass'
 		 * benefit.
 		 */
-		fds->priv = (void *)pHandle;
+		fds->priv = (void *)filp;
 
 		/*
 		 * Handle setup requests.
@@ -245,13 +248,11 @@ CDev::poll(Handle_t *pHandle, struct pollfd *fds, bool setup)
 			 * Check to see whether we should send a poll notification
 			 * immediately.
 			 */
-			fds->revents |= fds->events & poll_state(pHandle);
+			fds->revents |= fds->events & poll_state(filp);
 
 			/* yes? post the notification */
 			if (fds->revents != 0) {
-                portBASE_TYPE xHigherPriorityTaskWoken;
-                xHigherPriorityTaskWoken = pdFALSE;
-				xSemaphoreGiveFromISR(fds->sem, &xHigherPriorityTaskWoken);
+				sem_post(fds->sem);
 			}
 		}
 
@@ -289,15 +290,13 @@ CDev::poll_notify_one(struct pollfd *fds, pollevent_t events)
 
 	/* if the state is now interesting, wake the waiter if it's still asleep */
 	/* XXX semcount check here is a vile hack; counting semphores should not be abused as cvars */
-	if (fds->revents != 0) {
-        portBASE_TYPE xHigherPriorityTaskWoken;
-        xHigherPriorityTaskWoken = pdFALSE;
-        xSemaphoreGiveFromISR(fds->sem, &xHigherPriorityTaskWoken);
+	if ((fds->revents != 0) /*&& (fds->sem->semcount <= 0)*/) {
+		sem_post(fds->sem);
 	}
 }
 
 pollevent_t
-CDev::poll_state(Handle_t *pHandle)
+CDev::poll_state(file_t *filp)
 {
 	/* by default, no poll events to report */
 	return 0;
@@ -340,60 +339,59 @@ CDev::remove_poll_waiter(struct pollfd *fds)
 }
 
 static int
-cdev_open(Handle_t *pHandle)
+cdev_open(file_t *filp)
 {
-	CDev *cdev = (CDev *)pHandle->xInode.pvPrivate;
+	CDev *cdev = (CDev *)(filp->f_inode->i_private);
 
-	return cdev->open(pHandle);
+	return cdev->open(filp);
 }
 
 static int
-cdev_close(Handle_t *pHandle)
+cdev_close(file_t *filp)
 {
-	CDev *cdev = (CDev *)pHandle->xInode.pvPrivate;
+	CDev *cdev = (CDev *)(filp->f_inode->i_private);
 
-	return cdev->close(pHandle);
+	return cdev->close(filp);
 }
 
-static size_t
-cdev_read(Handle_t *pHandle, char *pcBuffer, size_t xBufLen)
+static ssize_t
+cdev_read(file_t *filp, char *buffer, size_t buflen)
 {
-	CDev *cdev = (CDev *)pHandle->xInode.pvPrivate;
+	CDev *cdev = (CDev *)(filp->f_inode->i_private);
 
-	return cdev->read(pHandle, pcBuffer, xBufLen);
+	return cdev->read(filp, buffer, buflen);
 }
 
-static size_t
-cdev_write(Handle_t *pHandle, const char *pcBuffer, size_t xBufLen)
+static ssize_t
+cdev_write(file_t *filp, const char *buffer, size_t buflen)
 {
-	CDev *cdev = (CDev *)pHandle->xInode.pvPrivate;
+	CDev *cdev = (CDev *)(filp->f_inode->i_private);
 
-	return cdev->write(pHandle, pcBuffer, xBufLen);
+	return cdev->write(filp, buffer, buflen);
 }
 
-static int 
-cdev_seek(Handle_t *pHandle, off_t xOffset, int iWhence)
+static off_t
+cdev_seek(file_t *filp, off_t offset, int whence)
 {
-	CDev *cdev = (CDev *)pHandle->xInode.pvPrivate;
+	CDev *cdev = (CDev *)(filp->f_inode->i_private);
 
-	return cdev->seek(pHandle, xOffset, iWhence);
-}
-
-static int
-cdev_ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
-{
-	CDev *cdev = (CDev *)pHandle->xInode.pvPrivate;
-
-	return cdev->ioctl(pHandle, iCmd, pvArg);
+	return cdev->seek(filp, offset, whence);
 }
 
 static int
-cdev_poll(Handle_t *pHandle, struct pollfd *fds, bool setup)
+cdev_ioctl(file_t *filp, int cmd, unsigned long arg)
 {
-	CDev *cdev = (CDev *)pHandle->xInode.pvPrivate;
+	CDev *cdev = (CDev *)(filp->f_inode->i_private);
 
-	return cdev->poll(pHandle, fds, setup);
+	return cdev->ioctl(filp, cmd, arg);
+}
+
+static int
+cdev_poll(file_t *filp, struct pollfd *fds, bool setup)
+{
+	CDev *cdev = (CDev *)(filp->f_inode->i_private);
+
+	return cdev->poll(filp, fds, setup);
 }
 
 } // namespace device
-

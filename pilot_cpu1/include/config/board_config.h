@@ -50,6 +50,7 @@ extern "C" {
 /*****************************SUBS Serial port********************************/
 #define RC_SERIAL_PORT      "/dev/uart0"
 
+#define SKETCHNAME "zynq_pilot" 
 #ifdef __cplusplus
 }
 #endif

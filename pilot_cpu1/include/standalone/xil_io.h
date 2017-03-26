@@ -1,41 +1,32 @@
 /******************************************************************************
 *
-* (c) Copyright 2009-13  Xilinx, Inc. All rights reserved.
+* Copyright (C) 2014 - 2016 Xilinx, Inc. All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
 *
 ******************************************************************************/
 /*****************************************************************************/
@@ -53,10 +44,9 @@
 *
 * Ver   Who      Date     Changes
 * ----- -------- -------- -----------------------------------------------
-* 1.00a ecm/sdm  10/24/09 First release
-* 1.00a sdm      07/21/10 Added Xil_Htonl/s, Xil_Ntohl/s
-* 3.07a asa	     08/31/12 Added xil_printf.h include
-* 3.08a sgd	     11/05/12 Reverted SYNC macros definitions
+* 5.00 	pkp  	 05/29/14 First release
+* 6.00  mus      08/19/16 Remove checking of __LITTLE_ENDIAN__ flag for
+*                         ARM processors
 * </pre>
 ******************************************************************************/
 
@@ -70,182 +60,289 @@ extern "C" {
 /***************************** Include Files *********************************/
 
 #include "xil_types.h"
-#include "xpseudo_asm.h"
 #include "xil_printf.h"
 
-/************************** Constant Definitions *****************************/
+#if defined (__MICROBLAZE__)
+#include "mb_interface.h"
+#else
+#include "xpseudo_asm.h"
+#endif
 
-/**************************** Type Definitions *******************************/
+/************************** Function Prototypes ******************************/
+u16 Xil_EndianSwap16(u16 Data);
+u32 Xil_EndianSwap32(u32 Data);
 
 /***************** Macros (Inline Functions) Definitions *********************/
-
 #if defined __GNUC__
+#if defined (__MICROBLAZE__)
+#  define INST_SYNC		mbar(0)
+#  define DATA_SYNC		mbar(1)
+# else
 #  define SYNCHRONIZE_IO	dmb()
 #  define INST_SYNC		isb()
 #  define DATA_SYNC		dsb()
+# endif
 #else
-#  define SYNCHRONIZE_IO
-#  define INST_SYNC
-#  define DATA_SYNC
-#endif /* __GNUC__ */
+# define SYNCHRONIZE_IO
+# define INST_SYNC
+# define DATA_SYNC
+# define INST_SYNC
+# define DATA_SYNC
+#endif
+
+#if defined (__GNUC__) || defined (__ICCARM__) || defined (__MICROBLAZE__)
+#define INLINE inline
+#else
+#define INLINE __inline
+#endif
 
 /*****************************************************************************/
 /**
 *
-* Perform an big-endian input operation for a 16-bit memory location
-* by reading from the specified address and returning the Value read from
-* that address.
+* Performs an input operation for an 8-bit memory location by reading from the
+* specified address and returning the Value read from that address.
 *
-* @param	Addr contains the address to perform the input operation at.
+* @param	Addr contains the address to perform the input operation
+*		at.
 *
-* @return	The Value read from the specified input address with the
-*		proper endianness. The return Value has the same endianness
-*		as that of the processor, i.e. if the processor is
-*		little-engian, the return Value is the byte-swapped Value read
-*		from the address.
+* @return	The Value read from the specified input address.
 *
 * @note		None.
 *
 ******************************************************************************/
-#define Xil_In16LE(Addr) Xil_In16(Addr)
+static INLINE u8 Xil_In8(UINTPTR Addr)
+{
+	return *(volatile u8 *) Addr;
+}
 
 /*****************************************************************************/
 /**
 *
-* Perform a big-endian input operation for a 32-bit memory location
-* by reading from the specified address and returning the Value read from
-* that address.
+* Performs an input operation for a 16-bit memory location by reading from the
+* specified address and returning the Value read from that address.
 *
-* @param	Addr contains the address to perform the input operation at.
+* @param	Addr contains the address to perform the input operation
+*		at.
 *
-* @return	The Value read from the specified input address with the
-*		proper endianness. The return Value has the same endianness
-*		as that of the processor, i.e. if the processor is
-*		little-engian, the return Value is the byte-swapped Value read
-*		from the address.
-*
+* @return	The Value read from the specified input address.
 *
 * @note		None.
 *
 ******************************************************************************/
-#define Xil_In32LE(Addr) Xil_In32(Addr)
+static INLINE u16 Xil_In16(UINTPTR Addr)
+{
+	return *(volatile u16 *) Addr;
+}
 
 /*****************************************************************************/
 /**
 *
-* Perform a big-endian output operation for a 16-bit memory location
-* by writing the specified Value to the specified address.
+* Performs an input operation for a 32-bit memory location by reading from the
+* specified address and returning the Value read from that address.
 *
-* @param	Addr contains the address to perform the output operation at.
+* @param	Addr contains the address to perform the input operation
+*		at.
+*
+* @return	The Value read from the specified input address.
+*
+* @note		None.
+*
+******************************************************************************/
+static INLINE u32 Xil_In32(UINTPTR Addr)
+{
+	return *(volatile u32 *) Addr;
+}
+
+/*****************************************************************************/
+/**
+*
+* Performs an input operation for a 64-bit memory location by reading the
+* specified Value to the the specified address.
+*
+* @param	OutAddress contains the address to perform the output operation
+*		at.
 * @param	Value contains the Value to be output at the specified address.
-*		The Value has the same endianness as that of the processor.
-*		If the processor is little-endian, the byte-swapped Value is
-*		written to the address.
 *
-*
-* @return	None
+* @return	None.
 *
 * @note		None.
 *
 ******************************************************************************/
-#define Xil_Out16LE(Addr, Value) Xil_Out16(Addr, Value)
+static INLINE u64 Xil_In64(UINTPTR Addr)
+{
+	return *(volatile u64 *) Addr;
+}
 
 /*****************************************************************************/
 /**
 *
-* Perform a big-endian output operation for a 32-bit memory location
-* by writing the specified Value to the specified address.
+* Performs an output operation for an 8-bit memory location by writing the
+* specified Value to the the specified address.
 *
-* @param	Addr contains the address to perform the output operation at.
+* @param	Addr contains the address to perform the output operation
+*		at.
 * @param	Value contains the Value to be output at the specified address.
-*		The Value has the same endianness as that of the processor.
-*		If the processor is little-endian, the byte-swapped Value is
-*		written to the address.
 *
-* @return	None
+* @return	None.
 *
 * @note		None.
 *
 ******************************************************************************/
-#define Xil_Out32LE(Addr, Value) Xil_Out32(Addr, Value)
+static INLINE void Xil_Out8(UINTPTR Addr, u8 Value)
+{
+	volatile u8 *LocalAddr = (volatile u8 *)Addr;
+	*LocalAddr = Value;
+}
 
 /*****************************************************************************/
 /**
 *
-* Convert a 32-bit number from host byte order to network byte order.
+* Performs an output operation for a 16-bit memory location by writing the
+* specified Value to the the specified address.
 *
-* @param	Data the 32-bit number to be converted.
+* @param	Addr contains the address to perform the output operation
+*		at.
+* @param	Value contains the Value to be output at the specified address.
 *
-* @return	The converted 32-bit number in network byte order.
+* @return	None.
 *
 * @note		None.
 *
 ******************************************************************************/
-#define Xil_Htonl(Data) Xil_EndianSwap32(Data)
+static INLINE void Xil_Out16(UINTPTR Addr, u16 Value)
+{
+	volatile u16 *LocalAddr = (volatile u16 *)Addr;
+	*LocalAddr = Value;
+}
 
 /*****************************************************************************/
 /**
 *
-* Convert a 16-bit number from host byte order to network byte order.
+* Performs an output operation for a 32-bit memory location by writing the
+* specified Value to the the specified address.
 *
-* @param	Data the 16-bit number to be converted.
+* @param	Addr contains the address to perform the output operation
+*		at.
+* @param	Value contains the Value to be output at the specified address.
 *
-* @return	The converted 16-bit number in network byte order.
+* @return	None.
 *
 * @note		None.
 *
 ******************************************************************************/
-#define Xil_Htons(Data) Xil_EndianSwap16(Data)
+static INLINE void Xil_Out32(UINTPTR Addr, u32 Value)
+{
+	volatile u32 *LocalAddr = (volatile u32 *)Addr;
+	*LocalAddr = Value;
+}
 
 /*****************************************************************************/
 /**
 *
-* Convert a 32-bit number from network byte order to host byte order.
+* Performs an output operation for a 64-bit memory location by writing the
+* specified Value to the the specified address.
 *
-* @param	Data the 32-bit number to be converted.
+* @param	Addr contains the address to perform the output operation
+*		at.
+* @param	Value contains the Value to be output at the specified address.
 *
-* @return	The converted 32-bit number in host byte order.
-*
-* @note		None.
-*
-******************************************************************************/
-#define Xil_Ntohl(Data) Xil_EndianSwap32(Data)
-
-/*****************************************************************************/
-/**
-*
-* Convert a 16-bit number from network byte order to host byte order.
-*
-* @param	Data the 16-bit number to be converted.
-*
-* @return	The converted 16-bit number in host byte order.
+* @return	None.
 *
 * @note		None.
 *
 ******************************************************************************/
-#define Xil_Ntohs(Data) Xil_EndianSwap16(Data)
+static INLINE void Xil_Out64(UINTPTR Addr, u64 Value)
+{
+	volatile u64 *LocalAddr = (volatile u64 *)Addr;
+	*LocalAddr = Value;
+}
 
-/************************** Function Prototypes ******************************/
+#if defined (__MICROBLAZE__)
+#ifdef __LITTLE_ENDIAN__
+# define Xil_In16LE	Xil_In16
+# define Xil_In32LE	Xil_In32
+# define Xil_Out16LE	Xil_Out16
+# define Xil_Out32LE	Xil_Out32
+# define Xil_Htons	Xil_EndianSwap16
+# define Xil_Htonl	Xil_EndianSwap32
+# define Xil_Ntohs	Xil_EndianSwap16
+# define Xil_Ntohl	Xil_EndianSwap32
+# else
+# define Xil_In16BE	Xil_In16
+# define Xil_In32BE	Xil_In32
+# define Xil_Out16BE	Xil_Out16
+# define Xil_Out32BE	Xil_Out32
+# define Xil_Htons(Data) (Data)
+# define Xil_Htonl(Data) (Data)
+# define Xil_Ntohs(Data) (Data)
+# define Xil_Ntohl(Data) (Data)
+#endif
+#else
+# define Xil_In16LE	Xil_In16
+# define Xil_In32LE	Xil_In32
+# define Xil_Out16LE	Xil_Out16
+# define Xil_Out32LE	Xil_Out32
+# define Xil_Htons	Xil_EndianSwap16
+# define Xil_Htonl	Xil_EndianSwap32
+# define Xil_Ntohs	Xil_EndianSwap16
+# define Xil_Ntohl	Xil_EndianSwap32
+#endif
 
-/* The following functions allow the software to be transportable across
- * processors which may use memory mapped I/O or I/O which is mapped into a
- * seperate address space.
- */
-u8 Xil_In8(u32 Addr);
-u16 Xil_In16(u32 Addr);
-u32 Xil_In32(u32 Addr);
+#if defined (__MICROBLAZE__)
+#ifdef __LITTLE_ENDIAN__
+static INLINE u16 Xil_In16BE(UINTPTR Addr)
+#else
+static INLINE u16 Xil_In16LE(UINTPTR Addr)
+#endif
+#else
+static INLINE u16 Xil_In16BE(UINTPTR Addr)
+#endif
+{
+	u16 value = Xil_In16(Addr);
+	return Xil_EndianSwap16(value);
+}
 
-void Xil_Out8(u32 Addr, u8 Value);
-void Xil_Out16(u32 Addr, u16 Value);
-void Xil_Out32(u32 Addr, u32 Value);
+#if defined (__MICROBLAZE__)
+#ifdef __LITTLE_ENDIAN__
+static INLINE u32 Xil_In32BE(UINTPTR Addr)
+#else
+static INLINE u32 Xil_In32LE(UINTPTR Addr)
+#endif
+#else
+static INLINE u32 Xil_In32BE(UINTPTR Addr)
+#endif
+{
+	u16 value = Xil_In32(Addr);
+	return Xil_EndianSwap32(value);
+}
 
-u16 Xil_In16BE(u32 Addr);
-u32 Xil_In32BE(u32 Addr);
-void Xil_Out16BE(u32 Addr, u16 Value);
-void Xil_Out32BE(u32 Addr, u32 Value);
+#if defined (__MICROBLAZE__)
+#ifdef __LITTLE_ENDIAN__
+static INLINE void Xil_Out16BE(UINTPTR Addr, u16 Value)
+#else
+static INLINE void Xil_Out16LE(UINTPTR Addr, u16 Value)
+#endif
+#else
+static INLINE void Xil_Out16BE(UINTPTR Addr, u16 Value)
+#endif
+{
+	Value = Xil_EndianSwap16(Value);
+	Xil_Out16(Addr, Value);
+}
 
-u16 Xil_EndianSwap16(u16 Data);
-u32 Xil_EndianSwap32(u32 Data);
+#if defined (__MICROBLAZE__)
+#ifdef __LITTLE_ENDIAN__
+static INLINE void Xil_Out32BE(UINTPTR Addr, u32 Value)
+#else
+static INLINE void Xil_Out32LE(UINTPTR Addr, u32 Value)
+#endif
+#else
+static INLINE void Xil_Out32BE(UINTPTR Addr, u32 Value)
+#endif
+{
+	Value = Xil_EndianSwap32(Value);
+	Xil_Out32(Addr, Value);
+}
 
 #ifdef __cplusplus
 }

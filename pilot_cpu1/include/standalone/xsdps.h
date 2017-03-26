@@ -1,47 +1,41 @@
 /******************************************************************************
 *
-* (c) Copyright 2013-2014 Xilinx, Inc. All rights reserved.
+* Copyright (C) 2013 - 2016 Xilinx, Inc.  All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
 *
 ******************************************************************************/
 /*****************************************************************************/
 /**
 *
 * @file xsdps.h
+* @addtogroup sdps_v2_5
+* @{
+* @details
 *
 * This file contains the implementation of XSdPs driver.
 * This driver is used initialize read from and write to the SD card.
@@ -112,6 +106,39 @@
 * 2.0   hk      03/07/14 Version number revised.
 * 2.1   hk     04/18/14 Increase sleep for eMMC switch command.
 *                       Add sleep for microblaze designs. CR# 781117.
+* 2.2   hk     07/28/14 Make changes to enable use of data cache.
+* 2.3   sk     09/23/14 Send command for relative card address
+*                       when re-initialization is done.CR# 819614.
+*						Use XSdPs_Change_ClkFreq API whenever changing
+*						clock.CR# 816586.
+* 2.4	sk	   12/04/14 Added support for micro SD without
+* 						WP/CD. CR# 810655.
+*						Checked for DAT Inhibit mask instead of CMD
+* 						Inhibit mask in Cmd Transfer API.
+*						Added Support for SD Card v1.0
+* 2.5 	sg		07/09/15 Added SD 3.0 features
+*       kvn     07/15/15 Modified the code according to MISRAC-2012.
+* 2.6   sk     10/12/15 Added support for SD card v1.0 CR# 840601.
+* 2.7   sk     11/24/15 Considered the slot type befoe checking CD/WP pins.
+*       sk     12/10/15 Added support for MMC cards.
+*              01/08/16 Added workaround for issue in auto tuning mode
+*                       of SDR50, SDR104 and HS200.
+*       sk     02/16/16 Corrected the Tuning logic.
+*       sk     03/01/16 Removed Bus Width check for eMMC. CR# 938311.
+* 2.8   sk     04/20/16 Added new workaround for auto tuning.
+*              05/03/16 Standard Speed for SD to 19MHz in ZynqMPSoC. CR#951024
+* 3.0   sk     06/09/16 Added support for mkfs to calculate sector count.
+*       sk     07/16/16 Added support for UHS modes.
+*       sk     07/07/16 Used usleep API for both arm and microblaze.
+*       sk     07/16/16 Added Tap delays accordingly to different SD/eMMC
+*                       operating modes.
+*       sk     08/13/16 Removed sleep.h from xsdps.h as a temporary fix for
+*                       CR#956899.
+* 3.1   mi     09/07/16 Removed compilation warnings with extra compiler flags.
+*       sk     10/13/16 Reduced the delay during power cycle to 1ms as per spec
+*       sk     10/19/16 Used emmc_hwreset pin to reset eMMC.
+*       sk     11/07/16 Enable Rst_n bit in ext_csd reg if not enabled.
+*       sk     11/16/16 Issue DLL reset at 31 iteration to load new zero value.
 *
 * </pre>
 *
@@ -125,13 +152,21 @@
 extern "C" {
 #endif
 
+#include "xil_printf.h"
+#include "xil_cache.h"
 #include "xstatus.h"
 #include "xsdps_hw.h"
 #include <string.h>
 
 /************************** Constant Definitions *****************************/
 
+#define XSDPS_CT_ERROR	0x2U	/**< Command timeout flag */
+#define MAX_TUNING_COUNT	40U		/**< Maximum Tuning count */
+
 /**************************** Type Definitions *******************************/
+
+typedef void (*XSdPs_ConfigTap) (u32 Bank, u32 DeviceId, u32 CardType);
+
 /**
  * This typedef contains configuration information for the device.
  */
@@ -139,11 +174,14 @@ typedef struct {
 	u16 DeviceId;			/**< Unique ID  of device */
 	u32 BaseAddress;		/**< Base address of the device */
 	u32 InputClockHz;		/**< Input clock frequency */
+	u32 CardDetect;			/**< Card Detect */
+	u32 WriteProtect;			/**< Write Protect */
+	u32 BusWidth;			/**< Bus Width */
+	u32 BankNumber;			/**< MIO Bank selection for SD */
+	u32 HasEMIO;			/**< If SD is connected to EMIO */
 } XSdPs_Config;
 
-/*
- * ADMA2 descriptor table
- */
+/* ADMA2 descriptor table */
 typedef struct {
 	u16 Attribute;		/**< Attributes of descriptor */
 	u16 Length;		/**< Length of current dma transfer */
@@ -159,34 +197,61 @@ typedef struct {
 	XSdPs_Config Config;	/**< Configuration structure */
 	u32 IsReady;		/**< Device is initialized and ready */
 	u32 Host_Caps;		/**< Capabilities of host controller */
+	u32 Host_CapsExt;	/**< Extended Capabilities */
 	u32 HCS;		/**< High capacity support in card */
-	u32 CardID[4];		/**< Card ID */
+	u8  CardType;		/**< Type of card - SD/MMC/eMMC */
+	u8  Card_Version;	/**< Card version */
+	u8  HC_Version;		/**< Host controller version */
+	u8  BusWidth;		/**< Current operating bus width */
+	u32 BusSpeed;		/**< Current operating bus speed */
+	u8  Switch1v8;		/**< 1.8V Switch support */
+	u32 CardID[4];		/**< Card ID Register */
 	u32 RelCardAddr;	/**< Relative Card Address */
-	XSdPs_Adma2Descriptor Adma2_DescrTbl[32]; /**< ADMA Descriptors */
+	u32 CardSpecData[4];	/**< Card Specific Data Register */
+	u32 SectorCount;		/**< Sector Count */
+	u32 SdCardConfig;	/**< Sd Card Configuration Register */
+	u32 Mode;			/**< Bus Speed Mode */
+	XSdPs_ConfigTap Config_TapDelay;	/**< Configuring the tap delays */
+	/**< ADMA Descriptors */
+#ifdef __ICCARM__
+#pragma data_alignment = 32
+	XSdPs_Adma2Descriptor Adma2_DescrTbl[32];
+#pragma data_alignment = 4
+#else
+	XSdPs_Adma2Descriptor Adma2_DescrTbl[32] __attribute__ ((aligned(32)));
+#endif
 } XSdPs;
 
 /***************** Macros (Inline Functions) Definitions *********************/
 
 /************************** Function Prototypes ******************************/
 XSdPs_Config *XSdPs_LookupConfig(u16 DeviceId);
-int XSdPs_CfgInitialize(XSdPs *InstancePtr, XSdPs_Config *ConfigPtr,
+s32 XSdPs_CfgInitialize(XSdPs *InstancePtr, XSdPs_Config *ConfigPtr,
 				u32 EffectiveAddr);
-int XSdPs_SdCardInitialize(XSdPs *InstancePtr);
-int XSdPs_ReadPolled(XSdPs *InstancePtr, u32 Arg, u32 BlkCnt, u8 *Buff);
-int XSdPs_WritePolled(XSdPs *InstancePtr, u32 Arg, u32 BlkCnt, const u8 *Buff);
-int XSdPs_SetBlkSize(XSdPs *InstancePtr, u16 BlkSize);
-int XSdPs_Select_Card (XSdPs *InstancePtr);
-int XSdPs_Change_ClkFreq(XSdPs *InstancePtr, u32 SelFreq);
-int XSdPs_Change_BusWidth(XSdPs *InstancePtr);
-int XSdPs_Change_BusSpeed(XSdPs *InstancePtr);
-int XSdPs_Get_BusWidth(XSdPs *InstancePtr, u8 *SCR);
-int XSdPs_Get_BusSpeed(XSdPs *InstancePtr, u8 *ReadBuff);
-int XSdPs_Pullup(XSdPs *InstancePtr);
-int XSdPs_MmcCardInitialize(XSdPs *InstancePtr);
-int XSdPs_Get_Mmc_ExtCsd(XSdPs *InstancePtr, u8 *ReadBuff);
+s32 XSdPs_SdCardInitialize(XSdPs *InstancePtr);
+s32 XSdPs_ReadPolled(XSdPs *InstancePtr, u32 Arg, u32 BlkCnt, u8 *Buff);
+s32 XSdPs_WritePolled(XSdPs *InstancePtr, u32 Arg, u32 BlkCnt, const u8 *Buff);
+s32 XSdPs_SetBlkSize(XSdPs *InstancePtr, u16 BlkSize);
+s32 XSdPs_Select_Card (XSdPs *InstancePtr);
+s32 XSdPs_Change_ClkFreq(XSdPs *InstancePtr, u32 SelFreq);
+s32 XSdPs_Change_BusWidth(XSdPs *InstancePtr);
+s32 XSdPs_Change_BusSpeed(XSdPs *InstancePtr);
+s32 XSdPs_Get_BusWidth(XSdPs *InstancePtr, u8 *SCR);
+s32 XSdPs_Get_BusSpeed(XSdPs *InstancePtr, u8 *ReadBuff);
+s32 XSdPs_Pullup(XSdPs *InstancePtr);
+s32 XSdPs_MmcCardInitialize(XSdPs *InstancePtr);
+s32 XSdPs_CardInitialize(XSdPs *InstancePtr);
+s32 XSdPs_Get_Mmc_ExtCsd(XSdPs *InstancePtr, u8 *ReadBuff);
+s32 XSdPs_Set_Mmc_ExtCsd(XSdPs *InstancePtr, u32 Arg);
+#if defined (ARMR5) || defined (__aarch64__)
+void XSdPs_Identify_UhsMode(XSdPs *InstancePtr, u8 *ReadBuff);
+void XSdPs_hsd_sdr25_tapdelay(u32 Bank, u32 DeviceId, u32 CardType);
+void XSdPs_sdr104_hs200_tapdelay(u32 Bank, u32 DeviceId, u32 CardType);
+#endif
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* SD_H_ */
+/** @} */

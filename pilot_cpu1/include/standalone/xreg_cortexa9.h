@@ -1,42 +1,34 @@
-/*******************************************************************************
+/******************************************************************************
 *
-* (c) Copyright 2009-13  Xilinx, Inc. All rights reserved.
+* Copyright (C) 2009 - 2015 Xilinx, Inc.  All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
-*******************************************************************************/
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
+*
+******************************************************************************/
 /*****************************************************************************/
 /**
 *
@@ -140,7 +132,7 @@ extern "C" {
 
 
 /* CP15 defines */
-#if defined (__GNUC__)
+#if defined (__GNUC__) || defined (__ICCARM__)
 /* C0 Register defines */
 #define XREG_CP15_MAIN_ID			"p15, 0, %0,  c0,  c0, 0"
 #define XREG_CP15_CACHE_TYPE			"p15, 0, %0,  c0,  c0, 1"
@@ -218,23 +210,23 @@ extern "C" {
 #endif
 
 /* XREG_CP15_CONTROL bit defines */
-#define XREG_CP15_CONTROL_TE_BIT		0x40000000
-#define XREG_CP15_CONTROL_AFE_BIT		0x20000000
-#define XREG_CP15_CONTROL_TRE_BIT		0x10000000
-#define XREG_CP15_CONTROL_NMFI_BIT		0x08000000
-#define XREG_CP15_CONTROL_EE_BIT		0x02000000
-#define XREG_CP15_CONTROL_HA_BIT		0x00020000
-#define XREG_CP15_CONTROL_RR_BIT		0x00004000
-#define XREG_CP15_CONTROL_V_BIT			0x00002000
-#define XREG_CP15_CONTROL_I_BIT			0x00001000
-#define XREG_CP15_CONTROL_Z_BIT			0x00000800
-#define XREG_CP15_CONTROL_SW_BIT		0x00000400
-#define XREG_CP15_CONTROL_B_BIT			0x00000080
-#define XREG_CP15_CONTROL_C_BIT			0x00000004
-#define XREG_CP15_CONTROL_A_BIT			0x00000002
-#define XREG_CP15_CONTROL_M_BIT			0x00000001
+#define XREG_CP15_CONTROL_TE_BIT		0x40000000U
+#define XREG_CP15_CONTROL_AFE_BIT		0x20000000U
+#define XREG_CP15_CONTROL_TRE_BIT		0x10000000U
+#define XREG_CP15_CONTROL_NMFI_BIT		0x08000000U
+#define XREG_CP15_CONTROL_EE_BIT		0x02000000U
+#define XREG_CP15_CONTROL_HA_BIT		0x00020000U
+#define XREG_CP15_CONTROL_RR_BIT		0x00004000U
+#define XREG_CP15_CONTROL_V_BIT			0x00002000U
+#define XREG_CP15_CONTROL_I_BIT			0x00001000U
+#define XREG_CP15_CONTROL_Z_BIT			0x00000800U
+#define XREG_CP15_CONTROL_SW_BIT		0x00000400U
+#define XREG_CP15_CONTROL_B_BIT			0x00000080U
+#define XREG_CP15_CONTROL_C_BIT			0x00000004U
+#define XREG_CP15_CONTROL_A_BIT			0x00000002U
+#define XREG_CP15_CONTROL_M_BIT			0x00000001U
 
-#if defined (__GNUC__)
+#if defined (__GNUC__) || defined (__ICCARM__)
 /* C2 Register Defines */
 #define XREG_CP15_TTBR0				"p15, 0, %0,  c2,  c0, 0"
 #define XREG_CP15_TTBR1				"p15, 0, %0,  c2,  c0, 1"

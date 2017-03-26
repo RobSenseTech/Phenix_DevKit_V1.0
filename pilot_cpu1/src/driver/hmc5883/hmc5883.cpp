@@ -1,35 +1,35 @@
-///****************************************************************************
-// *
-// *   Copyright (c) 2012-2015 PX4 Development Team. All rights reserved.
-// *
-// * Redistribution and use in source and binary forms, with or without
-// * modification, are permitted provided that the following conditions
-// * are met:
-// *
-// * 1. Redistributions of source code must retain the above copyright
-// *    notice, this list of conditions and the following disclaimer.
-// * 2. Redistributions in binary form must reproduce the above copyright
-// *    notice, this list of conditions and the following disclaimer in
-// *    the documentation and/or other materials provided with the
-// *    distribution.
-// * 3. Neither the name PX4 nor the names of its contributors may be
-// *    used to endorse or promote products derived from this software
-// *    without specific prior written permission.
-// *
-// * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-// * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-// * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-// * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-// * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
-// * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
-// * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-// * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-// * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// * POSSIBILITY OF SUCH DAMAGE.
-// *
-// ****************************************************************************/
+/****************************************************************************
+ *
+ *   Copyright (c) 2012-2015 PX4 Development Team. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
 
 ///**
 // * @file hmc5883.cpp
@@ -38,7 +38,6 @@
 // */
 
 #include "device/cdev.h"
-#include "driver.h"
 #include "ringbuffer.h"
 #include "drv_mag.h"
 #include "FreeRTOS_Print.h"
@@ -53,6 +52,17 @@
 #include "Phx_define.h"
 #include "sleep.h"
 #include "timers.h"
+#include "driver.h"
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <errno.h>
 
 #define HMC5883_DEVICE_PATH "/dev/hmc5883"
 #define HMC5883_EXT_DEVICE_PATH "/dev/hmc5883_ext"
@@ -133,8 +143,9 @@ public:
 
 	virtual int		init();
 	virtual int      probe();
-	virtual size_t		read(struct xHANDLE *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(struct xHANDLE *filp, int cmd, void *pvArg);
+
+	virtual ssize_t		read(struct file *filp, char *buffer, size_t buflen);
+	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
@@ -213,7 +224,7 @@ private:
 	 *
 	 * @param enable set to 1 to enable self-test strap, 0 to disable
 	 */
-	int			calibrate(struct xHANDLE *filp, unsigned enable);
+	int			calibrate(struct file *filp, unsigned enable);
 
 	/**
 	 * Perform the on-sensor scale calibration routine.
@@ -600,8 +611,8 @@ HMC5883::hmc5883_iic_read(uint8_t address, uint8_t *data, unsigned count)
 }
 
 
-size_t
-HMC5883::read(struct xHANDLE *filp, char *buffer, size_t buflen)
+ssize_t
+HMC5883::read(struct file *filp, char *buffer, size_t buflen)
 {
 	unsigned count = buflen / sizeof(struct mag_report);
 	struct mag_report *mag_buf = reinterpret_cast<struct mag_report *>(buffer);
@@ -660,11 +671,10 @@ HMC5883::read(struct xHANDLE *filp, char *buffer, size_t buflen)
 }
 
 int
-HMC5883::ioctl(struct xHANDLE *filp, int cmd,  void *pvArg)
+HMC5883::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
-	unsigned dummy = (unsigned)pvArg;
-	unsigned long arg = (unsigned long)pvArg;
-	
+	unsigned dummy = arg;
+
 	switch (cmd) {
 	case SENSORIOCSPOLLRATE: {
 			switch (arg) {
@@ -760,7 +770,7 @@ HMC5883::ioctl(struct xHANDLE *filp, int cmd,  void *pvArg)
 
 	case MAGIOCSSAMPLERATE:
 		/* same as pollrate because device is in single measurement mode*/
-		return ioctl(filp, SENSORIOCSPOLLRATE, (void*)pvArg);
+		return ioctl(filp, SENSORIOCSPOLLRATE, arg);
 
 	case MAGIOCGSAMPLERATE:
 		/* same as pollrate because device is in single measurement mode*/
@@ -808,10 +818,10 @@ HMC5883::ioctl(struct xHANDLE *filp, int cmd,  void *pvArg)
 
 	case DEVIOCGDEVICEID:
 		//added by prj
-		return CDev::ioctl(filp, cmd, (void *)dummy);
+		return CDev::ioctl(filp, cmd, dummy);
 	default:
 		/* give it to the superclass */
-		return CDev::ioctl(filp, cmd, pvArg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
 
@@ -1197,7 +1207,7 @@ out:
 	return ret;
 }
 
-int HMC5883::calibrate(struct xHANDLE *filp, unsigned enable)
+int HMC5883::calibrate(struct file *filp, unsigned enable)
 {
 	struct mag_report report;
 	ssize_t sz;
@@ -1235,8 +1245,7 @@ int HMC5883::calibrate(struct xHANDLE *filp, unsigned enable)
 	float expected_cal[3] = { 1.16f, 1.08f, 1.08f };
 
 	/* start the sensor polling at 50 Hz */
-	
-	if (OK != ioctl(filp, SENSORIOCSPOLLRATE, (void*)50)) {
+	if (OK != ioctl(filp, SENSORIOCSPOLLRATE, 50)) {
 		warn("FAILED: SENSORIOCSPOLLRATE 2Hz");
 		ret = 1;
 		goto out;
@@ -1244,24 +1253,25 @@ int HMC5883::calibrate(struct xHANDLE *filp, unsigned enable)
 
 	/* Set to 2.5 Gauss. We ask for 3 to get the right part of
 	 * the chained if statement above. */
-	if (OK != ioctl(filp, MAGIOCSRANGE, (void*)3)) {
+	if (OK != ioctl(filp, MAGIOCSRANGE, 3)) {
 		warnx("FAILED: MAGIOCSRANGE 3.3 Ga");
 		ret = 1;
 		goto out;
 	}
-	if (OK != ioctl(filp, MAGIOCEXSTRAP, (void*)1)) {
+
+	if (OK != ioctl(filp, MAGIOCEXSTRAP, 1)) {
 		warnx("FAILED: MAGIOCEXSTRAP 1");
 		ret = 1;
 		goto out;
 	}
 
-	if (OK != ioctl(filp, MAGIOCGSCALE, (void*)&mscale_previous)) {
+	if (OK != ioctl(filp, MAGIOCGSCALE, (long unsigned int)&mscale_previous)) {
 		warn("FAILED: MAGIOCGSCALE 1");
 		ret = 1;
 		goto out;
 	}
-	
-	if (OK != ioctl(filp, MAGIOCSSCALE, (void*)&mscale_null)) {
+
+	if (OK != ioctl(filp, MAGIOCSSCALE, (long unsigned int)&mscale_null)) {
 		warn("FAILED: MAGIOCSSCALE 1");
 		ret = 1;
 		goto out;
@@ -1349,18 +1359,17 @@ int HMC5883::calibrate(struct xHANDLE *filp, unsigned enable)
 
 out:
 
-	if (OK != ioctl(filp, MAGIOCSSCALE, (void *)&mscale_previous)) {
+	if (OK != ioctl(filp, MAGIOCSSCALE, (long unsigned int)&mscale_previous)) {
 		warn("FAILED: MAGIOCSSCALE 2");
 	}
 
 	/* set back to normal mode */
 	/* Set to 1.1 Gauss */
-	
-	if (OK != ::ioctl(fd, MAGIOCSRANGE, (void *)1)) {
+	if (OK != ::ioctl(fd, MAGIOCSRANGE, 1)) {
 		warnx("FAILED: MAGIOCSRANGE 1.1 Ga");
 	}
-	
-	if (OK != ::ioctl(fd, MAGIOCEXSTRAP, (void *)0)) {
+
+	if (OK != ::ioctl(fd, MAGIOCEXSTRAP, 0)) {
 		warnx("FAILED: MAGIOCEXSTRAP 0");
 	}
 
@@ -1634,7 +1643,7 @@ start(bool external_bus, enum Rotation rotation)
 		if (fd == -1)
 			goto fail;
 		
-		if (ioctl(fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0)
+		if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0)
 			goto fail;
 			
 		Print_Info("HMC5883 start   ------------end   \r\n");
@@ -1672,13 +1681,13 @@ test(bool external_bus)
 	if(external_bus)
 	{
 		fd = open(HMC5883_EXT_DEVICE_PATH, O_RDONLY);
-		if (fd == -1)
+		if (fd < 0)
 			err(1, "%s open failed", HMC5883_EXT_DEVICE_PATH);
 	}
 	else
 	{
 		fd = open(HMC5883_DEVICE_PATH, O_RDONLY);
-		if (fd == -1)
+		if (fd < 0)
 			err(1, "%s open failed", HMC5883_DEVICE_PATH);
 	}	
 	
@@ -1694,19 +1703,19 @@ test(bool external_bus)
 	warnx("time:        %lld", report.timestamp);
 
 	/* check if mag is onboard or external */
-	if ((ret = ioctl(fd, MAGIOCGEXTERNAL, (void *)0)) < 0) {
+	if ((ret = ioctl(fd, MAGIOCGEXTERNAL, 0)) < 0) {
 		errx(1, "failed to get if mag is onboard or external");
 	}
 
 	warnx("device active: %s", ret ? "external" : "onboard");
 
 	/* set the queue depth to 5 */
-	if (OK != ioctl(fd, SENSORIOCSQUEUEDEPTH, (void *)10)) {
+	if (OK != ioctl(fd, SENSORIOCSQUEUEDEPTH, 10)) {
 		errx(1, "failed to set queue depth");
 	}
 
 	/* start the sensor polling at 2Hz */
-	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, (void*)2)) {
+	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2)) {
 		errx(1, "failed to set 2Hz poll rate");
 	}
 
@@ -1794,7 +1803,7 @@ int calibrate(bool external_bus)
 		err(1, "open failed (try 'hmc5883 start' if the driver is not running)");
 	}
 	
-	if (OK != (ret = ioctl(fd, MAGIOCCALIBRATE, (void *)fd))) {
+	if (OK != (ret = ioctl(fd, MAGIOCCALIBRATE, fd))) {
 		warnx("failed to enable sensor calibration mode");
 	}
 
@@ -1820,10 +1829,11 @@ reset(bool external_bus)
 		err(1, "failed ");
 	}
 
-	if (ioctl(fd, SENSORIOCRESET, (void*)0) < 0) {
+	if (ioctl(fd, SENSORIOCRESET, 0) < 0) {
 		err(1, "driver reset failed");
 	}
-	if (ioctl(fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0) {
+
+	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
 		err(1, "driver poll restart failed");
 	}
 
@@ -1847,7 +1857,8 @@ temp_enable(bool external_bus, bool enable)
 	if (fd < 0) {
 		err(1, "failed ");
 	}
-	if (ioctl(fd, MAGIOCSTEMPCOMP, (void*)enable) < 0) {
+
+	if (ioctl(fd, MAGIOCSTEMPCOMP, (unsigned)enable) < 0) {
 		err(1, "set temperature compensation failed");
 	}
 

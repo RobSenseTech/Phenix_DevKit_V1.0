@@ -27,7 +27,7 @@ static void prvRingBufferReadTask( void *pvParameters )
 	{
 		if(xRingBufferGet(&xRingBuf, &j, sizeof(int)) == 0)
 		{
-			Print_Info("read from ringbuffer:%d filled:%d empty:%d\n", j, iRingBufferGetFilledCount(&xRingBuf), iRingBufferGetEmptyCount(&xRingBuf));
+			Print_Info("read from ringbuffer:%d filled:%d empty:%d\n", j, iRingBufferGetAvailable(&xRingBuf), iRingBufferGetSpace(&xRingBuf));
 		}
 		vTaskDelay( 2000 / portTICK_RATE_MS );
 	}

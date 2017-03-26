@@ -1,6 +1,7 @@
-#include "driver.h"
-#include "hrt/drv_hrt.h"
+#include <fs/fs.h>
+#include "fcntl.h"
 #include "sbus.h"
+#include "driver.h"
 
 #define SBUS_FRAME_SIZE		25
 #define SBUS_INPUT_CHANNELS	16
@@ -32,17 +33,17 @@ int sbus_init(const char *device, bool singlewire)
 {
 	int sbus_fd = open(device, O_RDWR | O_NONBLOCK);
     int baudrate=100000;//sbus特有波特率
-    UartDataFormat_t data_format;
+    UartDataFormat_t data_format = {0};
 
 	/* 100000bps, even parity, two stop bits */
+    data_format.iBaudRate = baudrate;
     data_format.iDataBits = UART_DATA_8_BIT;
     data_format.iParity = UART_EVEN_PARITY;
     data_format.iStopBits = UART_2_STOP_BIT;
 
     if(sbus_fd != -1)
     {
-        ioctl(sbus_fd, UART_IOC_SET_BAUDRATE, &baudrate);
-        ioctl(sbus_fd, UART_IOC_SET_DATA_FORMAT, &data_format);
+        ioctl(sbus_fd, UART_IOC_SET_DATA_FORMAT, (unsigned long)&data_format);
 
         partial_frame_count = 0;
         last_rx_time = hrt_absolute_time();

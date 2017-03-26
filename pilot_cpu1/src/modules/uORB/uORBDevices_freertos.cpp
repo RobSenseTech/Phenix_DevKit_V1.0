@@ -33,11 +33,14 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <fcntl.h>
+#include <errno.h>
 #include "uORBDevices_freertos.hpp"
 #include "uORBUtils.hpp"
 #include "uORBManager.hpp"
 #include "uORBCommunicator.hpp"
 #include <stdlib.h>
+#include "irq.h"
 
 uORB::ORBMap uORB::DeviceMaster::_node_map;
 
@@ -70,19 +73,19 @@ uORB::DeviceNode::~DeviceNode()
 }
 
 int
-uORB::DeviceNode::open(Handle_t *pHandle)
+uORB::DeviceNode::open(struct file *filp)
 {
 	int ret;
 
 	/* is this a publisher? */
-	if (pHandle->iFlag == O_WRONLY) {
+	if (filp->f_oflags == O_WRONLY) {
 
 		/* become the publisher if we can */
 		lock();
 
 		if (_publisher == 0) {
-			_publisher = pHandle->iDriverId;
-			ret = 0;
+			_publisher = getpid();
+			ret = OK;
 
 		} else {
 			ret = -EBUSY;
@@ -91,11 +94,11 @@ uORB::DeviceNode::open(Handle_t *pHandle)
 		unlock();
 
 		/* now complete the open */
-		if (ret == 0) {
-			ret = CDev::open(pHandle);
+		if (ret == OK) {
+			ret = CDev::open(filp);
 
 			/* open failed - not the publisher anymore */
-			if (ret != 0) {
+			if (ret != OK) {
 				_publisher = 0;
 			}
 		}
@@ -104,7 +107,7 @@ uORB::DeviceNode::open(Handle_t *pHandle)
 	}
 
 	/* is this a new subscriber? */
-	if (pHandle->iFlag == O_RDONLY) {
+	if (filp->f_oflags == O_RDONLY) {
 
 		/* allocate subscriber data */
 		SubscriberData *sd = new SubscriberData;
@@ -121,13 +124,13 @@ uORB::DeviceNode::open(Handle_t *pHandle)
 		/* set priority */
 		sd->priority = _priority;
 
-		pHandle->pvDriverPrivate= (void *)sd;
+		filp->f_priv = (void *)sd;
 
-		ret = CDev::open(pHandle);
+		ret = CDev::open(filp);
 
 		add_internal_subscriber();
 
-		if (ret != 0) {
+		if (ret != OK) {
 			delete sd;
 		}
 
@@ -139,14 +142,14 @@ uORB::DeviceNode::open(Handle_t *pHandle)
 }
 
 int
-uORB::DeviceNode::close(Handle_t *pHandle)
+uORB::DeviceNode::close(struct file *filp)
 {
 	/* is this the publisher closing? */
-	if (pHandle->iDriverId == _publisher) {
+	if (getpid() == _publisher) {
 		_publisher = 0;
 
 	} else {
-		SubscriberData *sd = handle_to_sd(pHandle);
+		SubscriberData *sd = filp_to_sd(filp);
 
 		if (sd != NULL) {
 			hrt_cancel(&sd->update_call);
@@ -156,13 +159,13 @@ uORB::DeviceNode::close(Handle_t *pHandle)
 		}
 	}
 
-	return CDev::close(pHandle);
+	return CDev::close(filp);
 }
 
-size_t
-uORB::DeviceNode::read(Handle_t *pHandle, char *buffer, size_t buflen)
+ssize_t
+uORB::DeviceNode::read(struct file *filp, char *buffer, size_t buflen)
 {
-	SubscriberData *sd = (SubscriberData *)handle_to_sd(pHandle);
+	SubscriberData *sd = (SubscriberData *)filp_to_sd(filp);
 
 	/* if the object has not been written yet, return zero */
 	if (_data == NULL) {
@@ -201,8 +204,8 @@ uORB::DeviceNode::read(Handle_t *pHandle, char *buffer, size_t buflen)
 	return _meta->o_size;
 }
 
-size_t
-uORB::DeviceNode::write(Handle_t *pHandle, const char *buffer, size_t buflen)
+ssize_t
+uORB::DeviceNode::write(struct file *filp, const char *buffer, size_t buflen)
 {
 	/*
 	 * Writes are legal from interrupt context as long as the
@@ -211,7 +214,7 @@ uORB::DeviceNode::write(Handle_t *pHandle, const char *buffer, size_t buflen)
 	 * Writes outside interrupt context will allocate the object
 	 * if it has not yet been allocated.
 	 *
-	 * Note that pHandle will usually be NULL.
+	 * Note that filp will usually be NULL.
 	 */
 	if (NULL == _data) {
 //		if (!up_interrupt_context()) 
@@ -256,42 +259,44 @@ uORB::DeviceNode::write(Handle_t *pHandle, const char *buffer, size_t buflen)
 }
 
 int
-uORB::DeviceNode::ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
+uORB::DeviceNode::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
-	SubscriberData *sd = handle_to_sd(pHandle);
+	SubscriberData *sd = filp_to_sd(filp);
 
-	switch (iCmd) {
+	switch (cmd) {
 	case ORBIOCLASTUPDATE:
-		*(hrt_abstime *)pvArg = _last_update;
-		return 0;
+		*(hrt_abstime *)arg = _last_update;
+		return OK;
 
 	case ORBIOCUPDATED:
-		*(bool *)pvArg = appears_updated(sd);
-		return 0;
+		*(bool *)arg = appears_updated(sd);
+		return OK;
 
 	case ORBIOCSETINTERVAL:
-		sd->update_interval = *(unsigned *)pvArg;
-		return 0;
+		sd->update_interval = arg;
+		return OK;
 
 	case ORBIOCGADVERTISER:
-    {
-        unsigned long tmp = (unsigned long)pvArg;
-		*(void **)tmp = (void *)this;
-        pvArg = (void *)tmp;
-   //     Print_Info("this=%x\n", (int)(this));
-		return 0;
-    }
+		*(uintptr_t *)arg = (uintptr_t)this;
+		return OK;
+
 	case ORBIOCGPRIORITY:
-		*(int *)pvArg = sd->priority;
-		return 0;
+		*(int *)arg = sd->priority;
+		return OK;
 
 	default:
 		/* give it to the superclass */
-		return CDev::ioctl(pHandle, iCmd, pvArg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
 
-size_t uORB::DeviceNode::publish(const orb_metadata *meta,orb_advert_t handle,const void *data)
+ssize_t
+uORB::DeviceNode::publish
+(
+	const orb_metadata *meta,
+	orb_advert_t handle,
+	const void *data
+)
 {
 	uORB::DeviceNode *DeviceNode = (uORB::DeviceNode *)handle;
 	int ret;
@@ -299,6 +304,7 @@ size_t uORB::DeviceNode::publish(const orb_metadata *meta,orb_advert_t handle,co
 	/* this is a bit risky, since we are trusting the handle in order to deref it */
 	if (DeviceNode->_meta != meta) {
         Print_Err("Invalid Param:DeviceNode=%x [%x, %x]\n", (int)DeviceNode, (int)DeviceNode->_meta, (int)meta);
+		errno = EINVAL;
 		return ERROR;
 	}
 
@@ -312,6 +318,7 @@ size_t uORB::DeviceNode::publish(const orb_metadata *meta,orb_advert_t handle,co
 
 	if (ret != (int)meta->o_size) {
         Print_Err("write size error:%d o_size=%d\n", ret, (int)meta->o_size);
+		errno = EIO;
 		return ERROR;
 	}
 
@@ -328,13 +335,13 @@ size_t uORB::DeviceNode::publish(const orb_metadata *meta,orb_advert_t handle,co
 		}
 	}
 
-	return 0;
+	return OK;
 }
 
 pollevent_t
-uORB::DeviceNode::poll_state(Handle_t *pHandle)
+uORB::DeviceNode::poll_state(struct file *filp)
 {
-	SubscriberData *sd = handle_to_sd(pHandle);
+	SubscriberData *sd = filp_to_sd(filp);
 
 	/*
 	 * If the topic appears updated to the subscriber, say so.
@@ -349,7 +356,7 @@ uORB::DeviceNode::poll_state(Handle_t *pHandle)
 void
 uORB::DeviceNode::poll_notify_one(struct pollfd *fds, pollevent_t events)
 {
-	SubscriberData *sd = handle_to_sd((Handle_t *)fds->priv);
+	SubscriberData *sd = filp_to_sd((struct file *)fds->priv);
 
 	/*
 	 * If the topic looks updated to the subscriber, go ahead and notify them.
@@ -535,6 +542,7 @@ int16_t uORB::DeviceNode::process_received_message(int32_t length, uint8_t *data
 	}
 
 	if (ret != (int)_meta->o_size) {
+		errno = EIO;
 		return ERROR;
 	}
 
@@ -554,13 +562,13 @@ uORB::DeviceMaster::~DeviceMaster()
 }
 
 int
-uORB::DeviceMaster::ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
+uORB::DeviceMaster::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
 	int ret;
 
-	switch (iCmd) {
+	switch (cmd) {
 	case ORBIOCADVERTISE: {
-			const struct orb_advertdata *adv = (const struct orb_advertdata *)pvArg;
+			const struct orb_advertdata *adv = (const struct orb_advertdata *)arg;
 			const struct orb_metadata *meta = adv->meta;
 			const char *objname;
 			const char *devpath;
@@ -670,7 +678,7 @@ uORB::DeviceMaster::ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
 
 	default:
 		/* give it to the superclass */
-		return CDev::ioctl(pHandle, iCmd, pvArg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
 

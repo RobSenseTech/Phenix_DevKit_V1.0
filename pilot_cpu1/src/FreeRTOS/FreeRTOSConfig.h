@@ -246,5 +246,29 @@ line interface. */
 #define configNET_MASK2		255
 #define configNET_MASK3		0
 
+/* custom function by robsense */
+#define configROBSENSE_CUSTOM   1
+#if(configROBSENSE_CUSTOM == 1)
+#define CONFIG_NFILE_DESCRIPTORS 32
+#define CONFIG_STDIO_BUFFER_SIZE 32
+#define CONFIG_FS_FAT 1
+#define CONFIG_FAT_LFN 1
+#define CONFIG_FAT_LCNAMES 1
+#define CONFIG_FAT_MAXFNAME 32
+#define CONFIG_NUNGET_CHARS 2
+#define CONFIG_STDIO_BUFFER_SIZE 32
+#define CONFIG_NFILE_STREAMS 0
+#define CONFIG_NAME_MAX 32
+#define NAME_MAX CONFIG_NAME_MAX
+
+//SD card
+#define CONFIG_MMCSD_HAVE_SDIOWAIT_WRCOMPLETE 1
+#define CONFIG_MMCSD 1
+#define CONFIG_MMCSD_NSLOTS 1
+#define CONFIG_MMCSD_MULTIBLOCK_DISABLE 1
+#define CONFIG_MMCSD_SDIO 1
+
+#endif
+
 #endif /* FREERTOS_CONFIG_H */
 

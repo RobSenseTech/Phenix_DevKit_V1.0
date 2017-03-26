@@ -124,7 +124,7 @@
 
 #define HAL_BOARD_NAME "PX4"
 #define HAL_CPU_CLASS HAL_CPU_CLASS_150
-//#define HAL_OS_POSIX_IO 1
+#define HAL_OS_POSIX_IO 1
 #define HAL_BOARD_LOG_DIRECTORY "/fs/microsd/APM/LOGS"
 #define HAL_BOARD_TERRAIN_DIRECTORY "/fs/microsd/APM/TERRAIN"
 #define HAL_PARAM_DEFAULTS_PATH "/etc/defaults.parm"
@@ -134,6 +134,7 @@
 #define HAL_SERIAL0_BAUD_DEFAULT 115200
 
 #define CONFIG_HAL_BOARD_SUBTYPE HAL_BOARD_SUBTYPE_PX4_V2
+#define HAL_STORAGE_SIZE            16384
 
 #define HAL_GPIO_A_LED_PIN        27
 #define HAL_GPIO_B_LED_PIN        26

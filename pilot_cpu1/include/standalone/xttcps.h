@@ -1,48 +1,41 @@
-/* $Id: xttcps.h,v 1.1.2.1 2011/01/20 04:08:59 sadanan Exp $ */
 /******************************************************************************
 *
-* (c) Copyright 2010 Xilinx, Inc. All rights reserved.
+* Copyright (C) 2010 - 2015 Xilinx, Inc.  All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
 *
 ******************************************************************************/
 /*****************************************************************************/
 /**
 *
 * @file xttcps.h
+* @addtogroup ttcps_v3_0
+* @{
+* @details
 *
 * This is the driver for one 16-bit timer counter in the Triple Timer Counter
 * (TTC) module in the Ps block.
@@ -96,7 +89,10 @@
 * ----- ------ -------- -----------------------------------------------------
 * 1.00a drg/jz 01/20/10 First release..
 * 2.0   adk    12/10/13 Updated as per the New Tcl API's
-*
+* 3.0	pkp    12/09/14 Added support for Zynq Ultrascale Mp.Also code
+*			modified for MISRA-C:2012 compliance.
+* 3.2   mus    10/28/16 Modified XTtcPs_GetCounterValue and XTtcPs_SetInterval
+*                       macros to return 32 bit values for zynq ultrascale+mpsoc
 * </pre>
 *
 ******************************************************************************/
@@ -114,6 +110,21 @@ extern "C" {
 #include "xstatus.h"
 
 /************************** Constant Definitions *****************************/
+/*
+ * Flag for a9 processor
+ */
+ #if !defined (ARMR5) && !defined (__aarch64__) && !defined (ARMA53_32)
+ #define ARMA9
+ #endif
+
+/*
+ * Maximum Value for interval counter
+ */
+ #if defined(ARMA9)
+ #define XTTCPS_MAX_INTERVAL_COUNT 0xFFFFU
+ #else
+ #define XTTCPS_MAX_INTERVAL_COUNT 0xFFFFFFFFU
+ #endif
 
 /** @name Configuration options
  *
@@ -122,16 +133,15 @@ extern "C" {
  *
  * @{
  */
-#define XTTCPS_OPTION_EXTERNAL_CLK	0x0001 	/**< External clock source */
-#define XTTCPS_OPTION_CLK_EDGE_NEG	0x0002	/**< Clock on trailing edge for
+#define XTTCPS_OPTION_EXTERNAL_CLK	0x00000001U 	/**< External clock source */
+#define XTTCPS_OPTION_CLK_EDGE_NEG	0x00000002U	/**< Clock on trailing edge for
 						     external clock*/
-#define XTTCPS_OPTION_INTERVAL_MODE	0x0004	/**< Interval mode */
-#define XTTCPS_OPTION_DECREMENT		0x0008	/**< Decrement the counter */
-#define XTTCPS_OPTION_MATCH_MODE	0x0010	/**< Match mode */
-#define XTTCPS_OPTION_WAVE_DISABLE	0x0020 	/**< No waveform output */
-#define XTTCPS_OPTION_WAVE_POLARITY	0x0040	/**< Waveform polarity */
+#define XTTCPS_OPTION_INTERVAL_MODE	0x00000004U	/**< Interval mode */
+#define XTTCPS_OPTION_DECREMENT		0x00000008U	/**< Decrement the counter */
+#define XTTCPS_OPTION_MATCH_MODE	0x00000010U	/**< Match mode */
+#define XTTCPS_OPTION_WAVE_DISABLE	0x00000020U 	/**< No waveform output */
+#define XTTCPS_OPTION_WAVE_POLARITY	0x00000040U	/**< Waveform polarity */
 /*@}*/
-
 /**************************** Type Definitions *******************************/
 
 /**
@@ -154,17 +164,24 @@ typedef struct {
 	u32 IsReady;		/**< Device is initialized and ready */
 } XTtcPs;
 
-
+/**
+ * This typedef contains interval count
+ */
+#if defined(ARMA9)
+typedef u16 XInterval;
+#else
+typedef u32 XInterval;
+#endif
 /***************** Macros (Inline Functions) Definitions *********************/
 
 /*
  * Internal helper macros
  */
 #define InstReadReg(InstancePtr, RegOffset) \
-    (Xil_In32(((InstancePtr)->Config.BaseAddress) + (RegOffset)))
+    (Xil_In32(((InstancePtr)->Config.BaseAddress) + (u32)(RegOffset)))
 
 #define InstWriteReg(InstancePtr, RegOffset, Data) \
-    (Xil_Out32(((InstancePtr)->Config.BaseAddress) + (RegOffset), (Data)))
+    (Xil_Out32(((InstancePtr)->Config.BaseAddress) + (u32)(RegOffset), (u32)(Data)))
 
 /*****************************************************************************/
 /**
@@ -218,8 +235,8 @@ typedef struct {
 *
 ****************************************************************************/
 #define XTtcPs_IsStarted(InstancePtr) \
-     (int)((InstReadReg((InstancePtr), XTTCPS_CNT_CNTRL_OFFSET) & \
-       XTTCPS_CNT_CNTRL_DIS_MASK) == 0)
+     ((InstReadReg((InstancePtr), XTTCPS_CNT_CNTRL_OFFSET) & \
+       XTTCPS_CNT_CNTRL_DIS_MASK) == 0U)
 
 /*****************************************************************************/
 /**
@@ -229,14 +246,27 @@ typedef struct {
 *
 * @param	InstancePtr is a pointer to the XTtcPs instance.
 *
-* @return	16-bit counter value.
+* @return	zynq:16 bit counter value.
+*           zynq ultrascale+mpsoc:32 bit counter value.
 *
 * @note		C-style signature:
-*		u16 XTtcPs_GetCounterValue(XTtcPs *InstancePtr)
+*		zynq: u16 XTtcPs_GetCounterValue(XTtcPs *InstancePtr)
+*       zynq ultrascale+mpsoc: u32 XTtcPs_GetCounterValue(XTtcPs *InstancePtr)
 *
 ****************************************************************************/
+#if defined(ARMA9)
+/*
+ * ttc supports 16 bit counter for zynq
+ */
 #define XTtcPs_GetCounterValue(InstancePtr) \
 		(u16)InstReadReg((InstancePtr), XTTCPS_COUNT_VALUE_OFFSET)
+#else
+/*
+ * ttc supports 32 bit counter for zynq ultrascale+mpsoc
+ */
+#define XTtcPs_GetCounterValue(InstancePtr) \
+               InstReadReg((InstancePtr), XTTCPS_COUNT_VALUE_OFFSET)
+#endif
 
 /*****************************************************************************/
 /**
@@ -262,15 +292,27 @@ typedef struct {
 *
 * @param	InstancePtr is a pointer to the XTtcPs instance.
 *
-* @return	16-bit interval value
+* @return	zynq:16 bit interval value.
+*           zynq ultrascale+mpsoc:32 bit interval value.
 *
 * @note		C-style signature:
-*		u16 XTtcPs_GetInterval(XTtcPs *InstancePtr)
+*		zynq: u16 XTtcPs_GetInterval(XTtcPs *InstancePtr)
+*       zynq ultrascale+mpsoc: u32 XTtcPs_GetInterval(XTtcPs *InstancePtr)
 *
 ****************************************************************************/
+#if defined(ARMA9)
+/*
+ * ttc supports 16 bit interval counter for zynq
+ */
 #define XTtcPs_GetInterval(InstancePtr) \
 		(u16)InstReadReg((InstancePtr), XTTCPS_INTERVAL_VAL_OFFSET)
-
+#else
+/*
+ * ttc supports 32 bit interval counter for zynq ultrascale+mpsoc
+ */
+#define XTtcPs_GetInterval(InstancePtr) \
+		InstReadReg((InstancePtr), XTTCPS_INTERVAL_VAL_OFFSET)
+#endif
 /*****************************************************************************/
 /**
 *
@@ -290,7 +332,7 @@ typedef struct {
 #define XTtcPs_ResetCounterValue(InstancePtr) \
 		InstWriteReg((InstancePtr), XTTCPS_CNT_CNTRL_OFFSET,	\
 		(InstReadReg((InstancePtr), XTTCPS_CNT_CNTRL_OFFSET) | \
-		 XTTCPS_CNT_CNTRL_RST_MASK))
+		 (u32)XTTCPS_CNT_CNTRL_RST_MASK))
 
 /*****************************************************************************/
 /**
@@ -387,7 +429,7 @@ XTtcPs_Config *XTtcPs_LookupConfig(u16 DeviceId);
 /*
  * Required functions, in xttcps.c
  */
-int XTtcPs_CfgInitialize(XTtcPs *InstancePtr,
+s32 XTtcPs_CfgInitialize(XTtcPs *InstancePtr,
          XTtcPs_Config * ConfigPtr, u32 EffectiveAddr);
 
 void XTtcPs_SetMatchValue(XTtcPs *InstancePtr, u8 MatchIndex, u16 Value);
@@ -397,21 +439,22 @@ void XTtcPs_SetPrescaler(XTtcPs *InstancePtr, u8 PrescalerValue);
 u8 XTtcPs_GetPrescaler(XTtcPs *InstancePtr);
 
 void XTtcPs_CalcIntervalFromFreq(XTtcPs *InstancePtr, u32 Freq,
-        u16 *Interval, u8 *Prescaler);
+        XInterval *Interval, u8 *Prescaler);
 
 /*
  * Functions for options, in file xttcps_options.c
  */
-int XTtcPs_SetOptions(XTtcPs *InstancePtr, u32 Options);
+s32 XTtcPs_SetOptions(XTtcPs *InstancePtr, u32 Options);
 u32 XTtcPs_GetOptions(XTtcPs *InstancePtr);
 
 /*
  * Function for self-test, in file xttcps_selftest.c
  */
-int XTtcPs_SelfTest(XTtcPs *InstancePtr);
+s32 XTtcPs_SelfTest(XTtcPs *InstancePtr);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* end of protection macro */
+/** @} */

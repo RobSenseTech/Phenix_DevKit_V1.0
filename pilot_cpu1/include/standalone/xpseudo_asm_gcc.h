@@ -1,41 +1,32 @@
 /******************************************************************************
 *
-* (c) Copyright 2009-13  Xilinx, Inc. All rights reserved.
+* Copyright (C) 2014 - 2016 Xilinx, Inc. All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
 *
 ******************************************************************************/
 /*****************************************************************************/
@@ -51,7 +42,8 @@
 *
 * Ver   Who      Date     Changes
 * ----- -------- -------- -----------------------------------------------
-* 1.00a ecm/sdm  10/28/09 First release
+* 5.00 	pkp		 05/21/14 First release
+* 6.0   mus      07/27/16 Consolidated file for a53,a9 and r5 processors
 * </pre>
 *
 ******************************************************************************/
@@ -60,6 +52,8 @@
 #define XPSEUDO_ASM_GCC_H  /* by using protection macros */
 
 /***************************** Include Files ********************************/
+
+#include "xil_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,8 +69,61 @@ extern "C" {
 #define stringify(s)	tostring(s)
 #define tostring(s)	#s
 
+#if defined (__aarch64__)
 /* pseudo assembler instructions */
-#define mfcpsr()	({unsigned int rval; \
+#define mfcpsr()	({u32 rval; \
+			   asm volatile("mrs %0,  DAIF" : "=r" (rval));\
+			  rval;\
+			 })
+
+#define mtcpsr(v) __asm__ __volatile__ ("msr DAIF, %0" : : "r" (v))
+
+#define cpsiei()	//__asm__ __volatile__("cpsie	i\n")
+#define cpsidi()	//__asm__ __volatile__("cpsid	i\n")
+
+#define cpsief()	//__asm__ __volatile__("cpsie	f\n")
+#define cpsidf()	//__asm__ __volatile__("cpsid	f\n")
+
+
+
+#define mtgpr(rn, v)	/*__asm__ __volatile__(\
+			  "mov r" stringify(rn) ", %0 \n"\
+			  : : "r" (v)\
+			)*/
+
+#define mfgpr(rn)	/*({u32 rval; \
+			  __asm__ __volatile__(\
+			    "mov %0,r" stringify(rn) "\n"\
+			    : "=r" (rval)\
+			  );\
+			  rval;\
+			 })*/
+
+/* memory synchronization operations */
+
+/* Instruction Synchronization Barrier */
+#define isb() __asm__ __volatile__ ("isb sy")
+
+/* Data Synchronization Barrier */
+#define dsb() __asm__ __volatile__("dsb sy")
+
+/* Data Memory Barrier */
+#define dmb() __asm__ __volatile__("dmb sy")
+
+
+/* Memory Operations */
+#define ldr(adr)	({u64 rval; \
+			  __asm__ __volatile__(\
+			    "ldr	%0,[%1]"\
+			    : "=r" (rval) : "r" (adr)\
+			  );\
+			  rval;\
+			 })
+
+#else
+
+/* pseudo assembler instructions */
+#define mfcpsr()	({u32 rval; \
 			  __asm__ __volatile__(\
 			    "mrs	%0, cpsr\n"\
 			    : "=r" (rval)\
@@ -102,7 +149,7 @@ extern "C" {
 			  : : "r" (v)\
 			)
 
-#define mfgpr(rn)	({unsigned int rval; \
+#define mfgpr(rn)	({u32 rval; \
 			  __asm__ __volatile__(\
 			    "mov %0,r" stringify(rn) "\n"\
 			    : "=r" (rval)\
@@ -123,7 +170,7 @@ extern "C" {
 
 
 /* Memory Operations */
-#define ldr(adr)	({unsigned long rval; \
+#define ldr(adr)	({u32 rval; \
 			  __asm__ __volatile__(\
 			    "ldr	%0,[%1]"\
 			    : "=r" (rval) : "r" (adr)\
@@ -131,7 +178,9 @@ extern "C" {
 			  rval;\
 			 })
 
-#define ldrb(adr)	({unsigned char rval; \
+#endif
+
+#define ldrb(adr)	({u8 rval; \
 			  __asm__ __volatile__(\
 			    "ldrb	%0,[%1]"\
 			    : "=r" (rval) : "r" (adr)\
@@ -150,7 +199,7 @@ extern "C" {
 			)
 
 /* Count leading zeroes (clz) */
-#define clz(arg)	({unsigned char rval; \
+#define clz(arg)	({u8 rval; \
 			  __asm__ __volatile__(\
 			    "clz	%0,%1"\
 			    : "=r" (rval) : "r" (arg)\
@@ -158,19 +207,36 @@ extern "C" {
 			  rval;\
 			 })
 
+#if defined (__aarch64__)
+#define mtcpdc(reg,val)	__asm__ __volatile__("dc " #reg ",%0"  : : "r" (val))
+#define mtcpic(reg,val)	__asm__ __volatile__("ic " #reg ",%0"  : : "r" (val))
+
+#define mtcpicall(reg)	__asm__ __volatile__("ic " #reg)
+#define mtcptlbi(reg)	__asm__ __volatile__("tlbi " #reg)
+#define mtcpat(reg,val)	__asm__ __volatile__("at " #reg ",%0"  : : "r" (val))
+/* CP15 operations */
+#define mfcp(reg)	({u64 rval;\
+			__asm__ __volatile__("mrs	%0, " #reg : "=r" (rval));\
+			rval;\
+			})
+
+#define mtcp(reg,val)	__asm__ __volatile__("msr " #reg ",%0"  : : "r" (val))
+
+#else
 /* CP15 operations */
 #define mtcp(rn, v)	__asm__ __volatile__(\
 			 "mcr " rn "\n"\
 			 : : "r" (v)\
 			);
 
-#define mfcp(rn)	({unsigned int rval; \
+#define mfcp(rn)	({u32 rval; \
 			 __asm__ __volatile__(\
 			   "mrc " rn "\n"\
 			   : "=r" (rval)\
 			 );\
 			 rval;\
 			 })
+#endif
 
 /************************** Variable Definitions ****************************/
 

@@ -737,13 +737,17 @@ void Copter::start_logging()
 
 void Copter::log_init(void)
 {
+    Print_Err(">>>>>>>>>>>>>......log init\n");
     DataFlash.Init(log_structure, ARRAY_SIZE(log_structure));
     if (!DataFlash.CardInserted()) {
+        Print_Warn("No dataflash card inserted\n");
         gcs_send_text(MAV_SEVERITY_WARNING, "No dataflash card inserted");
         g.log_bitmask.set(0);
     } else if (DataFlash.NeedPrep()) {
         gcs_send_text(MAV_SEVERITY_INFO, "Preparing log system");
+        Print_Info("Preparing log system\n");
         DataFlash.Prep();
+        Print_Info("Prepared log system\n");
         gcs_send_text(MAV_SEVERITY_INFO, "Prepared log system");
         for (uint8_t i=0; i<num_gcs; i++) {
             gcs[i].reset_cli_timeout();

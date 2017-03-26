@@ -20,6 +20,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 
 #include <drv_pwm_input.h>
@@ -47,7 +49,7 @@ AP_RPM_PX4_PWM::AP_RPM_PX4_PWM(AP_RPM &_ap_rpm, uint8_t instance, AP_RPM::RPM_St
     }
 
     // keep a queue of 5 samples to reduce noise by averaging
-    if (ioctl(_fd, SENSORIOCSQUEUEDEPTH, (void*)5) != 0) {
+    if (ioctl(_fd, SENSORIOCSQUEUEDEPTH, 5) != 0) {
         hal.console->printf("Failed to setup RPM queue\n");
         close(_fd);
         _fd = -1;

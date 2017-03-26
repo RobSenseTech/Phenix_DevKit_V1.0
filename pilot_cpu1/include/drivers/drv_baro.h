@@ -54,7 +54,7 @@
  */
 
 #define _BAROIOCBASE		(0x2200)
-#define _BARO_IOC(type,nr)   _IO(type,nr)
+#define _BARO_IOC(type,nr)   _IOC(type,nr)
 #define _BAROIOC(_n)		(_BARO_IOC(_BAROIOCBASE, _n))
 
 /** set corrected MSL pressure in pascals */

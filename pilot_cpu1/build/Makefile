@@ -8,7 +8,7 @@
 -include $(COPTER_ROOT_PATH)/Makefile
 
 SRCS += ../src/main.c
-SRCS += ../src/sensor.c
+SRCS += ../src/pilot_init.c
 
 OBJS += $(SRCS:%.c=%.o)
 OBJS_ALL += $(OBJS) $(OBJS_S) $(OBJS_DRV) $(OBJS_RTOS) $(OBJS_TEST) $(OBJS_MODULES) $(OBJS_LIBRARIES) $(OBJS_COPTER) 
@@ -22,7 +22,7 @@ all: $(Output)$(PRJ_NAME)
 $(Output)$(PRJ_NAME):$(OBJS_ALL)
 	@echo 'Building target: $@'
 	@echo 'Invoking:$(CXX)'
-	$(CXX) -Wl,-T -Wl,$(LSCRIPT) $(LIBPATH) -o $@ $^ $(LIBS)
+	$(CXX) -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard -Wl,-build-id=none -specs=Xilinx.spec -Wl,-T -Wl,$(LSCRIPT) $(LIBPATH) -o $@ $^ $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -65,7 +65,7 @@ struct mag_scale {
  */
 
 #define _MAGIOCBASE		(0x2400)
-#define _MAG_IOC(type,nr)   _IO(type,nr)
+#define _MAG_IOC(type,nr)   _IOC(type,nr)
 #define _MAGIOC(_n)		(_MAG_IOC(_MAGIOCBASE, _n))
 
 /** set the mag internal sample rate to at least (arg) Hz */

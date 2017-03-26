@@ -108,10 +108,6 @@
 
 /*Custom includes*/
 #include "FreeRTOS_Print.h"
-#include "drv_accel.h"
-#include "drv_gyro.h"
-#include "driver.h"
-#include "driver.h"
 
 /* mainSELECTED_APPLICATION is used to select between three demo applications,
  * as described at the top of this file.
@@ -152,94 +148,11 @@ void vApplicationTickHook( void );
 stats.  This frequency means it will overflow quite quickly. */
 XScuWdt xWatchDogInstance;
 /*-----------------------------------------------------------*/
-int CpuPeripheralInit()
-{
-    int i;
-	int iRet = -1;
-
-	//arm核串口初始化
-	iRet = UartPsInit(0);
-	if(iRet != 0)
-	{
-		Print_Err("Uart init failed:%d !!\n", iRet);
-	}
-
-	//arm核i2c初始化
-    iRet = Iic_Init(0, 400000);
-	if(iRet != 0)
-	{
-		Print_Err("IIC0 init failed:%d !!\n", iRet);
-	}
-
-    iRet = Iic_Init(1, 400000);
-	if(iRet != 0)
-	{
-		Print_Err("IIC1 init failed:%d !!\n", iRet);
-	}
-
-	//arm核gpio初始化
-	iRet = GpioPsInit();
-	if(iRet != 0)
-	{
-		Print_Err("Gpio init failed:%d !!\n", iRet);
-	}
-
-	//arm核spi初始化
-	 for(i=0; i<XPAR_XSPIPS_NUM_INSTANCES; i++)
-	 {
-	   iRet = SpiPsInit(i, 0x0);
-	   if(iRet != 0)
-	   {
-	      Print_Err("Spi_bus %d init failed:%d !!\n", i,iRet);
-	   }
-	 }
-
-	//fpga串口初始化
-    for(i = 0; i < XPAR_XUARTLITE_NUM_INSTANCES; i++)
-    {
-    	iRet = UartLiteInit(i);
-        if(iRet != 0)
-        {
-            Print_Err("UartLite init failed:%d !!\n", iRet);
-        }
-    }
-
-	//高精度定时器初始化
-	hrt_init();
-	return 0;
-}
-
-int checkCPU( )
-{
-   union w
-   { 
-       int a;
-       char b;
-   } c;
-   c.a = 1;
-   return(c.b ==1);
-}
+void system_bringup();
 
 int main( void )
 {
-	/*中断控制器初始化*/
-	GicInit();
-
-	Print_Info("freeRTOS start: is little endian:%d\n", checkCPU());
-
-	DriverManagerInit();
-
-	CpuPeripheralInit();
-
-    uorb_main();
-	
-    storage_init();
-	//Detect Sensors
-    vStartSenSors();
-//    ImuTest();
-//    SpiTest();
-//    UartTest();
-    //SbusTest();
+    pilot_bringup();
 
 	vTaskStartScheduler();
 
@@ -300,8 +213,8 @@ volatile size_t xFreeHeapSpace;
 
 void vAssertCalled( const char * pcFile, unsigned long ulLine )
 {
-    Print_Err("assert called from:%s %d\n", pcFile, ulLine);
-volatile unsigned long ul = 0;
+    Print_Err("assert called from:%s %d\n", pcFile, (int)ulLine);
+    volatile unsigned long ul = 0;
 
 	( void ) pcFile;
 	( void ) ulLine;

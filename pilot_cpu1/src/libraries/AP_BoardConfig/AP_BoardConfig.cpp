@@ -24,10 +24,11 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-
-
+#include <fcntl.h>
+#include <unistd.h>
 #include <drivers/drv_pwm_output.h>
 #include <drivers/drv_sbus.h>
+
 
 #ifdef CONFIG_ARCH_BOARD_PX4FMU_V1
 #define BOARD_PWM_COUNT_DEFAULT 2
@@ -96,8 +97,7 @@ void AP_BoardConfig::init()
     if (fd == -1) {
         AP_HAL::panic("Unable to open /dev/px4fmu");
     }
-	
-    if (ioctl(fd, PWM_SERVO_SET_COUNT, (void*)_pwm_count.get()) != 0) {
+    if (ioctl(fd, PWM_SERVO_SET_COUNT, _pwm_count.get()) != 0) {
         hal.console->printf("RCOutput: Unable to setup alt PWM to %u channels\n", _pwm_count.get());  
     }   
     close(fd);
@@ -135,10 +135,10 @@ void AP_BoardConfig::init()
                 }
             }
             for (uint8_t tries=0; tries<10; tries++) {
-                if (ioctl(fd, SBUS_SET_PROTO_VERSION, (void*)1) != 0) {
+                if (ioctl(fd, SBUS_SET_PROTO_VERSION, 1) != 0) {
                     continue;
                 }
-                if (ioctl(fd, PWM_SERVO_SET_SBUS_RATE, (void*)rate) != 0) {
+                if (ioctl(fd, PWM_SERVO_SET_SBUS_RATE, rate) != 0) {
                     continue;
                 }
                 break;

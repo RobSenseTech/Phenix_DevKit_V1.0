@@ -1,6 +1,5 @@
 #include "device/cdev.h"
 #include "xil_cache.h"
-#include "driver.h"
 #include "ringbuffer.h"
 #include "drv_accel.h"
 #include <uORB/uORB.h>
@@ -13,6 +12,19 @@
 #include "Filter/LowPassFilter2p.h"
 #include "Phx_define.h"
 #include "timers.h"
+#include "driver.h"
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <errno.h>
+#include <stdio.h>
 
 #define IIS328DQ_DEVICE_PATH "/dev/iis328dq"
 #define IIS328DQ_EXT_DEVICE_PATH "/dev/iis328dq_ext"
@@ -115,8 +127,8 @@ public:
 
 	virtual int		init();
 
-	virtual size_t		read(struct xHANDLE *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(struct xHANDLE *filp, int cmd, void *prArg);
+	virtual ssize_t		read(struct file *filp, char *buffer, size_t buflen);
+	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
@@ -440,8 +452,8 @@ IIS328DQ::probe()
 	return -EIO;
 }
 
-size_t
-IIS328DQ::read(struct xHANDLE *filp, char *buffer, size_t buflen)
+ssize_t
+IIS328DQ::read(struct file *filp, char *buffer, size_t buflen)
 {
 	unsigned count = buflen / sizeof(struct accel_report);
 	struct accel_report *abuf = reinterpret_cast<struct accel_report *>(buffer);//指针类型强转
@@ -483,10 +495,8 @@ IIS328DQ::read(struct xHANDLE *filp, char *buffer, size_t buflen)
 }
 
 int
-IIS328DQ::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
+IIS328DQ::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
-	
-	unsigned long arg = (unsigned long)prArg;
 	switch (cmd) {
 
 	case SENSORIOCSPOLLRATE: {
@@ -508,7 +518,7 @@ IIS328DQ::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
 				/* set default/max polling rate */
 			case SENSOR_POLLRATE_MAX:
 			case SENSOR_POLLRATE_DEFAULT:
-				return ioctl(filp, SENSORIOCSPOLLRATE, (void*)IIS328DQ_DEFAULT_RATE);
+				return ioctl(filp, SENSORIOCSPOLLRATE, IIS328DQ_DEFAULT_RATE);
 
 				/* adjust to a legal polling interval in Hz */
 			default: {
@@ -580,7 +590,7 @@ IIS328DQ::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
 
 	case ACCELIOCSLOWPASS: {
 		// set the software lowpass cut-off in Hz
-		float cutoff_freq_hz = (float)arg;
+		float cutoff_freq_hz = arg;
 		float sample_rate = 1.0e6f / _call_interval;
 		set_driver_lowpass_filter(sample_rate, cutoff_freq_hz);
 
@@ -619,7 +629,7 @@ IIS328DQ::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
 
 	default:
 		/* give it to the superclass */
-		return CDev::ioctl(filp, cmd, prArg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
 
@@ -1102,7 +1112,8 @@ start(bool external_bus, enum Rotation rotation)
 
 	if (fd == -1)
 		goto fail;
-	if (ioctl(fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0)
+
+	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0)
 		goto fail;
 
     close(fd);
@@ -1136,7 +1147,7 @@ test(int external_bus)
 		/* get the driver */
 		fd_accel = open(IIS328DQ_EXT_DEVICE_PATH, O_RDONLY);
 
-		if (fd_accel == -1) {
+		if (fd_accel < 0) {
 			err(1, "%s open failed\n", IIS328DQ_EXT_DEVICE_PATH);
 			return;
 		}
@@ -1146,7 +1157,7 @@ test(int external_bus)
 		/* get the driver */
 		fd_accel = open(IIS328DQ_DEVICE_PATH, O_RDONLY);
 
-		if (fd_accel == -1) {
+		if (fd_accel < 0) {
 			err(1, "%s open failed\n", IIS328DQ_DEVICE_PATH);
 			return;
 		}
@@ -1191,16 +1202,16 @@ reset(int external_bus)
 	else
 		fd = open(IIS328DQ_DEVICE_PATH, O_RDONLY);
 	
-	if (fd == -1) {
+	if (fd < 0){
 		err(1, "failed ");
 		return;
 	}
 
-	if (ioctl(fd, SENSORIOCRESET, 0) < 0) {
+	if (ioctl(fd, SENSORIOCRESET, 0) < 0){
 		err(1, "driver reset failed");
 		return;
 	}
-	if (ioctl(fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0) {
+	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
 		err(1, "accel pollrate reset failed");
 		return;
 	}

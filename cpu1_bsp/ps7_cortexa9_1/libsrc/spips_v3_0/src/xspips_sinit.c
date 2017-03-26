@@ -33,6 +33,8 @@
 /**
 *
 * @file xspips_sinit.c
+* @addtogroup spips_v3_0
+* @{
 *
 * The implementation of the XSpiPs driver's static initialization
 * functionality.
@@ -95,3 +97,4 @@ XSpiPs_Config *XSpiPs_LookupConfig(u16 DeviceId)
 	}
 	return (XSpiPs_Config *)CfgPtr;
 }
+/** @} */

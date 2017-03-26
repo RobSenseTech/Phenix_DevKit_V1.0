@@ -1,47 +1,41 @@
-/*****************************************************************************
+/******************************************************************************
 *
-* (c) Copyright 2009-2013 Xilinx, Inc. All rights reserved.
+* Copyright (C) 2009 - 2016 Xilinx, Inc.  All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal 
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
 *
-*****************************************************************************/
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
+*
+******************************************************************************/
 /****************************************************************************/
 /**
 *
 * @file xdmaps.h
+* @addtogroup dmaps_v2_1
+* @{
+* @details
 *
 *
 * <pre>
@@ -80,6 +74,9 @@
 *			   the IARCC compiler around PDBG, it is better to remove it.
 *			   Users can always use xil_printfs if they want to debug.
 * 2.0   adk    10/12/13  Updated as per the New Tcl API's
+* 2.01  kpc    08/23/14  Fixed the IAR compiler reported errors
+* 2.2   mus    08/12/16  Declared all inline functions in xdmaps.c as extern, to avoid
+*                        linker error for IAR compiler
 * </pre>
 *
 *****************************************************************************/
@@ -287,6 +284,29 @@ int XDmaPs_SetFaultHandler(XDmaPs *InstPtr,
 void XDmaPs_Print_DmaProg(XDmaPs_Cmd *Cmd);
 
 /**
+ * To avoid linking error,Declare all inline functions as extern for
+ * IAR compiler
+ */
+#ifdef __ICCARM__
+extern INLINE int XDmaPs_Instr_DMAEND(char *DmaProg);
+extern INLINE void XDmaPs_Memcpy4(char *Dst, char *Src);
+extern INLINE int XDmaPs_Instr_DMAGO(char *DmaProg, unsigned int Cn,
+			       u32 Imm, unsigned int Ns);
+extern INLINE int XDmaPs_Instr_DMALD(char *DmaProg);
+extern INLINE int XDmaPs_Instr_DMALP(char *DmaProg, unsigned Lc,
+	       unsigned LoopIterations);
+extern INLINE int XDmaPs_Instr_DMALPEND(char *DmaProg, char *BodyStart, unsigned Lc);
+extern INLINE int XDmaPs_Instr_DMAMOV(char *DmaProg, unsigned Rd, u32 Imm);
+extern INLINE int XDmaPs_Instr_DMANOP(char *DmaProg);
+extern INLINE int XDmaPs_Instr_DMARMB(char *DmaProg);
+extern INLINE int XDmaPs_Instr_DMASEV(char *DmaProg, unsigned int EventNumber);
+extern INLINE int XDmaPs_Instr_DMAST(char *DmaProg);
+extern INLINE int XDmaPs_Instr_DMAWMB(char *DmaProg);
+extern INLINE unsigned XDmaPs_ToEndianSwapSizeBits(unsigned int EndianSwapSize);
+extern INLINE unsigned XDmaPs_ToBurstSizeBits(unsigned BurstSize);
+#endif
+
+/**
  * Driver done interrupt service routines for the channels.
  * We need this done ISR mainly because the driver needs to release the
  * DMA program buffer. This is the one that connects the GIC
@@ -323,3 +343,4 @@ int XDmaPs_SelfTest(XDmaPs *InstPtr);
 #endif
 
 #endif /* end of protection macro */
+/** @} */

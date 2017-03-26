@@ -26,6 +26,8 @@
 #include <uORB/topics/differential_pressure.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 
 
@@ -37,8 +39,8 @@ bool AP_Airspeed_PX4::init()
     if (_fd == -1) {
         return false;
     }
-    if (OK != ioctl(_fd, SENSORIOCSPOLLRATE, (void*)100) ||
-        OK != ioctl(_fd, SENSORIOCSQUEUEDEPTH, (void*)15)) {
+    if (OK != ioctl(_fd, SENSORIOCSPOLLRATE, 100) ||
+        OK != ioctl(_fd, SENSORIOCSQUEUEDEPTH, 15)) {
         hal.console->println("Failed to setup airspeed driver rate and queue");
     }
     return true;

@@ -37,7 +37,6 @@
  * Driver/configurator for the PX4 FMU multi-purpose port on v1 and v2 boards.
  */
 #include "device/cdev.h"
-#include "driver.h"
 #include "FreeRTOS_Print.h"
 #include "math.h"
 #include "driver_define.h"
@@ -47,7 +46,17 @@
 #include "sleep.h"
 #include <assert.h>
 #include "stdio.h"
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <errno.h>
+#include <unistd.h>
 
+#include "driver.h"
 #include "drv_mixer.h"
 #include "drv_rc_input.h"
 #include "drv_gpio.h"
@@ -95,8 +104,8 @@ public:
 	PX4FMU();
 	virtual ~PX4FMU();
 
-	virtual int		ioctl(struct xHANDLE *filp, int cmd, void *prArg);
-	virtual size_t	write(struct xHANDLE *filp, const char *buffer, size_t len);
+	virtual int	ioctl(file *filp, int cmd, unsigned long arg);
+	virtual ssize_t	write(file *filp, const char *buffer, size_t len);
 
 	virtual int	init();
 
@@ -165,7 +174,7 @@ private:
 					 float &input);
 	void		subscribe();
 	int		set_pwm_rate(unsigned rate_map, unsigned default_rate, unsigned alt_rate);
-	int		pwm_ioctl(struct xHANDLE *filp, int cmd, void *prArg);
+	int		pwm_ioctl(file *filp, int cmd, unsigned long arg);
 	void		update_pwm_rev_mask();
 	void	publish_pwm_outputs(uint16_t *values, size_t numvalues);
 
@@ -181,7 +190,7 @@ private:
 	void		gpio_set_function(uint32_t gpios, int function);
 	void		gpio_write(uint32_t gpios, int function);
 	uint32_t	gpio_read(void);
-	int		gpio_ioctl(struct xHANDLE *filp, int cmd, void *prArg);
+	int		gpio_ioctl(file *filp, int cmd, unsigned long arg);
 
 	/* do not allow to copy due to ptr data members */
 	PX4FMU(const PX4FMU &);
@@ -872,11 +881,12 @@ PX4FMU::control_callback(uintptr_t handle,
 }
 
 int
-PX4FMU::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
+PX4FMU::ioctl(file *filp, int cmd, unsigned long arg)
 {
 	int ret;
+
 	/* try it as a GPIO ioctl first */
-	ret = gpio_ioctl(filp, cmd, prArg);
+	ret = gpio_ioctl(filp, cmd, arg);
 
 	if (ret == -ENOTTY) {
 		return ret;
@@ -889,7 +899,7 @@ PX4FMU::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
 	case MODE_6PWM:
 	case MODE_8PWM:
 
-		ret = pwm_ioctl(filp, cmd, prArg);
+		ret = pwm_ioctl(filp, cmd, arg);
 		break;
 
 	default:
@@ -899,14 +909,14 @@ PX4FMU::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
 
 	/* if nobody wants it, let CDev have it */
 	if (ret == -ENOTTY) {
-		ret = CDev::ioctl(filp, cmd, prArg);
+		ret = CDev::ioctl(filp, cmd, arg);
 	}
 
 	return ret;
 }
 
 int
-PX4FMU::pwm_ioctl(struct xHANDLE *filp, int cmd, void *arg)
+PX4FMU::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 {
 	int ret = OK;
 
@@ -932,25 +942,25 @@ PX4FMU::pwm_ioctl(struct xHANDLE *filp, int cmd, void *arg)
 		break;
 
 	case PWM_SERVO_GET_DEFAULT_UPDATE_RATE:
-		*((uint32_t *)arg) = _pwm_default_rate;
+		*(uint32_t *)arg = _pwm_default_rate;
 		break;
 
 	case PWM_SERVO_SET_UPDATE_RATE:
-		printf("all pwm update rate: _pwm_default_rate=%d _pwm_alt_rate=%lu\n", _pwm_default_rate, *(uint32_t*)arg);
-		ret = set_pwm_rate(_pwm_alt_rate_channels, _pwm_default_rate, *(uint32_t*)arg);
+		printf("all pwm update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", _pwm_default_rate, arg);
+		ret = set_pwm_rate(_pwm_alt_rate_channels, _pwm_default_rate, arg);
 		break;
 
 	case PWM_SERVO_GET_UPDATE_RATE:
-		*((uint32_t *)arg) = _pwm_alt_rate;
+		*(uint32_t *)arg = _pwm_alt_rate;
 		break;
 
 	case PWM_SERVO_SET_SELECT_UPDATE_RATE:
-		printf("pwm %lu update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", *(uint32_t*)arg, _pwm_default_rate, _pwm_alt_rate);
-		ret = set_pwm_rate(*(uint32_t*)arg, _pwm_default_rate, _pwm_alt_rate);
+		printf("pwm %d update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", arg, _pwm_default_rate, _pwm_alt_rate);
+		ret = set_pwm_rate(arg, _pwm_default_rate, _pwm_alt_rate);
 		break;
 
 	case PWM_SERVO_GET_SELECT_UPDATE_RATE:
-		*((uint32_t *)arg) = _pwm_alt_rate_channels;
+		*(uint32_t *)arg = _pwm_alt_rate_channels;
 		break;
 
 	case PWM_SERVO_SET_FAILSAFE_PWM: {
@@ -1085,7 +1095,7 @@ PX4FMU::pwm_ioctl(struct xHANDLE *filp, int cmd, void *arg)
 			}
 
 			pwm->channel_count = _max_actuators;
-			arg = (void *)((unsigned long)&pwm);
+			arg = (unsigned long)&pwm;
 			break;
 		}
 
@@ -1123,7 +1133,7 @@ PX4FMU::pwm_ioctl(struct xHANDLE *filp, int cmd, void *arg)
 			}
 
 			pwm->channel_count = _max_actuators;
-			arg = (void *)((unsigned long)&pwm);
+			arg = (unsigned long)&pwm;
 			break;
 		}
 
@@ -1152,8 +1162,8 @@ PX4FMU::pwm_ioctl(struct xHANDLE *filp, int cmd, void *arg)
 	/* FALLTHROUGH */
 	case PWM_SERVO_SET(1):
 	case PWM_SERVO_SET(0):
-		if (((uint32_t)arg) <= 2100) {
-			up_pwm_servo_set(cmd - PWM_SERVO_SET(0), (uint32_t)arg);
+		if (arg <= 2100) {
+			up_pwm_servo_set(cmd - PWM_SERVO_SET(0), arg);
 
 		} else {
 			ret = -EINVAL;
@@ -1186,7 +1196,7 @@ PX4FMU::pwm_ioctl(struct xHANDLE *filp, int cmd, void *arg)
 	/* FALLTHROUGH */
 	case PWM_SERVO_GET(1):
 	case PWM_SERVO_GET(0):
-		*((servo_position_t*)arg) = up_pwm_servo_get(cmd - PWM_SERVO_GET(0));
+		*(servo_position_t *)arg = up_pwm_servo_get(cmd - PWM_SERVO_GET(0));
 		break;
 
 	case PWM_SERVO_GET_RATEGROUP(0):
@@ -1197,26 +1207,26 @@ PX4FMU::pwm_ioctl(struct xHANDLE *filp, int cmd, void *arg)
 	case PWM_SERVO_GET_RATEGROUP(5):
 	case PWM_SERVO_GET_RATEGROUP(6):
 	case PWM_SERVO_GET_RATEGROUP(7):
-		*((uint32_t *)arg) = up_pwm_servo_get_rate_group(cmd - PWM_SERVO_GET_RATEGROUP(0));
+		*(uint32_t *)arg = up_pwm_servo_get_rate_group(cmd - PWM_SERVO_GET_RATEGROUP(0));
 		break;
 
 	case PWM_SERVO_GET_COUNT:
 	case MIXERIOCGETOUTPUTCOUNT:
 		switch (_mode) {
 		case MODE_8PWM:
-			*((unsigned*)arg) = 8;
+			*(unsigned *)arg = 8;
 			break;
 
 		case MODE_6PWM:
-			*((unsigned*)arg) = 6;
+			*(unsigned *)arg = 6;
 			break;
 
 		case MODE_4PWM:
-			*((unsigned*)arg) = 4;
+			*(unsigned *)arg = 4;
 			break;
 
 		case MODE_2PWM:
-			*((unsigned*)arg) = 2;
+			*(unsigned *)arg = 2;
 			break;
 
 		default:
@@ -1234,7 +1244,7 @@ PX4FMU::pwm_ioctl(struct xHANDLE *filp, int cmd, void *arg)
 			 * changing a set of pins to be used for serial on
 			 * FMUv1
 			 */
-			switch ((uint32_t)arg) {
+			switch (arg) {
 			case 0:
 				set_mode(MODE_NONE);
 				break;
@@ -1341,8 +1351,8 @@ PX4FMU::pwm_ioctl(struct xHANDLE *filp, int cmd, void *arg)
   this implements PWM output via a write() method, for compatibility
   with px4io
  */
-size_t
-PX4FMU::write(struct xHANDLE *filp, const char *buffer, size_t len)
+ssize_t
+PX4FMU::write(file *filp, const char *buffer, size_t len)
 {
 	unsigned count = len / 2;
 	uint16_t values[6];
@@ -1402,7 +1412,7 @@ PX4FMU::gpio_read(void)
 }
 
 int
-PX4FMU::gpio_ioctl(struct xHANDLE *filp, int cmd, void *prArg)
+PX4FMU::gpio_ioctl(struct file *filp, int cmd, unsigned long arg)
 {
 	int	ret = OK;
 	return ret;
@@ -1560,8 +1570,8 @@ test(void)
 		return;
 	}
 
-	if (ioctl(fd, PWM_SERVO_ARM, NULL) < 0) { err(1, "servo arm failed\n"); return; }
-	if (ioctl(fd, PWM_SERVO_GET_COUNT, (void *)(&servo_count)) != 0) {
+	if (ioctl(fd, PWM_SERVO_ARM, 0) < 0) { err(1, "servo arm failed\n"); return; }
+	if (ioctl(fd, PWM_SERVO_GET_COUNT, (unsigned long)&servo_count) != 0) {
 		err(1, "Unable to get servo count\n");
 		return;
 	}
@@ -1579,7 +1589,7 @@ test(void)
 		if (direction == 1) {
 			// use ioctl interface for one direction
 			for (unsigned i = 0; i < servo_count;	i++) {
-				if (ioctl(fd, PWM_SERVO_SET(i), (void*)servos[i]) < 0) {
+				if (ioctl(fd, PWM_SERVO_SET(i), servos[i]) < 0) {
 					err(1, "servo %u set failed\n", i);
 					return;
 				}
@@ -1587,7 +1597,7 @@ test(void)
 
 		} else {
 			// and use write interface for the other direction
-			ret = write(fd, (char *)servos, sizeof(servos));
+			ret = write(fd, servos, sizeof(servos));
 
 			if (ret != (int)sizeof(servos)) {
 				err(1, "error writing PWM servo data, wrote %u got %d\n", sizeof(servos), ret);
@@ -1615,7 +1625,8 @@ test(void)
 		/* readback servo values */
 		for (unsigned i = 0; i < servo_count; i++) {
 			servo_position_t value;
-			if (ioctl(fd, PWM_SERVO_GET(i), (void*)&value)) {
+
+			if (ioctl(fd, PWM_SERVO_GET(i), (unsigned long)&value)) {
 				err(1, "error reading PWM servo %d\n", i);
 				return;
 			}

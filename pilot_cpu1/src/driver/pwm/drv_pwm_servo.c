@@ -45,6 +45,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include <drv_pwm_output.h>
 #include "drv_pwm_servo.h"
 #include "driver_define.h"

@@ -20,7 +20,7 @@ void PX4RCOutput::init()
     if (_pwm_fd == -1) {
         AP_HAL::panic("Unable to open " PWM_OUTPUT0_DEVICE_PATH);
     }
-    if (ioctl(_pwm_fd, PWM_SERVO_ARM, (void*)0) != 0) {
+    if (ioctl(_pwm_fd, PWM_SERVO_ARM, 0) != 0) {
         //hal.console->printf("RCOutput: Unable to setup IO arming\n");
         Print_Err("RCOutput: Unable to setup IO arming\n");
     }
@@ -28,7 +28,7 @@ void PX4RCOutput::init()
     {
     	Print_Info("PX4RCOutput::init PWM_SERVO_ARM ok\n");
     }
-    if (ioctl(_pwm_fd, PWM_SERVO_SET_ARM_OK, (void*)0) !=   0) {
+    if (ioctl(_pwm_fd, PWM_SERVO_SET_ARM_OK, 0) !=   0) {
         //hal.console->printf("RCOutput: Unable to setup IO arming OK\n");
     	Print_Err("RCOutput: Unable to setup IO arming OK\n");
     }
@@ -37,7 +37,7 @@ void PX4RCOutput::init()
     _servo_count = 0;
     _alt_servo_count = 0;
 
-    if (ioctl(_pwm_fd, PWM_SERVO_GET_COUNT, (void*)&_servo_count) != 0) {
+    if (ioctl(_pwm_fd, PWM_SERVO_GET_COUNT, (unsigned long)&_servo_count) != 0) {
         //hal.console->printf("RCOutput: Unable to get servo count\n");
     	Print_Err("RCOutput: Unable to get servo count\n");
         return;
@@ -75,17 +75,17 @@ void PX4RCOutput::_init_alt_channels(void)
     if (_alt_fd == -1) {
         return;
     }
-    if (ioctl(_alt_fd, PWM_SERVO_ARM, (void*)0) != 0) {
+    if (ioctl(_alt_fd, PWM_SERVO_ARM, 0) != 0) {
         //hal.console->printf("RCOutput: Unable to setup alt IO arming\n");
         Print_Err("RCOutput: Unable to setup alt IO arming\n");
         return;
     }
-    if (ioctl(_alt_fd, PWM_SERVO_SET_ARM_OK, (void*)0) != 0) {
+    if (ioctl(_alt_fd, PWM_SERVO_SET_ARM_OK, 0) != 0) {
         //hal.console->printf("RCOutput: Unable to setup alt IO arming OK\n");
         Print_Err("RCOutput: Unable to setup alt IO arming OK\n");
         return;
     }
-    if (ioctl(_alt_fd, PWM_SERVO_GET_COUNT, (void*)&_alt_servo_count) != 0) {
+    if (ioctl(_alt_fd, PWM_SERVO_GET_COUNT, (unsigned long)&_alt_servo_count) != 0) {
         //hal.console->printf("RCOutput: Unable to get servo count\n");
         Print_Err("RCOutput: Unable to get servo count\n");
     }
@@ -99,7 +99,7 @@ void PX4RCOutput::set_freq_fd(int fd, uint32_t chmask, uint16_t freq_hz)
     // we can't set this per channel
     if (freq_hz > 50) {
         // we're being asked to set the alt rate
-        if (ioctl(fd, PWM_SERVO_SET_UPDATE_RATE, (void*)&freq_hz) != 0) {
+        if (ioctl(fd, PWM_SERVO_SET_UPDATE_RATE, (unsigned long)freq_hz) != 0) {
             //hal.console->printf("RCOutput: Unable to set alt rate to %uHz\n", (unsigned)freq_hz);
             Print_Err("RCOutput: Unable to set alt rate to %uHz\n", (unsigned)freq_hz);
             return;
@@ -143,7 +143,7 @@ void PX4RCOutput::set_freq_fd(int fd, uint32_t chmask, uint16_t freq_hz)
         }
     }
 
-    if (ioctl(fd, PWM_SERVO_SET_SELECT_UPDATE_RATE, (void*)&_rate_mask) != 0) {
+    if (ioctl(fd, PWM_SERVO_SET_SELECT_UPDATE_RATE, _rate_mask) != 0) {
         //hal.console->printf("RCOutput: Unable to set alt rate mask to 0x%x\n", (unsigned)_rate_mask);
         Print_Err("RCOutput: Unable to set alt rate mask to 0x%x\n", (unsigned)_rate_mask);
     }
@@ -217,7 +217,7 @@ void PX4RCOutput::set_safety_pwm(uint32_t chmask, uint16_t period_us)
         }
         pwm_values.channel_count++;
     }
-    int ret = ioctl(_pwm_fd, PWM_SERVO_SET_DISARMED_PWM, (void*)&pwm_values);
+    int ret = ioctl(_pwm_fd, PWM_SERVO_SET_DISARMED_PWM, (unsigned long)&pwm_values);
     if (ret != OK) {
         //hal.console->printf("Failed to setup disarmed PWM for 0x%08x to %u\n", (unsigned)chmask, period_us);
     	Print_Err("Failed to setup disarmed PWM for 0x%08x to %u\n", (unsigned)chmask, period_us);
@@ -234,7 +234,7 @@ void PX4RCOutput::set_failsafe_pwm(uint32_t chmask, uint16_t period_us)
         }
         pwm_values.channel_count++;
     }
-    int ret = ioctl(_pwm_fd, PWM_SERVO_SET_FAILSAFE_PWM, (void*)&pwm_values);
+    int ret = ioctl(_pwm_fd, PWM_SERVO_SET_FAILSAFE_PWM, (unsigned long)&pwm_values);
     if (ret != OK) {
         //hal.console->printf("Failed to setup failsafe PWM for 0x%08x to %u\n", (unsigned)chmask, period_us);
         Print_Err("Failed to setup failsafe PWM for 0x%08x to %u\n", (unsigned)chmask, period_us);
@@ -243,13 +243,13 @@ void PX4RCOutput::set_failsafe_pwm(uint32_t chmask, uint16_t period_us)
 
 bool PX4RCOutput::force_safety_on(void)
 {
-    int ret = ioctl(_pwm_fd, PWM_SERVO_SET_FORCE_SAFETY_ON, (void*)0);
+    int ret = ioctl(_pwm_fd, PWM_SERVO_SET_FORCE_SAFETY_ON, 0);
     return (ret == OK);
 }
 
 void PX4RCOutput::force_safety_off(void)
 {
-    int ret = ioctl(_pwm_fd, PWM_SERVO_SET_FORCE_SAFETY_OFF, (void*)0);
+    int ret = ioctl(_pwm_fd, PWM_SERVO_SET_FORCE_SAFETY_OFF, 0);
     if (ret != OK) {
         //hal.console->printf("Failed to force safety off\n");
         Print_Err("Failed to force safety off\n");
@@ -402,10 +402,10 @@ void PX4RCOutput::_timer_tick(void)
     // check for PWM count changing. This can happen then the user changes BRD_PWM_COUNT
     if (now - _last_config_us > 1000000) {
         if (_pwm_fd != -1) {
-            ioctl(_pwm_fd, PWM_SERVO_GET_COUNT, (void*)&_servo_count);
+            ioctl(_pwm_fd, PWM_SERVO_GET_COUNT, (unsigned long)&_servo_count);
         }
         if (_alt_fd != -1) {
-            ioctl(_alt_fd, PWM_SERVO_GET_COUNT, (void*)&_alt_servo_count);
+            ioctl(_alt_fd, PWM_SERVO_GET_COUNT, (unsigned long)&_alt_servo_count);
         }
         _last_config_us = now;
     }

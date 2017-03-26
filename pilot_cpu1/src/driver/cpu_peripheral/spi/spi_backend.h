@@ -172,7 +172,7 @@ int SpiPsInit(u16 Spi_Id, u8 isIntcOn);
 
 int DeviceViaSpiCfgInitialize(struct SDeviceViaSpi *instanceptr, 
 		enum ESpi_device_id device_id,
-		char* deviceName,
+		const char* deviceName,
 		enum ESpi_clock_mode mode,
 		u32 frequency);
 

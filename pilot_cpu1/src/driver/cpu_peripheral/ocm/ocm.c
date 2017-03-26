@@ -1,7 +1,6 @@
 #include "xparameters.h"
 #include <stdio.h>
 #include "xil_cache.h"
-#include "driver.h"
 #include "board_config.h"
 
 #if 0

@@ -23,20 +23,15 @@ enum {
 
 typedef struct UartDataFormat
 {
+    uint32_t iBaudRate;
 	int32_t iDataBits;	/**< Number of data bits */
 	int32_t iParity;	/**< Parity */
 	uint8_t iStopBits;	/**< Number of stop bits */
 
 }UartDataFormat_t;
 
-/* All driver's ioctl magic number */
-/* uart */
-#define UART_MAGIC_IOC	'u'
-#define UART_IOC_NREAD		    	_IOR(UART_MAGIC_IOC, 0, int)
-#define UART_IOC_NWRITE			    _IOW(UART_MAGIC_IOC, 1, int)
-#define UART_IOC_SET_BAUDRATE	    _IOW(UART_MAGIC_IOC, 2, int)
-#define UART_IOC_SET_MODE		    _IOW(UART_MAGIC_IOC, 3, int)
-#define UART_IOC_SET_DATA_FORMAT	_IOW(UART_MAGIC_IOC, 4, UartDataFormat_t)
+#define UART_MODE_LOOP (1)
 
+uint32_t UartPsInit(int32_t iUartId);
 
 #endif

@@ -39,11 +39,11 @@ static PX4GPIO gpioDriver;
 
 static Empty::I2CDeviceManager i2c_mgr_instance;
 
-#define UARTA_DEFAULT_DEVICE "/dev/uartlite2"         //uart4 maclink console
-#define UARTB_DEFAULT_DEVICE "/dev/uartlite3"         //uart2 1st GPS
-#define UARTC_DEFAULT_DEVICE "/dev/uartlite0"         //uart3 telem1
-#define UARTD_DEFAULT_DEVICE "/dev/uartlite1"         //uart5 telem2
-#define UARTE_DEFAULT_DEVICE "/dev/uartlite4"         //uart6 2and GPS
+#define UARTA_DEFAULT_DEVICE "/dev/uartns2"         //uart4 maclink console
+#define UARTB_DEFAULT_DEVICE "/dev/uartns3"         //uart2 1st GPS
+#define UARTC_DEFAULT_DEVICE "/dev/uartns0"         //uart3 telem1
+#define UARTD_DEFAULT_DEVICE "/dev/uartns1"         //uart5 telem2
+#define UARTE_DEFAULT_DEVICE "/dev/uartns4"         //uart6 2and GPS
 
 // 3 UART drivers, for GPS plus two mavlink-enabled devices
 static PX4UARTDriver uartADriver(UARTA_DEFAULT_DEVICE, "APM_uartA");
@@ -117,17 +117,22 @@ static void main_loop(void *pvParameters)
 //    hal.analogin->init();
  //   hal.gpio->init();
 
+    Print_Info("\n");
 
     /*
       run setup() at low priority to ensure CLI doesn't hang the
       system, and to allow initial sensor read loops to run
      */
     hal_px4_set_priority(APM_STARTUP_PRIORITY);
+    Print_Info("\n");
 
     schedulerInstance.hal_initialized();
 
+    Print_Info("\n");
     g_callbacks->setup();
+    Print_Info("\n");
     hal.scheduler->system_initialized();
+    Print_Info("\n");
 
 //    struct hrt_call loop_overtime_call;
     xTimerHandle loop_overtime_call;

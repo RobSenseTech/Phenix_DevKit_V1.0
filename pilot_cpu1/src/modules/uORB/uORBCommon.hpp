@@ -42,7 +42,7 @@
 
 namespace uORB
 {
-static const unsigned orb_maxpath = 40;
+static const unsigned orb_maxpath = 64;
 
 #ifdef ERROR
 # undef ERROR

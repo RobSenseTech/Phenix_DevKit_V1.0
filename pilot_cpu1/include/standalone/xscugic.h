@@ -1,47 +1,41 @@
 /******************************************************************************
 *
-* (c) Copyright 2010-2014 Xilinx, Inc. All rights reserved.
+* Copyright (C) 2010 - 2015 Xilinx, Inc.  All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
 *
 ******************************************************************************/
 /*****************************************************************************/
 /**
 *
 * @file xscugic.h
+* @addtogroup scugic_v3_1
+* @{
+* @details
 *
 * The generic interrupt controller driver component.
 *
@@ -141,6 +135,28 @@
 *                     xparameters.h. Fix for CR's 690505, 708928 & 719359.
 * 2.0   adk  12/10/13 Updated as per the New Tcl API's
 * 2.1   adk  25/04/14 Fixed the CR:789373 changes are made in the driver tcl file.
+* 3.00  kvn  02/13/15 Modified code for MISRA-C:2012 compliance.
+* 3.2   asa  02/29/16 Modified DistributorInit function for Zynq AMP case. The
+*			  distributor is left uninitialized for Zynq AMP. It is assumed
+*             that the distributor will be initialized by Linux master. However
+*             for CortexR5 case, the earlier code is left unchanged where the
+*             the interrupt processor target registers in the distributor is
+*             initialized with the corresponding CPU ID on which the application
+*             built over the scugic driver runs.
+*             These changes fix CR#937243.
+*
+* 3.4   asa  04/07/16 Created a new static function DoDistributorInit to simplify
+*            the flow and avoid code duplication. Changes are made for
+*            USE_AMP use case for R5. In a scenario (in R5 split mode) when
+*            one R5 is operating with A53 in open amp config and other
+*            R5 running baremetal app, the existing code
+*            had the potential to stop the whole AMP solution to work (if
+*            for some reason the R5 running the baremetal app tasked to
+*            initialize the Distributor hangs or crashes before initializing).
+*            Changes are made so that the R5 under AMP first checks if
+*            the distributor is enabled or not and if not, it does the
+*            standard Distributor initialization.
+*            This fixes the CR#952962.
 *
 * </pre>
 *
@@ -163,7 +179,12 @@ extern "C" {
 
 /************************** Constant Definitions *****************************/
 
+#define EFUSE_STATUS_OFFSET   0x10
+#define EFUSE_STATUS_CPU_MASK 0x80
 
+#if !defined (ARMR5) && !defined (__aarch64__) && !defined (ARMA53_32)
+#define ARMA9
+#endif
 /**************************** Type Definitions *******************************/
 
 /* The following data type defines each entry in an interrupt vector table.
@@ -220,7 +241,7 @@ typedef struct
 *****************************************************************************/
 #define XScuGic_CPUWriteReg(InstancePtr, RegOffset, Data) \
 (XScuGic_WriteReg(((InstancePtr)->Config->CpuBaseAddress), (RegOffset), \
-					((u32)Data)))
+					((u32)(Data))))
 
 /****************************************************************************/
 /**
@@ -258,7 +279,7 @@ typedef struct
 *****************************************************************************/
 #define XScuGic_DistWriteReg(InstancePtr, RegOffset, Data) \
 (XScuGic_WriteReg(((InstancePtr)->Config->DistBaseAddress), (RegOffset), \
-					((u32)Data)))
+					((u32)(Data))))
 
 /****************************************************************************/
 /**
@@ -284,23 +305,23 @@ typedef struct
  * Required functions in xscugic.c
  */
 
-int  XScuGic_Connect(XScuGic *InstancePtr, u32 Int_Id,
+s32  XScuGic_Connect(XScuGic *InstancePtr, u32 Int_Id,
 			Xil_InterruptHandler Handler, void *CallBackRef);
 void XScuGic_Disconnect(XScuGic *InstancePtr, u32 Int_Id);
 
 void XScuGic_Enable(XScuGic *InstancePtr, u32 Int_Id);
 void XScuGic_Disable(XScuGic *InstancePtr, u32 Int_Id);
 
-int  XScuGic_CfgInitialize(XScuGic *InstancePtr, XScuGic_Config *ConfigPtr,
+s32  XScuGic_CfgInitialize(XScuGic *InstancePtr, XScuGic_Config *ConfigPtr,
 							u32 EffectiveAddr);
 
-int  XScuGic_SoftwareIntr(XScuGic *InstancePtr, u32 Int_Id, u32 Cpu_Id);
+s32  XScuGic_SoftwareIntr(XScuGic *InstancePtr, u32 Int_Id, u32 Cpu_Id);
 
 void XScuGic_GetPriorityTriggerType(XScuGic *InstancePtr, u32 Int_Id,
 					u8 *Priority, u8 *Trigger);
 void XScuGic_SetPriorityTriggerType(XScuGic *InstancePtr, u32 Int_Id,
 					u8 Priority, u8 Trigger);
-
+void XScuGic_InterruptMaptoCpu(XScuGic *InstancePtr, u8 Cpu_Id, u32 Int_Id);
 /*
  * Initialization functions in xscugic_sinit.c
  */
@@ -314,11 +335,11 @@ void XScuGic_InterruptHandler(XScuGic *InstancePtr);
 /*
  * Self-test functions in xscugic_selftest.c
  */
-int  XScuGic_SelfTest(XScuGic *InstancePtr);
+s32  XScuGic_SelfTest(XScuGic *InstancePtr);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif            /* end of protection macro */
-
+/** @} */

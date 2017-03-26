@@ -65,7 +65,7 @@
 #define TONEALARM0_DEVICE_PATH "/dev/tone_alarm0"
 
 #define _TONE_ALARM_BASE	0x7400
-#define _TONEALARM_IOC(type,nr)   _IO(type,nr)
+#define _TONEALARM_IOC(type,nr)   _IOC(type,nr)
 #define TONE_SET_ALARM		_TONEALARM_IOC(_TONE_ALARM_BASE, 1)
 
 /* structure describing one note in a tone pattern */

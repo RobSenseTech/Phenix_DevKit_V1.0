@@ -22,7 +22,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-
+#include <fcntl.h>
+#include <unistd.h>
 
 
 #include <drivers/drv_rgbled.h>
@@ -39,7 +40,7 @@ bool ToshibaLED_PX4::hw_init()
         Print_Err("Unable to open " RGBLED0_DEVICE_PATH);
         return false;
     }
-    ioctl(_rgbled_fd, RGBLED_SET_MODE, (void*)RGBLED_MODE_ON);
+    ioctl(_rgbled_fd, RGBLED_SET_MODE, (unsigned long)RGBLED_MODE_ON);
     last.v = 1;		// This is necessary so rgb value is written for the first time
     next.v = 0;
     hal.scheduler->register_io_process(FUNCTOR_BIND_MEMBER(&ToshibaLED_PX4::update_timer, void));
@@ -70,7 +71,7 @@ void ToshibaLED_PX4::update_timer(void)
     v.green = newv.g;
     v.blue  = newv.b;
 
-    ioctl(_rgbled_fd, RGBLED_SET_RGB, (void*)&v);
+    ioctl(_rgbled_fd, RGBLED_SET_RGB, (unsigned long)&v);
 
     last.v = next.v;
 }

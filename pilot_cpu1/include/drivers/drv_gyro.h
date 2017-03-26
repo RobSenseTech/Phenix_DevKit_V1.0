@@ -66,7 +66,7 @@ struct gyro_scale {
  */
 
 #define _GYROIOCBASE		(0x2300)
-#define _GYPO_IOC(type,nr)   _IO(type,nr)
+#define _GYPO_IOC(type,nr)   _IOC(type,nr)
 #define _GYROIOC(_n)		(_GYPO_IOC(_GYROIOCBASE, _n))
 
 /** set the gyro internal sample rate to at least (arg) Hz */

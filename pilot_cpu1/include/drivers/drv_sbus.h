@@ -50,6 +50,6 @@
 #define _SBUS_BASE		0x2c00
 
 /** Enable S.BUS version 1 / 2 output (0 to disable) */
-#define SBUS_SET_PROTO_VERSION		_IOR(_SBUS_BASE, 0, int)
+#define SBUS_SET_PROTO_VERSION		_IOC(_SBUS_BASE, 0)
 
 #endif /* _DRV_SBUS_H */

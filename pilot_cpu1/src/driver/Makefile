@@ -1,14 +1,17 @@
 
 #新驱动直接把路径加在下面即可
-DRIVER_PATH += $(DRV_ROOT_PATH)/mpu6000
+#DRIVER_PATH += $(DRV_ROOT_PATH)/mpu6000
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/ocm
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uart
-DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uartlite
+DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uartns550
+#DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uartlite
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/hrt
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/gic
+DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/sd
+#DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/sd_test
 DRIVER_PATH += $(DRV_ROOT_PATH)/device
 DRIVER_PATH += $(DRV_ROOT_PATH)/rc
-DRIVER_PATH += $(DRV_ROOT_PATH)/storage
+#DRIVER_PATH += $(DRV_ROOT_PATH)/storage
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/spi
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/gpio
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/iic
@@ -31,7 +34,6 @@ DRIVER_PATH += $(DRV_ROOT_PATH)/common/systemlib/geo
 
 SRCS_DRV += $(shell find $(DRIVER_PATH) -name "*.c")
 SRCS_DRV += $(shell find $(DRIVER_PATH) -name "*.cpp")
-SRCS_DRV += $(DRV_ROOT_PATH)/driver.c
 
 OBJS_TMP_DRV += $(patsubst %.c, %.o, $(SRCS_DRV)) 
 OBJS_DRV += $(patsubst %.cpp, %.o, $(OBJS_TMP_DRV)) 

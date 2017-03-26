@@ -20,6 +20,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 
 
@@ -54,7 +56,7 @@ AP_RangeFinder_PX4_PWM::AP_RangeFinder_PX4_PWM(RangeFinder &_ranger, uint8_t ins
     }
 
     // keep a queue of 20 samples
-    if (ioctl(_fd, SENSORIOCSQUEUEDEPTH, (void*)20) != 0) {
+    if (ioctl(_fd, SENSORIOCSQUEUEDEPTH, 20) != 0) {
         hal.console->printf("Failed to setup range finder queue\n");
         set_status(RangeFinder::RangeFinder_NotConnected);
         return;
@@ -155,7 +157,7 @@ void AP_RangeFinder_PX4_PWM::update(void)
        about 0.2s to boot, so 500ms offers some safety margin
     */
     if (now - _last_pulse_time_ms > 500U && _disable_time_ms == 0) {
-        ioctl(_fd, SENSORIOCRESET, (void*)0);
+        ioctl(_fd, SENSORIOCRESET, 0);
         _last_pulse_time_ms = now;
 
         // if a stop pin is configured then disable the sensor for the

@@ -1,47 +1,40 @@
 /******************************************************************************
 *
-* (c) Copyright 2010-14 Xilinx, Inc. All rights reserved.
+* Copyright (C) 2010 - 2015 Xilinx, Inc.  All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
 *
 ******************************************************************************/
 /*****************************************************************************/
 /**
 *
 * @file xgpiops_hw.h
+* @addtogroup gpiops_v3_1
+* @{
 *
 * This header file contains the identifiers and basic driver functions (or
 * macros) that can be used to access the device. Other driver functions
@@ -55,6 +48,8 @@
 * 1.00a sv   01/15/10 First Release
 * 1.02a hk   08/22/13 Added low level reset API function prototype and
 *                     related constant definitions
+* 3.00  kvn  02/13/15 Modified code for MISRA-C:2012 compliance.
+* 3.1	kvn  04/13/15 Corrected reset values of banks.
 * </pre>
 *
 ******************************************************************************/
@@ -76,39 +71,48 @@ extern "C" {
 /** @name Register offsets for the GPIO. Each register is 32 bits.
  *  @{
  */
-#define XGPIOPS_DATA_LSW_OFFSET  0x000  /* Mask and Data Register LSW, WO */
-#define XGPIOPS_DATA_MSW_OFFSET  0x004  /* Mask and Data Register MSW, WO */
-#define XGPIOPS_DATA_OFFSET	 0x040  /* Data Register, RW */
-#define XGPIOPS_DATA_RO_OFFSET	 0x060  /* Data Register - Input, RO */
-#define XGPIOPS_DIRM_OFFSET	 0x204  /* Direction Mode Register, RW */
-#define XGPIOPS_OUTEN_OFFSET	 0x208  /* Output Enable Register, RW */
-#define XGPIOPS_INTMASK_OFFSET	 0x20C  /* Interrupt Mask Register, RO */
-#define XGPIOPS_INTEN_OFFSET	 0x210  /* Interrupt Enable Register, WO */
-#define XGPIOPS_INTDIS_OFFSET	 0x214  /* Interrupt Disable Register, WO*/
-#define XGPIOPS_INTSTS_OFFSET	 0x218  /* Interrupt Status Register, RO */
-#define XGPIOPS_INTTYPE_OFFSET	 0x21C  /* Interrupt Type Register, RW */
-#define XGPIOPS_INTPOL_OFFSET	 0x220  /* Interrupt Polarity Register, RW */
-#define XGPIOPS_INTANY_OFFSET	 0x224  /* Interrupt On Any Register, RW */
+#define XGPIOPS_DATA_LSW_OFFSET  0x00000000U  /* Mask and Data Register LSW, WO */
+#define XGPIOPS_DATA_MSW_OFFSET  0x00000004U  /* Mask and Data Register MSW, WO */
+#define XGPIOPS_DATA_OFFSET	 0x00000040U  /* Data Register, RW */
+#define XGPIOPS_DATA_RO_OFFSET	 0x00000060U  /* Data Register - Input, RO */
+#define XGPIOPS_DIRM_OFFSET	 0x00000204U  /* Direction Mode Register, RW */
+#define XGPIOPS_OUTEN_OFFSET	 0x00000208U  /* Output Enable Register, RW */
+#define XGPIOPS_INTMASK_OFFSET	 0x0000020CU  /* Interrupt Mask Register, RO */
+#define XGPIOPS_INTEN_OFFSET	 0x00000210U  /* Interrupt Enable Register, WO */
+#define XGPIOPS_INTDIS_OFFSET	 0x00000214U  /* Interrupt Disable Register, WO*/
+#define XGPIOPS_INTSTS_OFFSET	 0x00000218U  /* Interrupt Status Register, RO */
+#define XGPIOPS_INTTYPE_OFFSET	 0x0000021CU  /* Interrupt Type Register, RW */
+#define XGPIOPS_INTPOL_OFFSET	 0x00000220U  /* Interrupt Polarity Register, RW */
+#define XGPIOPS_INTANY_OFFSET	 0x00000224U  /* Interrupt On Any Register, RW */
 /* @} */
 
 /** @name Register offsets for each Bank.
  *  @{
  */
-#define XGPIOPS_DATA_MASK_OFFSET 0x8  /* Data/Mask Registers offset */
-#define XGPIOPS_DATA_BANK_OFFSET 0x4  /* Data Registers offset */
-#define XGPIOPS_REG_MASK_OFFSET 0x40  /* Registers offset */
+#define XGPIOPS_DATA_MASK_OFFSET 0x00000008U  /* Data/Mask Registers offset */
+#define XGPIOPS_DATA_BANK_OFFSET 0x00000004U  /* Data Registers offset */
+#define XGPIOPS_REG_MASK_OFFSET  0x00000040U  /* Registers offset */
 /* @} */
 
 /* For backwards compatibility */
-#define XGPIOPS_BYPM_MASK_OFFSET	XGPIOPS_REG_MASK_OFFSET
+#define XGPIOPS_BYPM_MASK_OFFSET	(u32)0x40
 
 /** @name Interrupt type reset values for each bank
  *  @{
  */
-#define XGPIOPS_INTTYPE_BANK0_RESET  0xFFFFFFFF
-#define XGPIOPS_INTTYPE_BANK1_RESET  0x3FFFFFFF
-#define XGPIOPS_INTTYPE_BANK2_RESET  0xFFFFFFFF
-#define XGPIOPS_INTTYPE_BANK3_RESET  0xFFFFFFFF
+#ifdef XPAR_PSU_GPIO_0_BASEADDR
+#define XGPIOPS_INTTYPE_BANK0_RESET  0x03FFFFFFU  /* Resets specific to Zynq Ultrascale+ MP */
+#define XGPIOPS_INTTYPE_BANK1_RESET  0x03FFFFFFU
+#define XGPIOPS_INTTYPE_BANK2_RESET  0x03FFFFFFU
+#else
+#define XGPIOPS_INTTYPE_BANK0_RESET  0xFFFFFFFFU  /* Resets specific to Zynq */
+#define XGPIOPS_INTTYPE_BANK1_RESET  0x003FFFFFU
+#define XGPIOPS_INTTYPE_BANK2_RESET  0xFFFFFFFFU
+#endif
+
+#define XGPIOPS_INTTYPE_BANK3_RESET  0xFFFFFFFFU  /* Reset common to both platforms */
+#define XGPIOPS_INTTYPE_BANK4_RESET  0xFFFFFFFFU  /* Resets specific to Zynq Ultrascale+ MP */
+#define XGPIOPS_INTTYPE_BANK5_RESET  0xFFFFFFFFU
 /* @} */
 
 /**************************** Type Definitions *******************************/
@@ -129,7 +133,7 @@ extern "C" {
 *
 *****************************************************************************/
 #define XGpioPs_ReadReg(BaseAddr, RegOffset)		\
-		Xil_In32((BaseAddr) + (RegOffset))
+		Xil_In32((BaseAddr) + (u32)(RegOffset))
 
 /****************************************************************************/
 /**
@@ -146,7 +150,7 @@ extern "C" {
 *
 *****************************************************************************/
 #define XGpioPs_WriteReg(BaseAddr, RegOffset, Data)	\
-		Xil_Out32((BaseAddr) + (RegOffset), (Data))
+		Xil_Out32((BaseAddr) + (u32)(RegOffset), (u32)(Data))
 
 /************************** Function Prototypes ******************************/
 
@@ -157,3 +161,4 @@ void XGpioPs_ResetHw(u32 BaseAddress);
 #endif /* __cplusplus */
 
 #endif /* XGPIOPS_HW_H */
+/** @} */

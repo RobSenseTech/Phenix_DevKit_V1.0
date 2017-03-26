@@ -1,11 +1,20 @@
 #include "FreeRTOS_Print.h" 
 #include "ringbuffer.h"
-#include "driver.h"
 #include "xuartps.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "driver.h"
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
 
 
 static void prvUartSendTask( void *pvParameters )
@@ -16,7 +25,7 @@ static void prvUartSendTask( void *pvParameters )
 
 	while(1)
 	{
-        ioctl(iFd, UART_IOC_NWRITE, &iNum);
+        ioctl(iFd, FIONWRITE, (unsigned long)&iNum);
         if(iNum >= sizeof(TestString))      
     		write(iFd, TestString, sizeof(TestString));
 
@@ -35,7 +44,7 @@ static void prvUartRecvTask( void *pvParameters )
 	while(1)
 	{
 		iNum = 0;
-		iRet = ioctl(iFd, UART_IOC_NREAD, &iNum);
+		iRet = ioctl(iFd, FIONREAD, (unsigned long)&iNum);
 		if(iRet != XST_SUCCESS)
 		{
 			Print_Err("ioctl failed\n");
@@ -52,12 +61,12 @@ static void prvUartRecvTask( void *pvParameters )
 				iNum = read(iFd, RecvBuffer, iNum);	
 				for(i = 0; i< iNum; i++)
                 {
-                    if((RecvBuffer[i] - last == 1) || (last == 9 && RecvBuffer[i] == 1))
+            //        if((RecvBuffer[i] - last == 1) || (last == 9 && RecvBuffer[i] == 1))
                     {
 					    Print_Info("recv: %d\n", RecvBuffer[i]);
                     }
-                    else
-                        Print_Err("recv err:last=%d now=%d\n", last, RecvBuffer[i]);
+             //     else
+             //         Print_Err("recv err:last=%d now=%d\n", last, RecvBuffer[i]);
 
                     last = RecvBuffer[i];
                 }
@@ -71,16 +80,16 @@ static void prvUartRecvTask( void *pvParameters )
 void UartTest()
 {
 	int iFd;
-	int iMode = XUARTPS_OPER_MODE_LOCAL_LOOP;	
+	int iMode = UART_MODE_LOOP;	
 
-	iFd = open("/dev/uartlite1", 0);
-	if(iFd == -1)
+	iFd = open("/dev/uartns0", O_RDWR);
+	if(iFd < 0)
 	{
-		Print_Err("open uart driver failed\n");
+		Print_Err("open uart driver failed:%d\n", iFd);
 		return;
 	}
 
-//	ioctl(iFd, UART_IOC_SET_MODE, &iMode);
+	ioctl(iFd, UART_IOC_SET_MODE, &iMode);
 	
 	Print_Info("create uart send task:%d\n", xTaskCreate(prvUartSendTask, "uart-send", configMINIMAL_STACK_SIZE*2, (void *)iFd, 1, NULL));
 	Print_Info("create uart recv task:%d\n", xTaskCreate(prvUartRecvTask, "uart-recv", configMINIMAL_STACK_SIZE*2, (void *)iFd, 1, NULL));

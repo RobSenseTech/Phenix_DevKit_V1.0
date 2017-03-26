@@ -56,7 +56,7 @@
  */
 
 #define _AIRSPEEDIOCBASE		(0x7700)
-#define _AIRSPEED_IOC(type,nr)   _IO(type,nr)
+#define _AIRSPEED_IOC(type,nr)   _IOC(type,nr)
 #define __AIRSPEEDIOC(_n)		(_AIRSPEED_IOC(_AIRSPEEDIOCBASE, _n))
 
 #define AIRSPEEDIOCSSCALE		__AIRSPEEDIOC(0)

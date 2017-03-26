@@ -12,7 +12,6 @@
  * Type Declarations
  ****************************************************************************/
 /* config constants.  */
-#define CONFIG_HAVE_DOUBLE
 //#define CONFIG_HAVE_LONG_DOUBLE
 
 

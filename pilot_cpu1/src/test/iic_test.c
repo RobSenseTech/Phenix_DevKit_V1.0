@@ -1,4 +1,5 @@
 #include "iic.h"
+#include "driver.h"
 
 int iic_test(void)
 {

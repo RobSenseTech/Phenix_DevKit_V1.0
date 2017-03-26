@@ -1,6 +1,5 @@
 /*
- * 高精度定时器，移植自px4，基于zynq ttc0的counter0
- * 用于高速外设驱动的线程调度和高精度时间维护
+ * high-resolution timer，port from px4，base on zynq ttc0 counter0
  */
 #include "xparameters.h"
 #include "xstatus.h"

@@ -1,21 +1,32 @@
 /******************************************************************************
 *
-*       XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
-*       AS A COURTESY TO YOU, SOLELY FOR USE IN DEVELOPING PROGRAMS AND
-*       SOLUTIONS FOR XILINX DEVICES.  BY PROVIDING THIS DESIGN, CODE,
-*       OR INFORMATION AS ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE,
-*       APPLICATION OR STANDARD, XILINX IS MAKING NO REPRESENTATION
-*       THAT THIS IMPLEMENTATION IS FREE FROM ANY CLAIMS OF INFRINGEMENT,
-*       AND YOU ARE RESPONSIBLE FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE
-*       FOR YOUR IMPLEMENTATION.  XILINX EXPRESSLY DISCLAIMS ANY
-*       WARRANTY WHATSOEVER WITH RESPECT TO THE ADEQUACY OF THE
-*       IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OR
-*       REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM CLAIMS OF
-*       INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-*       FOR A PARTICULAR PURPOSE.
+* Copyright (C) 2002 - 2015 Xilinx, Inc. All rights reserved.
 *
-*       (c) Copyright 2002-2008 Xilinx Inc.
-*       All rights reserved.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
+*
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
 *
 ******************************************************************************/
 /*****************************************************************************/
@@ -54,6 +65,8 @@
 
 #ifndef XENV_STANDALONE_H
 #define XENV_STANDALONE_H
+
+#include "xil_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -138,7 +151,7 @@ extern "C" {
  *****************************************************************************/
 
 #define XENV_MEM_FILL(DestPtr, Data, Bytes) \
-	memset((void *) DestPtr, (int) Data, (size_t) Bytes)
+	memset((void *) DestPtr, (s32) Data, (size_t) Bytes)
 
 
 
@@ -152,7 +165,7 @@ extern "C" {
  * A structure that contains a time stamp used by other time stamp macros
  * defined below. This structure is processor dependent.
  */
-typedef int XENV_TIME_STAMP;
+typedef s32 XENV_TIME_STAMP;
 
 /*****************************************************************************/
 /**
@@ -267,16 +280,16 @@ typedef int XENV_TIME_STAMP;
 #  define XCACHE_INVALIDATE_DCACHE()  	microblaze_invalidate_dcache()
 
 #  define XCACHE_INVALIDATE_DCACHE_RANGE(Addr, Len) \
-			microblaze_invalidate_dcache_range((int)(Addr), (int)(Len))
+			microblaze_invalidate_dcache_range((s32)(Addr), (s32)(Len))
 
 #if (XPAR_MICROBLAZE_DCACHE_USE_WRITEBACK == 1)
 #  define XCACHE_FLUSH_DCACHE()  		microblaze_flush_dcache()
 #  define XCACHE_FLUSH_DCACHE_RANGE(Addr, Len) \
-			microblaze_flush_dcache_range((int)(Addr), (int)(Len))
+			microblaze_flush_dcache_range((s32)(Addr), (s32)(Len))
 #else
 #  define XCACHE_FLUSH_DCACHE()  		microblaze_invalidate_dcache()
 #  define XCACHE_FLUSH_DCACHE_RANGE(Addr, Len) \
-			microblaze_invalidate_dcache_range((int)(Addr), (int)(Len))
+			microblaze_invalidate_dcache_range((s32)(Addr), (s32)(Len))
 #endif	/*XPAR_MICROBLAZE_DCACHE_USE_WRITEBACK*/
 
 #else
@@ -296,7 +309,7 @@ typedef int XENV_TIME_STAMP;
 #  define XCACHE_INVALIDATE_ICACHE()  	microblaze_invalidate_icache()
 
 #  define XCACHE_INVALIDATE_ICACHE_RANGE(Addr, Len) \
-			microblaze_invalidate_icache_range((int)(Addr), (int)(Len))
+			microblaze_invalidate_icache_range((s32)(Addr), (s32)(Len))
 
 #else
 #  define XCACHE_ENABLE_ICACHE()
@@ -329,10 +342,10 @@ typedef int XENV_TIME_STAMP;
 #define XCACHE_DISABLE_ICACHE()		XCache_DisableICache()
 
 #define XCACHE_INVALIDATE_DCACHE_RANGE(Addr, Len) \
-		XCache_InvalidateDCacheRange((unsigned int)(Addr), (unsigned)(Len))
+		XCache_InvalidateDCacheRange((u32)(Addr), (u32)(Len))
 
 #define XCACHE_FLUSH_DCACHE_RANGE(Addr, Len) \
-		XCache_FlushDCacheRange((unsigned int)(Addr), (unsigned)(Len))
+		XCache_FlushDCacheRange((u32)(Addr), (u32)(Len))
 
 #define XCACHE_INVALIDATE_ICACHE()	XCache_InvalidateICache()
 
@@ -353,4 +366,3 @@ typedef int XENV_TIME_STAMP;
 #endif
 
 #endif	/* #ifndef XENV_STANDALONE_H */
-

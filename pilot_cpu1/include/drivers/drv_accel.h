@@ -69,7 +69,7 @@ struct accel_scale {
  */
 
 #define _ACCELIOCBASE		(0x2100)
-#define _ACCEL_IOC(type,nr)   _IO(type,nr)
+#define _ACCEL_IOC(type,nr)   _IOC(type,nr)
 #define _ACCELIOC(_n)		(_ACCEL_IOC(_ACCELIOCBASE, _n))
 
 

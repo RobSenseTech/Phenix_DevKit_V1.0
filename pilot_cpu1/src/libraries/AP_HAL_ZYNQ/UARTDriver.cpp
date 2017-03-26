@@ -4,7 +4,7 @@
 
 #include "UARTDriver.h"
 
-#include "ioctl.h"
+#include "sys/ioctl.h"
 //#include <termios.h>
 #include "hrt/drv_hrt.h"
 #include <assert.h>
@@ -111,7 +111,10 @@ void PX4UARTDriver::begin(uint32_t baudrate, uint16_t rxS, uint16_t txS)
 	}
 
 	if (_baudrate != 0) {
-		ret = ioctl(_fd, UART_IOC_SET_BAUDRATE, &_baudrate);
+        UartDataFormat_t data_format = {0};
+
+        data_format.iBaudRate = _baudrate;
+		ret = ioctl(_fd, UART_IOC_SET_DATA_FORMAT, (unsigned long)&_baudrate);
         if(ret != 0)
         {
             Print_Err("set %s baudrate failed!!\n", _devpath);
@@ -381,7 +384,7 @@ int PX4UARTDriver::_write_fd(const uint8_t *buf, uint16_t n)
     
     int nwrite = 0;
 
-    if (ioctl(_fd, UART_IOC_NWRITE, &nwrite) == 0) {
+    if (ioctl(_fd, FIONWRITE, (unsigned long)&nwrite) == 0) {
         if (_flow_control == FLOW_CONTROL_AUTO) {
             if (_first_write_time == 0) {
                 if (_total_written == 0) {
@@ -460,7 +463,7 @@ int PX4UARTDriver::_read_fd(uint8_t *buf, uint16_t n)
     // the FIONREAD check is to cope with broken O_NONBLOCK behaviour
     // in NuttX on ttyACM0
     int nread = 0;
-    if (ioctl(_fd, UART_IOC_NREAD, &nread) == 0) {
+    if (ioctl(_fd, FIONREAD, (unsigned long)&nread) == 0) {
         if (nread > n) {
             nread = n;
         }

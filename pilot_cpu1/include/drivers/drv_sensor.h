@@ -75,7 +75,7 @@
  */
 
 #define _SENSORIOCBASE		(0x2000)
-#define _SENSOR_IOC(type,nr)   _IO(type,nr)
+#define _SENSOR_IOC(type,nr)   _IOC(type,nr)
 #define _SENSORIOC(_n)		(_SENSOR_IOC(_SENSORIOCBASE, _n))
 
 /**

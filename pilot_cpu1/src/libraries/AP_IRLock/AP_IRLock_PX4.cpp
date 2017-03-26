@@ -22,6 +22,8 @@
 #include <AP_HAL/AP_HAL.h>
 
 #include "AP_IRLock_PX4.h"
+#include <fcntl.h>
+#include <unistd.h>
 
 
 

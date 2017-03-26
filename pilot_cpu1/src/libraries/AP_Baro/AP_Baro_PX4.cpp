@@ -5,8 +5,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-
-
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <drivers/drv_baro.h>
 #include <hrt/drv_hrt.h>
@@ -37,10 +37,10 @@ AP_Baro_PX4::AP_Baro_PX4(AP_Baro &baro) :
         instances[i].instance = _frontend.register_sensor();
 
         /* set the driver to poll at 150Hz */
-        ioctl(instances[i].fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_MAX);
+        ioctl(instances[i].fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_MAX);
 
         // average over up to 20 samples
-        ioctl(instances[i].fd, SENSORIOCSQUEUEDEPTH, (void*)20);
+        ioctl(instances[i].fd, SENSORIOCSQUEUEDEPTH, 20);
     }
 }
 

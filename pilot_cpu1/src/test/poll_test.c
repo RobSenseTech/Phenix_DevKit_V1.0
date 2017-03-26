@@ -1,8 +1,9 @@
+#include "driver.h"
 #include "drv_accel.h"
 #include "FreeRTOSConfig.h"
 #include "FreeRTOS_Print.h"
-#include "driver.h"
 #include "task.h"
+#include <poll.h>
 
 struct pollfd _poll_fds[1];
 

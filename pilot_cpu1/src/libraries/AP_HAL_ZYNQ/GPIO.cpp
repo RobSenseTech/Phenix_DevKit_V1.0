@@ -31,10 +31,10 @@ void PX4GPIO::init()
     if (_led_fd == -1) {
         AP_HAL::panic("Unable to open " LED0_DEVICE_PATH);
     }
-    if (ioctl(_led_fd, LED_OFF, (void*)LED_BLUE) != 0) {
+    if (ioctl(_led_fd, LED_OFF, LED_BLUE) != 0) {
         hal.console->printf("GPIO: Unable to setup GPIO LED BLUE\n");
     }
-    if (ioctl(_led_fd, LED_OFF, (void*)LED_RED) != 0) {
+    if (ioctl(_led_fd, LED_OFF, LED_RED) != 0) {
          hal.console->printf("GPIO: Unable to setup GPIO LED RED\n");
     }
 #endif
@@ -48,7 +48,7 @@ void PX4GPIO::init()
         AP_HAL::panic("Unable to open GPIO");
     }
 #ifdef CONFIG_ARCH_BOARD_PX4FMU_V1
-    if (ioctl(_gpio_fmu_fd, GPIO_CLEAR, (void*)GPIO_EXT_1) != 0) {
+    if (ioctl(_gpio_fmu_fd, GPIO_CLEAR, GPIO_EXT_1) != 0) {
         hal.console->printf("GPIO: Unable to setup GPIO_1\n");
     }
 #endif
@@ -240,13 +240,13 @@ void PX4GPIO::write(uint8_t pin, uint8_t value)
 #ifdef PX4IO_P_SETUP_RELAYS_ACC2
         case PX4_GPIO_EXT_IO_ACC2_PIN:
             if (_gpio_io_fd != -1) {
-                ioctl(_gpio_io_fd, value==LOW?GPIO_CLEAR:GPIO_SET, (void*)PX4IO_P_SETUP_RELAYS_ACC2);
+                ioctl(_gpio_io_fd, value==LOW?GPIO_CLEAR:GPIO_SET, PX4IO_P_SETUP_RELAYS_ACC2);
             }
             break;
 #endif
 
     case PX4_GPIO_FMU_SERVO_PIN(0) ... PX4_GPIO_FMU_SERVO_PIN(5):
-        ioctl(_gpio_fmu_fd, value==LOW?GPIO_CLEAR:GPIO_SET, (void*)(1U<<(pin-PX4_GPIO_FMU_SERVO_PIN(0))));
+        ioctl(_gpio_fmu_fd, value==LOW?GPIO_CLEAR:GPIO_SET, (1U<<(pin-PX4_GPIO_FMU_SERVO_PIN(0))));
         break;
     }
 }

@@ -1,48 +1,40 @@
-/* $Id: xttcps_hw.h,v 1.1.2.1 2011/01/20 04:08:59 sadanan Exp $ */
 /******************************************************************************
 *
-* (c) Copyright 2010 Xilinx, Inc. All rights reserved.
+* Copyright (C) 2010 - 2015 Xilinx, Inc.  All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
 *
 ******************************************************************************/
 /*****************************************************************************/
 /**
 *
 * @file xttcps_hw.h
+* @addtogroup ttcps_v3_0
+* @{
 *
 * This file defines the hardware interface to one of the three timer counters
 * in the Ps block.
@@ -54,6 +46,7 @@
 * Ver   Who    Date     Changes
 * ----- ------ -------- -------------------------------------------------
 * 1.00a drg/jz 01/21/10 First release
+* 3.00  kvn    02/13/15 Modified code for MISRA-C:2012 compliance.
 *
 * </pre>
 *
@@ -80,48 +73,48 @@ extern "C" {
  *
  * @{
  */
-#define XTTCPS_CLK_CNTRL_OFFSET		0x00000000  /**< Clock Control Register */
-#define XTTCPS_CNT_CNTRL_OFFSET		0x0000000C  /**< Counter Control Register*/
-#define XTTCPS_COUNT_VALUE_OFFSET	0x00000018  /**< Current Counter Value */
-#define XTTCPS_INTERVAL_VAL_OFFSET	0x00000024  /**< Interval Count Value */
-#define XTTCPS_MATCH_0_OFFSET		0x00000030  /**< Match 1 value */
-#define XTTCPS_MATCH_1_OFFSET		0x0000003C  /**< Match 2 value */
-#define XTTCPS_MATCH_2_OFFSET		0x00000048  /**< Match 3 value */
-#define XTTCPS_ISR_OFFSET		0x00000054  /**< Interrupt Status Register */
-#define XTTCPS_IER_OFFSET		0x00000060  /**< Interrupt Enable Register */
+#define XTTCPS_CLK_CNTRL_OFFSET		0x00000000U  /**< Clock Control Register */
+#define XTTCPS_CNT_CNTRL_OFFSET		0x0000000CU  /**< Counter Control Register*/
+#define XTTCPS_COUNT_VALUE_OFFSET	0x00000018U  /**< Current Counter Value */
+#define XTTCPS_INTERVAL_VAL_OFFSET	0x00000024U  /**< Interval Count Value */
+#define XTTCPS_MATCH_0_OFFSET		0x00000030U  /**< Match 1 value */
+#define XTTCPS_MATCH_1_OFFSET		0x0000003CU  /**< Match 2 value */
+#define XTTCPS_MATCH_2_OFFSET		0x00000048U  /**< Match 3 value */
+#define XTTCPS_ISR_OFFSET			0x00000054U  /**< Interrupt Status Register */
+#define XTTCPS_IER_OFFSET			0x00000060U  /**< Interrupt Enable Register */
 /* @} */
 
 /** @name Clock Control Register
  * Clock Control Register definitions
  * @{
  */
-#define XTTCPS_CLK_CNTRL_PS_EN_MASK	0x00000001  /**< Prescale enable */
-#define XTTCPS_CLK_CNTRL_PS_VAL_MASK	0x0000001E  /**< Prescale value */
-#define XTTCPS_CLK_CNTRL_PS_VAL_SHIFT		1   /**< Prescale shift */
-#define XTTCPS_CLK_CNTRL_PS_DISABLE		16  /**< Prescale disable */
-#define XTTCPS_CLK_CNTRL_SRC_MASK	0x00000020  /**< Clock source */
-#define XTTCPS_CLK_CNTRL_EXT_EDGE_MASK	0x00000040  /**< External Clock edge */
+#define XTTCPS_CLK_CNTRL_PS_EN_MASK		0x00000001U  /**< Prescale enable */
+#define XTTCPS_CLK_CNTRL_PS_VAL_MASK	0x0000001EU  /**< Prescale value */
+#define XTTCPS_CLK_CNTRL_PS_VAL_SHIFT			 1U  /**< Prescale shift */
+#define XTTCPS_CLK_CNTRL_PS_DISABLE				16U  /**< Prescale disable */
+#define XTTCPS_CLK_CNTRL_SRC_MASK		0x00000020U  /**< Clock source */
+#define XTTCPS_CLK_CNTRL_EXT_EDGE_MASK	0x00000040U  /**< External Clock edge */
 /* @} */
 
 /** @name Counter Control Register
  * Counter Control Register definitions
  * @{
  */
-#define XTTCPS_CNT_CNTRL_DIS_MASK	0x00000001 /**< Disable the counter */
-#define XTTCPS_CNT_CNTRL_INT_MASK	0x00000002 /**< Interval mode */
-#define XTTCPS_CNT_CNTRL_DECR_MASK	0x00000004 /**< Decrement mode */
-#define XTTCPS_CNT_CNTRL_MATCH_MASK	0x00000008 /**< Match mode */
-#define XTTCPS_CNT_CNTRL_RST_MASK	0x00000010 /**< Reset counter */
-#define XTTCPS_CNT_CNTRL_EN_WAVE_MASK	0x00000020 /**< Enable waveform */
-#define XTTCPS_CNT_CNTRL_POL_WAVE_MASK	0x00000040 /**< Waveform polarity */
-#define XTTCPS_CNT_CNTRL_RESET_VALUE	0x00000021 /**< Reset value */
+#define XTTCPS_CNT_CNTRL_DIS_MASK		0x00000001U /**< Disable the counter */
+#define XTTCPS_CNT_CNTRL_INT_MASK		0x00000002U /**< Interval mode */
+#define XTTCPS_CNT_CNTRL_DECR_MASK		0x00000004U /**< Decrement mode */
+#define XTTCPS_CNT_CNTRL_MATCH_MASK		0x00000008U /**< Match mode */
+#define XTTCPS_CNT_CNTRL_RST_MASK		0x00000010U /**< Reset counter */
+#define XTTCPS_CNT_CNTRL_EN_WAVE_MASK	0x00000020U /**< Enable waveform */
+#define XTTCPS_CNT_CNTRL_POL_WAVE_MASK	0x00000040U /**< Waveform polarity */
+#define XTTCPS_CNT_CNTRL_RESET_VALUE	0x00000021U /**< Reset value */
 /* @} */
 
 /** @name Current Counter Value Register
  * Current Counter Value Register definitions
  * @{
  */
-#define XTTCPS_COUNT_VALUE_MASK		0x0000FFFF /**< 16-bit counter value */
+#define XTTCPS_COUNT_VALUE_MASK		0x0000FFFFU /**< 16-bit counter value */
 /* @} */
 
 /** @name Interval Value Register
@@ -129,7 +122,7 @@ extern "C" {
  * down to.
  * @{
  */
-#define XTTCPS_INTERVAL_VAL_MASK	0x0000FFFF /**< 16-bit Interval value*/
+#define XTTCPS_INTERVAL_VAL_MASK	0x0000FFFFU /**< 16-bit Interval value*/
 /* @} */
 
 /** @name Match Registers
@@ -137,8 +130,8 @@ extern "C" {
  * registers.
  * @{
  */
-#define XTTCPS_MATCH_MASK		0x0000FFFF /**< 16-bit Match value */
-#define XTTCPS_NUM_MATCH_REG			3  /**< Num of Match reg */
+#define XTTCPS_MATCH_MASK		0x0000FFFFU /**< 16-bit Match value */
+#define XTTCPS_NUM_MATCH_REG			 3U /**< Num of Match reg */
 /* @} */
 
 /** @name Interrupt Registers
@@ -146,12 +139,12 @@ extern "C" {
  *
  * @{
  */
-#define XTTCPS_IXR_INTERVAL_MASK	0x00000001  /**< Interval Interrupt */
-#define XTTCPS_IXR_MATCH_0_MASK		0x00000002  /**< Match 1 Interrupt */
-#define XTTCPS_IXR_MATCH_1_MASK		0x00000004  /**< Match 2 Interrupt */
-#define XTTCPS_IXR_MATCH_2_MASK		0x00000008  /**< Match 3 Interrupt */
-#define XTTCPS_IXR_CNT_OVR_MASK		0x00000010  /**< Counter Overflow */
-#define XTTCPS_IXR_ALL_MASK		0x0000001F  /**< All valid Interrupts */
+#define XTTCPS_IXR_INTERVAL_MASK	0x00000001U  /**< Interval Interrupt */
+#define XTTCPS_IXR_MATCH_0_MASK		0x00000002U  /**< Match 1 Interrupt */
+#define XTTCPS_IXR_MATCH_1_MASK		0x00000004U  /**< Match 2 Interrupt */
+#define XTTCPS_IXR_MATCH_2_MASK		0x00000008U  /**< Match 3 Interrupt */
+#define XTTCPS_IXR_CNT_OVR_MASK		0x00000010U  /**< Counter Overflow */
+#define XTTCPS_IXR_ALL_MASK			0x0000001FU  /**< All valid Interrupts */
 /* @} */
 
 
@@ -172,7 +165,7 @@ extern "C" {
 *
 *****************************************************************************/
 #define XTtcPs_ReadReg(BaseAddress, RegOffset) \
-    (Xil_In32((BaseAddress) + (RegOffset)))
+    (Xil_In32((BaseAddress) + (u32)(RegOffset)))
 
 /****************************************************************************/
 /**
@@ -191,7 +184,7 @@ extern "C" {
 *
 *****************************************************************************/
 #define XTtcPs_WriteReg(BaseAddress, RegOffset, Data) \
-    (Xil_Out32((BaseAddress) + (RegOffset), (Data)))
+    (Xil_Out32((BaseAddress) + (u32)(RegOffset), (u32)(Data)))
 
 /****************************************************************************/
 /**
@@ -207,7 +200,7 @@ extern "C" {
 *
 *****************************************************************************/
 #define XTtcPs_Match_N_Offset(MatchIndex) \
-		(XTTCPS_MATCH_0_OFFSET + (12 * (MatchIndex)))
+		((u32)XTTCPS_MATCH_0_OFFSET + ((u32)(12U) * (u32)(MatchIndex)))
 
 /************************** Function Prototypes ******************************/
 
@@ -216,3 +209,4 @@ extern "C" {
 }
 #endif
 #endif /* end of protection macro */
+/** @} */

@@ -1,47 +1,40 @@
 /******************************************************************************
 *
-* (c) Copyright 2010-13 Xilinx, Inc. All rights reserved.
+* Copyright (C) 2010 - 2015 Xilinx, Inc.  All rights reserved.
 *
-* This file contains confidential and proprietary information of Xilinx, Inc.
-* and is protected under U.S. and international copyright and other
-* intellectual property laws.
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
 *
-* DISCLAIMER
-* This disclaimer is not a license and does not grant any rights to the
-* materials distributed herewith. Except as otherwise provided in a valid
-* license issued to you by Xilinx, and to the maximum extent permitted by
-* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
-* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
-* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
-* and (2) Xilinx shall not be liable (whether in contract or tort, including
-* negligence, or under any other theory of liability) for any loss or damage
-* of any kind or nature related to, arising under or in connection with these
-* materials, including for any direct, or any indirect, special, incidental,
-* or consequential loss or damage (including loss of data, profits, goodwill,
-* or any type of loss or damage suffered as a result of any action brought by
-* a third party) even if such damage or loss was reasonably foreseeable or
-* Xilinx had been advised of the possibility of the same.
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
 *
-* CRITICAL APPLICATIONS
-* Xilinx products are not designed or intended to be fail-safe, or for use in
-* any application requiring fail-safe performance, such as life-support or
-* safety devices or systems, Class III medical devices, nuclear facilities,
-* applications related to the deployment of airbags, or any other applications
-* that could lead to death, personal injury, or severe property or
-* environmental damage (individually and collectively, "Critical
-* Applications"). Customer assumes the sole risk and liability of any use of
-* Xilinx products in Critical Applications, subject only to applicable laws
-* and regulations governing limitations on product liability.
+* Use of the Software is limited solely to applications:
+* (a) running on a Xilinx device, or
+* (b) that interact with a Xilinx device through a bus or interconnect.
 *
-* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
-* AT ALL TIMES.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+* Except as contained in this notice, the name of the Xilinx shall not be used
+* in advertising or otherwise to promote the sale, use or other dealings in
+* this Software without prior written authorization from Xilinx.
 *
 ******************************************************************************/
 /*****************************************************************************/
 /**
 *
 * @file xqspips_hw.h
+* @addtogroup qspips_v3_2
+* @{
 *
 * This header file contains the identifiers and basic HW access driver
 * functions (or  macros) that can be used to access the device. Other driver
@@ -64,6 +57,11 @@
 * 2.03a hk  08/22/13 Added prototypes of API's for QSPI reset and
 *                    linear mode initialization for boot. Added related
 *                    constant definitions.
+* 3.1   hk  08/13/14 Changed definition of CR reset value masks to set/reset
+*                    required bits leaving reserved bits untouched. CR# 796813.
+* 3.2	sk	02/05/15 Add SLCR reset in abort function as a workaround because
+* 					 controller does not update FIFO status flags as expected
+* 					 when thresholds are used.
 *
 * </pre>
 *
@@ -140,11 +138,22 @@ extern "C" {
 
 #define XQSPIPS_CR_HOLD_B_MASK    0x00080000 /**< HOLD_B Pin Drive Enable */
 
+#define XQSPIPS_CR_REF_CLK_MASK   0x00000100 /**< Ref clk bit - should be 0 */
+
 /* Deselect the Slave select line and set the transfer size to 32 at reset */
-#define XQSPIPS_CR_RESET_STATE    (XQSPIPS_CR_IFMODE_MASK | \
+#define XQSPIPS_CR_RESET_MASK_SET  XQSPIPS_CR_IFMODE_MASK | \
 				   XQSPIPS_CR_SSCTRL_MASK | \
 				   XQSPIPS_CR_DATA_SZ_MASK | \
-				   XQSPIPS_CR_MSTREN_MASK)
+				   XQSPIPS_CR_MSTREN_MASK | \
+				   XQSPIPS_CR_SSFORCE_MASK | \
+				   XQSPIPS_CR_HOLD_B_MASK
+#define XQSPIPS_CR_RESET_MASK_CLR  XQSPIPS_CR_CPOL_MASK | \
+				   XQSPIPS_CR_CPHA_MASK | \
+				   XQSPIPS_CR_PRESC_MASK | \
+				   XQSPIPS_CR_MANSTRTEN_MASK | \
+				   XQSPIPS_CR_MANSTRT_MASK | \
+				   XQSPIPS_CR_ENDIAN_MASK | \
+				   XQSPIPS_CR_REF_CLK_MASK
 /* @} */
 
 
@@ -321,6 +330,38 @@ extern "C" {
 /* @} */
 
 
+/** @name SLCR Register
+ *
+ * Register offsets from SLCR base address.
+ *
+ * @{
+ */
+
+#define SLCR_LOCK 0x00000004 /**< SLCR Write Protection Lock */
+#define SLCR_UNLOCK 0x00000008 /**< SLCR Write Protection Unlock */
+#define LQSPI_RST_CTRL 0x00000230 /**< Quad SPI Software Reset Control */
+#define SLCR_LOCKSTA 0x0000000C /**< SLCR Write Protection status */
+
+/* @} */
+
+
+/** @name SLCR Register
+ *
+ * Bit Masks of above SLCR Registers .
+ *
+ * @{
+ */
+
+#ifndef XPAR_XSLCR_0_BASEADDR
+#define XPAR_XSLCR_0_BASEADDR 0xF8000000
+#endif
+#define SLCR_LOCK_MASK 0x767B /**< Write Protection Lock mask*/
+#define SLCR_UNLOCK_MASK 0xDF0D /**< SLCR Write Protection Unlock */
+#define LQSPI_RST_CTRL_MASK 0x3 /**< Quad SPI Software Reset Control */
+
+/* @} */
+
+
 /**************************** Type Definitions *******************************/
 
 /***************** Macros (Inline Functions) Definitions *********************/
@@ -379,3 +420,4 @@ void XQspiPs_LinearInit(u32 BaseAddress);
 #endif
 
 #endif /* end of protection macro */
+/** @} */

@@ -1,6 +1,8 @@
 #ifndef _ZYNQ_GIC_
 #define _ZYNQ_GIC_
 
+#include "xscugic.h"
+
 //指定CPU为中断target时对应的值
 enum{
 	CPU_NO_TARGETED = 0,
@@ -20,5 +22,6 @@ void GicBindInterruptToCpu(int32_t iIntrId, int32_t iCpuId);
 int32_t GicIsrHandlerRegister(int32_t iIntrId, Xil_InterruptHandler Handler, void *CallBackRef);
 void GicInterruptEnable(int32_t iIntrId);
 void GicSetTriggerType(uint32_t iIntrId, uint8_t Trigger);
+void GicInit();
 #endif 
 

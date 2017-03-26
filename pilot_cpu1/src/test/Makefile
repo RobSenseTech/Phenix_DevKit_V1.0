@@ -1,6 +1,7 @@
 
 #SRCS_TEST += $(TEST_ROOT_PATH)/ringbuffer_test.c
 SRCS_TEST += $(TEST_ROOT_PATH)/uart_test.c
+SRCS_TEST += $(TEST_ROOT_PATH)/sd_test.c
 #SRCS_TEST += $(TEST_ROOT_PATH)/list_test.c
 #SRCS_TEST += $(TEST_ROOT_PATH)/sem_test.c
 #SRCS_TEST += $(TEST_ROOT_PATH)/poll_test.c

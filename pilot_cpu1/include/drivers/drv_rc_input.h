@@ -41,9 +41,9 @@
 #define _DRV_RC_INPUT_H
 
 #include <stdint.h>
-#include "ioctl.h"
+#include "fs/ioctl.h"
 
-#include "uORB/drv_orb_dev.h"
+#include "drv_orb_dev.h"
 
 /**
  * Path for the default R/C input device.
@@ -90,12 +90,12 @@ typedef uint16_t		rc_input_t;
 #define _RC_INPUT_BASE		0x2b00
 
 /** Fetch R/C input values into (rc_input_values *)arg */
-#define RC_INPUT_GET			_IOR(_RC_INPUT_BASE, 0, int)
+#define RC_INPUT_GET			_IOC(_RC_INPUT_BASE, 0)
 
 /** Enable RSSI input via ADC */
-#define RC_INPUT_ENABLE_RSSI_ANALOG	_IO(_RC_INPUT_BASE, 1)
+#define RC_INPUT_ENABLE_RSSI_ANALOG	_IOC(_RC_INPUT_BASE, 1)
 
 /** Enable RSSI input via PWM signal */
-#define RC_INPUT_ENABLE_RSSI_PWM	_IO(_RC_INPUT_BASE, 2)
+#define RC_INPUT_ENABLE_RSSI_PWM	_IOC(_RC_INPUT_BASE, 2)
 
 #endif /* _DRV_RC_INPUT_H */

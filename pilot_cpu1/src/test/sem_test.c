@@ -1,6 +1,5 @@
 #include "FreeRTOSConfig.h"
 #include "FreeRTOS_Print.h"
-#include "driver.h"
 #include "task.h"
 
 SemaphoreHandle_t xSemaphore;

@@ -41,7 +41,7 @@
  * @defgroup topics List of all uORB topics.
  */
 
-#include "uORB/drv_orb_dev.h"
+#include "drv_orb_dev.h"
 
 #include "topics/sensor_mag.h"
 ORB_DEFINE(sensor_mag, struct sensor_mag_s);

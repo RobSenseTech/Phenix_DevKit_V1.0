@@ -113,7 +113,7 @@ static inline bool xRingBufferPut(RingBuffer_t *pxRingBuf,const void *vBuf, size
 	}
 }
 
-static inline int iRingBufferGetFilledCount(RingBuffer_t *pxRingBuf)
+static inline int iRingBufferGetAvailable(RingBuffer_t *pxRingBuf)
 {
 	unsigned xTail, xHead;
 
@@ -134,7 +134,7 @@ static inline int iRingBufferGetFilledCount(RingBuffer_t *pxRingBuf)
 	return (xTail <= xHead) ? (xHead - xTail) : (pxRingBuf->_NumItems - xTail + xHead);	
 }
 
-static inline int iRingBufferGetEmptyCount(RingBuffer_t *pxRingBuf)
+static inline int iRingBufferGetSpace(RingBuffer_t *pxRingBuf)
 {
 	unsigned xTail, xHead;
 

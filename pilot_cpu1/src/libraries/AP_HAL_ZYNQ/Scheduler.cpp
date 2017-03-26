@@ -30,6 +30,7 @@ void PX4Scheduler::init()
 
     // setup the timer thread - this will call tasks at 1kHz
     xTaskCreate(&PX4Scheduler::_timer_thread, "timer thread", 2048, this, APM_TIMER_PRIORITY, &_timer_thread_ctx);
+#if 1
 
     // the UART thread runs at a medium priority
     xTaskCreate(&PX4Scheduler::_uart_thread, "uart thread", 2048, this, APM_UART_PRIORITY, &_uart_thread_ctx);
@@ -40,6 +41,7 @@ void PX4Scheduler::init()
     // the storage thread runs at just above IO priority
 
     xTaskCreate(&PX4Scheduler::_storage_thread, "storate thread", 2048, this, APM_STORAGE_PRIORITY, &_storage_thread_ctx);
+#endif
 }
 
 /**
@@ -50,11 +52,12 @@ void PX4Scheduler::delay_microseconds_semaphore(uint16_t usec)
     sem_t wait_semaphore;
     struct hrt_call wait_call;
     
-    wait_semaphore = sem_init(1, 0);
+    sem_init(&wait_semaphore, 0, 0);
     memset(&wait_call, 0, sizeof(wait_call));
-    hrt_call_after(&wait_call, usec, (hrt_callout)sem_post, (void *)wait_semaphore);
-    sem_wait(wait_semaphore);
-    sem_del(wait_semaphore);
+    hrt_call_after(&wait_call, usec, (hrt_callout)sem_post, (void *)&wait_semaphore);
+    sem_wait(&wait_semaphore);
+    sem_destroy(&wait_semaphore);
+
 }
 
 
@@ -91,12 +94,11 @@ void PX4Scheduler::delay_microseconds_boost(uint16_t usec)
 {
     sem_t wait_semaphore;
     static struct hrt_call wait_call;
-    wait_semaphore = sem_init(1, 0);
-    hrt_call_after(&wait_call, usec, (hrt_callout)sem_post_boost, wait_semaphore);
-    sem_wait(wait_semaphore);
+    sem_init(&wait_semaphore, 0, 0);
+    hrt_call_after(&wait_call, usec, (hrt_callout)sem_post_boost, &wait_semaphore);
+    sem_wait(&wait_semaphore);
     hrt_call_after(&wait_call, APM_MAIN_PRIORITY_BOOST_USEC, (hrt_callout)set_normal_priority, NULL);
-
-    sem_del(wait_semaphore);
+    sem_destroy(&wait_semaphore);
 }
 
 

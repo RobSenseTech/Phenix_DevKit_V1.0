@@ -22,7 +22,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-
+#include <fcntl.h>
+#include <unistd.h>
 
 
 #include <drivers/drv_batt_smbus.h>
@@ -72,7 +73,7 @@ void AP_BattMonitor_SMBus_PX4::read()
             // read capacity
             if ((_batt_fd >= 0) && !_capacity_updated) {
                 uint16_t tmp;
-                if (ioctl(_batt_fd, BATT_SMBUS_GET_CAPACITY, (void*)&tmp) == OK) {
+                if (ioctl(_batt_fd, BATT_SMBUS_GET_CAPACITY, (unsigned long)&tmp) == OK) {
                     _capacity_updated = true;
                     set_capacity(tmp);
                 }

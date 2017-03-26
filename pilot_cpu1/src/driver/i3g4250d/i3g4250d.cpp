@@ -40,7 +40,6 @@
  */
 
 #include "device/cdev.h"
-#include "driver.h"
 #include "ringbuffer.h"
 #include "drv_gyro.h"
 #include <uORB/uORB.h>
@@ -55,7 +54,16 @@
 #include "task.h"
 #include "timers.h"
 #include "Phx_define.h"
+#include "driver.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
 
 #define I3G4250D_DEVICE_PATH "/dev/i3g4250d"
 #define I3G4250D_EXT_DEVICE_PATH "/dev/i3g4250d_ext"
@@ -188,8 +196,8 @@ public:
 
 	virtual int		init();
 
-	virtual size_t		read(struct xHANDLE *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(struct xHANDLE *filp, int cmd, void *prArg);
+	virtual ssize_t		read(struct file *filp, char *buffer, size_t buflen);
+	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
@@ -510,8 +518,8 @@ I3G4250D::probe()
 	return -EIO;
 }
 
-size_t
-I3G4250D::read(struct xHANDLE *filp, char *buffer, size_t buflen)
+ssize_t
+I3G4250D::read(struct file *filp, char *buffer, size_t buflen)
 {
 	unsigned count = buflen / sizeof(struct gyro_report);
 	struct gyro_report *gbuf = reinterpret_cast<struct gyro_report *>(buffer);
@@ -553,10 +561,8 @@ I3G4250D::read(struct xHANDLE *filp, char *buffer, size_t buflen)
 }
 
 int
-I3G4250D::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
+I3G4250D::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
-	
-	unsigned long arg = (unsigned long)prArg;
 	switch (cmd) {
 
 	case SENSORIOCSPOLLRATE: {
@@ -578,7 +584,7 @@ I3G4250D::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
 				/* set default/max polling rate */
 			case SENSOR_POLLRATE_MAX:
 			case SENSOR_POLLRATE_DEFAULT:
-				return ioctl(filp, SENSORIOCSPOLLRATE, (void*)I3G4250D_DEFAULT_RATE);
+				return ioctl(filp, SENSORIOCSPOLLRATE, I3G4250D_DEFAULT_RATE);
 
 				/* adjust to a legal polling interval in Hz */
 			default: {
@@ -649,7 +655,7 @@ I3G4250D::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
 
 	case GYROIOCSLOWPASS: {
 		// set the software lowpass cut-off in Hz
-		float cutoff_freq_hz = (float)arg;
+		float cutoff_freq_hz = arg;
 		float sample_rate = 1.0e6f / _call_interval;
 		set_driver_lowpass_filter(sample_rate, cutoff_freq_hz);
 
@@ -688,7 +694,7 @@ I3G4250D::ioctl(struct xHANDLE *filp, int cmd, void *prArg)
 
 	default:
 		/* give it to the superclass */
-		return CDev::ioctl(filp, cmd, prArg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
 
@@ -1201,9 +1207,10 @@ start(bool external_bus, enum Rotation rotation)
 		fd = open(I3G4250D_DEVICE_PATH, O_RDONLY);
 		
 
-	if (fd == -1)
+	if (fd < 0)
 		goto fail;
-	if (ioctl(fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0)
+
+	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0)
 		goto fail;
 
     close(fd);
@@ -1237,7 +1244,8 @@ test(int external_bus)
 	if(external_bus)
 	{
 		fd_gyro = open(I3G4250D_EXT_DEVICE_PATH, O_RDONLY);
-		if (fd_gyro == -1) {
+		if(fd_gyro < 0)
+        {
 			err(1, "%s open failed", I3G4250D_EXT_DEVICE_PATH);
 			return;
 		}
@@ -1245,14 +1253,15 @@ test(int external_bus)
 	else
 	{
 		fd_gyro = open(I3G4250D_DEVICE_PATH, O_RDONLY);
-		if (fd_gyro == -1) {
+		if(fd_gyro < 0)
+        {
 			err(1, "%s open failed", I3G4250D_DEVICE_PATH);
 			return;
 		}
 	}
 	
 	/* reset to manual polling */
-	if (ioctl(fd_gyro, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_MANUAL) < 0) {
+	if (ioctl(fd_gyro, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_MANUAL) < 0){
 		err(1, "reset to manual polling");
 		return;
 	}
@@ -1276,7 +1285,7 @@ test(int external_bus)
 	warnx("gyro range: %8.4f rad/s (%d deg/s)", (double)g_report.range_rad_s,
 	      (int)((g_report.range_rad_s / M_PI_F) * 180.0f + 0.5f));
 
-	if (ioctl(fd_gyro, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0) {
+	if (ioctl(fd_gyro, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0){
 		err(1, "reset to default polling");
 		return;
 	}
@@ -1294,24 +1303,26 @@ test(int external_bus)
 void
 reset(int external_bus)
 {
-	int fd;
+	int fd = 0;
 	
 	if(external_bus)
 		fd = open(I3G4250D_EXT_DEVICE_PATH, O_RDONLY);
 	else
 		fd = open(I3G4250D_DEVICE_PATH, O_RDONLY);
 	
-	if (fd == -1) {
+	if (fd < 0)
+    {
 		err(1, "failed ");
 		return;
 	}
 
-	if (ioctl(fd, SENSORIOCRESET, 0) < 0) {
+	if (ioctl(fd, SENSORIOCRESET, 0) < 0)
+    {
 		err(1, "driver reset failed");
 		return;
 	}
 
-	if (ioctl(fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0) {
+	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0){
 		err(1, "accel pollrate reset failed");
 		return;
 	}

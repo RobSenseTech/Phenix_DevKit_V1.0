@@ -77,6 +77,10 @@
 
 #include "list.h"
 
+#if(configROBSENSE_CUSTOM == 1)
+#include "fs/fs.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -1943,6 +1947,11 @@ TickType_t uxTaskResetEventItemValue( void ) PRIVILEGED_FUNCTION;
  * Return the handle of the calling task.
  */
 TaskHandle_t xTaskGetCurrentTaskHandle( void ) PRIVILEGED_FUNCTION;
+
+#if(configROBSENSE_CUSTOM == 1)
+struct filelist *xTaskGetCurrentTaskFileList( void );     //get filelist of current task, added by robsense
+int *xTaskGetCurrentTaskErrno( void );     //get errno of current task, added by robsense
+#endif
 
 /*
  * Capture the current time status for future reference.

@@ -26,6 +26,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 
 
@@ -82,16 +84,16 @@ bool AP_Compass_PX4::init(void)
         _instance[i] = register_compass();
 
         // get device id
-        set_dev_id(_instance[i], ioctl(_mag_fd[i], DEVIOCGDEVICEID, (void*)0));
+        set_dev_id(_instance[i], ioctl(_mag_fd[i], DEVIOCGDEVICEID, 0));
 
         // average over up to 20 samples
-        if (ioctl(_mag_fd[i], SENSORIOCSQUEUEDEPTH, (void*)20) != 0) {
+        if (ioctl(_mag_fd[i], SENSORIOCSQUEUEDEPTH, 20) != 0) {
             hal.console->printf("Failed to setup compass queue\n");
             return false;                
         }
 
         // remember if the compass is external
-        set_external(_instance[i], ioctl(_mag_fd[i], MAGIOCGEXTERNAL, (void*)0) > 0);
+        set_external(_instance[i], ioctl(_mag_fd[i], MAGIOCGEXTERNAL, 0) > 0);
         _count[i] = 0;
         _sum[i].zero();
 

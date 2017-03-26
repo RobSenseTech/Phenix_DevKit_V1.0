@@ -41,7 +41,6 @@
  */
 
 #include "device/cdev.h"
-#include "driver.h"
 #include "ringbuffer.h"
 #include "drv_rgbled.h"
 #include <uORB/uORB.h>
@@ -56,7 +55,15 @@
 #include "Filter/LowPassFilter2p.h"
 #include "timers.h"
 #include "Phx_define.h"
+#include "driver.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <fcntl.h>
 
 #define OK						0
 #define DEV_FAILURE				0
@@ -87,7 +94,7 @@ public:
 	virtual int		init();
 	virtual int		probe();
 	virtual int		info();
-	virtual int		ioctl(struct xHANDLE *filp, int cmd, void *prArg);
+	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
 
 private:
 	TimerHandle_t _work;
@@ -231,11 +238,10 @@ RGBLED::info()
 }
 
 int
-RGBLED::ioctl(struct xHANDLE *filp, int cmd,  void *prArg)
+RGBLED::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
 	int ret = ENOTTY;
-	unsigned long arg = (unsigned long)prArg;
-	
+
 	switch (cmd) {
 	case RGBLED_SET_RGB:
 		/* set the specified color */
@@ -268,7 +274,7 @@ RGBLED::ioctl(struct xHANDLE *filp, int cmd,  void *prArg)
 	default:
 		/* set the specified color */
 		/* see if the parent class can make any use of it */
-		ret = CDev::ioctl(filp, cmd, (void*)arg);	
+		ret = CDev::ioctl(filp, cmd, arg);	
 		break;
 	}
 
@@ -738,8 +744,8 @@ int rgbled_main(int argc, char *argv[])
 			{500, 500, 500, 500, 1000, 0 }	// "0" indicates end of pattern
 		};
 
-		ret = ioctl(fd, RGBLED_SET_PATTERN, (void*)&pattern);
-		ret = ioctl(fd, RGBLED_SET_MODE, (void*)RGBLED_MODE_PATTERN);
+		ret = ioctl(fd, RGBLED_SET_PATTERN, (unsigned long)&pattern);
+		ret = ioctl(fd, RGBLED_SET_MODE, (unsigned long)RGBLED_MODE_PATTERN);
 		Print_Info("step3:--------------\r\n");		
 		close(fd);
 		return ret;
@@ -757,7 +763,7 @@ int rgbled_main(int argc, char *argv[])
 			warnx("Unable to open " RGBLED0_DEVICE_PATH);
 			return 1;
 		}
-		ret = ioctl(fd, RGBLED_SET_MODE, (void *)RGBLED_MODE_OFF);
+		ret = ioctl(fd, RGBLED_SET_MODE, (unsigned long)RGBLED_MODE_OFF);
 		close(fd);
 
 		/* delete the rgbled object if stop was requested, in addition to turning off the LED. */
@@ -787,8 +793,8 @@ int rgbled_main(int argc, char *argv[])
 		v.red   = strtol(argv[2], NULL, 0);
 		v.green = strtol(argv[3], NULL, 0);
 		v.blue  = strtol(argv[4], NULL, 0);
-		ret = ioctl(fd, RGBLED_SET_RGB, (void *)&v);
-		ret = ioctl(fd, RGBLED_SET_MODE, (void *)RGBLED_MODE_ON);
+		ret = ioctl(fd, RGBLED_SET_RGB, (unsigned long)&v);
+		ret = ioctl(fd, RGBLED_SET_MODE, (unsigned long)RGBLED_MODE_ON);
 		close(fd);
 		return ret;
 	}

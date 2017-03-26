@@ -38,7 +38,6 @@
  */
 
 #include "device/cdev.h"
-#include "driver.h"
 #include "ringbuffer.h"
 #include "drv_mag.h"
 #include "FreeRTOS_Print.h"
@@ -54,7 +53,17 @@
 #include "sleep.h"
 #include "timers.h"
 #include "irq.h"
+#include "driver.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <errno.h>
 
 
 #define LIS3MDL_DEVICE_PATH "/dev/lis3mdl"
@@ -174,8 +183,9 @@ public:
 
 	virtual int		init();
 	virtual int      probe();
-	virtual size_t		read(struct xHANDLE *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(struct xHANDLE *filp, int cmd, void *pvArg);
+
+	virtual ssize_t		read(struct file *filp, char *buffer, size_t buflen);
+	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
@@ -247,7 +257,7 @@ private:
 	 *
 	 * @param enable set to 1 to enable self-test strap, 0 to disable
 	 */
-	int			calibrate(struct xHANDLE *filp, unsigned enable);
+	int			calibrate(struct file *filp, unsigned enable);
 
 	/**
 	 * Perform the on-sensor scale calibration routine.
@@ -722,8 +732,8 @@ int LIS3MDL::spi_read(unsigned address, void *data, unsigned count)
 }
 
 
-size_t
-LIS3MDL::read(struct xHANDLE *filp, char *buffer, size_t buflen)
+ssize_t
+LIS3MDL::read(struct file *filp, char *buffer, size_t buflen)
 {
 	unsigned count = buflen / sizeof(struct mag_report);
 	struct mag_report *mag_buf = reinterpret_cast<struct mag_report *>(buffer);
@@ -782,10 +792,9 @@ LIS3MDL::read(struct xHANDLE *filp, char *buffer, size_t buflen)
 }
 
 int
-LIS3MDL::ioctl(struct xHANDLE *filp, int cmd, void *pvArg)
+LIS3MDL::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
-	unsigned dummy = (unsigned)pvArg;
-	unsigned long arg = (unsigned long)pvArg;
+	unsigned dummy = arg;
 
 	switch (cmd) {
 	case SENSORIOCSPOLLRATE: {
@@ -882,7 +891,7 @@ LIS3MDL::ioctl(struct xHANDLE *filp, int cmd, void *pvArg)
 
 	case MAGIOCSSAMPLERATE:
 		/* same as pollrate because device is in single measurement mode*/
-		return ioctl(filp, SENSORIOCSPOLLRATE, pvArg);
+		return ioctl(filp, SENSORIOCSPOLLRATE, arg);
 
 	case MAGIOCGSAMPLERATE:
 		/* same as pollrate because device is in single measurement mode*/
@@ -929,11 +938,11 @@ LIS3MDL::ioctl(struct xHANDLE *filp, int cmd, void *pvArg)
 		return set_temperature(arg);
 
 	case DEVIOCGDEVICEID:
-		return CDev::ioctl(filp, cmd, (void*)dummy);
+		return CDev::ioctl(filp, cmd, dummy);
 
 	default:
 		/* give it to the superclass */
-		return CDev::ioctl(filp, cmd, pvArg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
 
@@ -1225,7 +1234,7 @@ out:
 	return ret;
 }
 
-int LIS3MDL::calibrate(struct xHANDLE *filp, unsigned enable)
+int LIS3MDL::calibrate(struct file *filp, unsigned enable)
 {
     warnx("LIS3MDL Unsupport calibrate");
     return 0;
@@ -1438,10 +1447,10 @@ start(bool external_bus, enum Rotation rotation)
 	else
 		fd = open(LIS3MDL_DEVICE_PATH, O_RDONLY);
 	
-	if (fd == -1)
+	if (fd < 0)
 		goto fail;
 	
-	if (ioctl(fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0)
+	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0)
 		goto fail;
 	
 	close(fd);
@@ -1479,7 +1488,7 @@ test(bool external_bus)
 	if(external_bus)
 	{
 		fd = open(LIS3MDL_EXT_DEVICE_PATH, O_RDONLY);
-		if (fd == -1)
+		if (fd < 0)
 		{
 			err(1, "%s open failed", LIS3MDL_EXT_DEVICE_PATH);
 			return ;
@@ -1488,7 +1497,7 @@ test(bool external_bus)
 	else
 	{
 		fd = open(LIS3MDL_DEVICE_PATH, O_RDONLY);
-		if (fd == -1)
+		if (fd < 0)
 		{
 			err(1, "%s open failed", LIS3MDL_DEVICE_PATH);
 			return ;
@@ -1510,7 +1519,7 @@ test(bool external_bus)
 	warnx("time:        %lld\r\n", report.timestamp);
 
 	/* check if mag is onboard or external */
-	if ((ret = ioctl(fd, MAGIOCGEXTERNAL, (void *)0)) < 0) {
+	if ((ret = ioctl(fd, MAGIOCGEXTERNAL, 0)) < 0) {
 		errx(1, "failed to get if mag is onboard or external\r\n");
 			return ;
 	}
@@ -1520,13 +1529,13 @@ test(bool external_bus)
 	warnx("device active: %s", ret ? "external" : "onboard\r\n");
 
 	/* set the queue depth to 5 */
-	if (OK != ioctl(fd, SENSORIOCSQUEUEDEPTH, (void *)10)) {
+	if (OK != ioctl(fd, SENSORIOCSQUEUEDEPTH, 10)) {
 		errx(1, "failed to set queue depth");
 			return ;
 	}
 	Print_Info("LIS3MDL test ------------6\r\n");	
 	/* start the sensor polling at 2Hz */
-	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, (void*)2)) {
+	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2)) {
 		errx(1, "failed to set 2Hz poll rate");
 		return ;
 	}
@@ -1585,7 +1594,7 @@ int calibrate(bool external_bus)
 		return 0;
 	}
 	
-	if (OK != (ret = ioctl(fd, MAGIOCCALIBRATE, (void *)fd))) {
+	if (OK != (ret = ioctl(fd, MAGIOCCALIBRATE, fd))) {
 		warnx("failed to enable sensor calibration mode\r\n");
 	}
 		Print_Info("LIS3MDL step ------------temp_enable---2\r\n");
@@ -1612,11 +1621,12 @@ reset(bool external_bus)
 		return ;
 	}
 
-	if (ioctl(fd, SENSORIOCRESET, (void*)0) < 0) {
+	if (ioctl(fd, SENSORIOCRESET, 0) < 0) {
 		err(1, "driver reset failed");
 		return ;
 	}
-	if (ioctl(fd, SENSORIOCSPOLLRATE, (void*)SENSOR_POLLRATE_DEFAULT) < 0) {
+
+	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
 		err(1, "driver poll restart failed");
 		return ;
 	}
@@ -1642,7 +1652,7 @@ temp_enable(bool external_bus, bool enable)
 		err(1, "failed ");
 		return 0;
 	}
-	if (ioctl(fd, MAGIOCSTEMPCOMP, (void*)enable) < 0) {
+	if (ioctl(fd, MAGIOCSTEMPCOMP, (unsigned)enable) < 0) {
 		err(1, "set temperature compensation failed");
 		return 0;
 	}

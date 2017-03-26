@@ -125,7 +125,7 @@ int16_t NSHShellStream::read()
 int16_t NSHShellStream::available()
 {
     int ret = 0;
-    if (ioctl(shell_stdin, FIONREAD, &ret) == OK) {
+    if (ioctl(shell_stdin, FIONREAD, (unsigned long)&ret) == OK) {
         return ret;
     }
     return 0;
@@ -134,7 +134,7 @@ int16_t NSHShellStream::available()
 int16_t NSHShellStream::txspace()
 {
     int ret = 0;
-    if (ioctl(shell_stdout, FIONWRITE, &ret) == OK) {
+    if (ioctl(shell_stdout, FIONWRITE, (unsigned long)&ret) == OK) {
         return ret;
     }
     return 0;
@@ -143,7 +143,7 @@ int16_t NSHShellStream::txspace()
 #else
 #include <stdio.h>
 #include <stdarg.h>
-#include "ioctl.h"
+#include "fs/ioctl.h"
 #include "Scheduler.h"
 #include "device/cdev.h"
 
