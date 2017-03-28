@@ -192,12 +192,7 @@ typedef struct tskTaskControlBlock
 		volatile eNotifyValue eNotifyState;
 	#endif
 
-    #if(configROBSENSE_CUSTOM == 1)
-    int pterrno;                           /* Current per-thread errno            */
-    /* File descriptors ***********************************************************/
-    struct filelist tg_filelist;      /* Maps file descriptor to file             */
-    #endif
-
+    
 } tskTCB;
 
 /* The old tskTCB name is maintained above then typedefed to the new TCB_t name
@@ -660,10 +655,6 @@ StackType_t *pxTopOfStack;
 			if( pxCurrentTCB == NULL )
 			{
 
-            #if(configROBSENSE_CUSTOM == 1)
-                /* Initialize file descriptors for the TCB */
-                files_initlist(&pxNewTCB->tg_filelist);
-            #endif
 				/* There are no other tasks, or all the other tasks are in
 				the suspended state - make this the current task. */
 				pxCurrentTCB =  pxNewTCB;
@@ -700,38 +691,6 @@ StackType_t *pxTopOfStack;
 				{
 					mtCOVERAGE_TEST_MARKER();
 				}
-                #if(configROBSENSE_CUSTOM == 1)
-                {
-                    #include <fs/fs.h>
-
-                    struct file *parent = NULL;
-                    struct file *child = NULL;
-                    int i;
-
-                    /* Initialize file descriptors for the TCB */
-                    files_initlist(&pxNewTCB->tg_filelist);
-
-                    /* Duplicate the parent task's file descriptors */
-                   /* Check each file in the parent file list */
-                    parent = pxCurrentTCB->tg_filelist.fl_files;
-                    child = pxNewTCB->tg_filelist.fl_files;
-
-                    for (i = 0; i < CONFIG_NFILE_DESCRIPTORS; i++)
-                    {
-                      /* Check if this file is opened by the parent.  We can tell if
-                       * if the file is open because it contain a reference to a non-NULL
-                       * i-node structure.
-                       */
-
-                      if (parent[i].f_inode)
-                      {
-                          /* Yes... duplicate it for the child */
-
-                          (void)files_dup(&parent[i], &child[i]);
-                      }
-                    }
-                }
-                #endif
 			}
 
 			uxTaskNumber++;
@@ -3427,17 +3386,6 @@ TCB_t *pxTCB;
 
 #endif /* ( ( INCLUDE_xTaskGetCurrentTaskHandle == 1 ) || ( configUSE_MUTEXES == 1 ) ) */
 
-#if(configROBSENSE_CUSTOM == 1)
-struct filelist *xTaskGetCurrentTaskFileList( void )     //get filelist of current task, added by robsense
-{
-    return &pxCurrentTCB->tg_filelist;
-}
-
-int *xTaskGetCurrentTaskErrno( void )     //get errno of current task, added by robsense
-{
-    return &pxCurrentTCB->pterrno;
-}
-#endif
 /*-----------------------------------------------------------*/
 
 #if ( ( INCLUDE_xTaskGetSchedulerState == 1 ) || ( configUSE_TIMERS == 1 ) )

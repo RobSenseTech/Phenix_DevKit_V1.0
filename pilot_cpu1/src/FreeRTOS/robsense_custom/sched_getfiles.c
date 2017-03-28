@@ -1,18 +1,15 @@
 #include <fs/fs.h>
 #include "task.h"
 
-/*
- * (hebin bin.he@robsense.com)
- */
+/* File descriptors ***********************************************************/
+struct filelist tg_filelist = {0};      /* All task share one file list */
 
 FAR struct filelist *sched_getfiles(void)
 {
+    if((void *)tg_filelist.fl_sem == NULL)
+        files_initlist(&tg_filelist);
 
-    #if(configROBSENSE_CUSTOM == 1)
-      return xTaskGetCurrentTaskFileList();
-    #endif
-
-      return NULL;
+    return &tg_filelist;
 }
 
 

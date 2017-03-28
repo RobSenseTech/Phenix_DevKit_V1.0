@@ -249,7 +249,7 @@ line interface. */
 /* custom function by robsense */
 #define configROBSENSE_CUSTOM   1
 #if(configROBSENSE_CUSTOM == 1)
-#define CONFIG_NFILE_DESCRIPTORS 32
+#define CONFIG_NFILE_DESCRIPTORS 128
 #define CONFIG_STDIO_BUFFER_SIZE 32
 #define CONFIG_FS_FAT 1
 #define CONFIG_FAT_LFN 1

@@ -30,7 +30,6 @@ void PX4Scheduler::init()
 
     // setup the timer thread - this will call tasks at 1kHz
     xTaskCreate(&PX4Scheduler::_timer_thread, "timer thread", 2048, this, APM_TIMER_PRIORITY, &_timer_thread_ctx);
-#if 1
 
     // the UART thread runs at a medium priority
     xTaskCreate(&PX4Scheduler::_uart_thread, "uart thread", 2048, this, APM_UART_PRIORITY, &_uart_thread_ctx);
@@ -41,7 +40,6 @@ void PX4Scheduler::init()
     // the storage thread runs at just above IO priority
 
     xTaskCreate(&PX4Scheduler::_storage_thread, "storate thread", 2048, this, APM_STORAGE_PRIORITY, &_storage_thread_ctx);
-#endif
 }
 
 /**

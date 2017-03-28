@@ -39,3 +39,6 @@ cscope.out
 cscope.po.out
 cscope.files
 *.map
+GPATH
+GRTAGS
+GTAGS

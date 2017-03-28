@@ -48,6 +48,7 @@
 #if(configROBSENSE_CUSTOM == 1)
 
 static int g_irqerrno;
+int pterrno;                           /* Current per-thread errno            */
 
 /*
  * This value is added in FreeRTOS_IRQ_Handler(portASM.S)
@@ -94,7 +95,7 @@ int *get_errno_ptr(void)
            * thread-private errno in the TCB of the running task.
            */
 
-          return xTaskGetCurrentTaskErrno();
+          return &pterrno;
         }
     }
 
