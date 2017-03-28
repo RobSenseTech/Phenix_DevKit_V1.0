@@ -40,9 +40,9 @@ static PX4GPIO gpioDriver;
 static Empty::I2CDeviceManager i2c_mgr_instance;
 
 #define UARTA_DEFAULT_DEVICE "/dev/uartns2"         //uart4 maclink console
-#define UARTB_DEFAULT_DEVICE "/dev/uartns3"         //uart2 1st GPS
-#define UARTC_DEFAULT_DEVICE "/dev/uartns0"         //uart3 telem1
-#define UARTD_DEFAULT_DEVICE "/dev/uartns1"         //uart5 telem2
+#define UARTB_DEFAULT_DEVICE "/dev/uartns3"         //1st GPS
+#define UARTC_DEFAULT_DEVICE "/dev/uartns0"         //uart2 telem1
+#define UARTD_DEFAULT_DEVICE "/dev/uartns1"         //uart3 telem2
 #define UARTE_DEFAULT_DEVICE "/dev/uartns4"         //uart6 2and GPS
 
 // 3 UART drivers, for GPS plus two mavlink-enabled devices
@@ -117,22 +117,18 @@ static void main_loop(void *pvParameters)
 //    hal.analogin->init();
  //   hal.gpio->init();
 
-    Print_Info("\n");
+    Print_Info("in main loop\n");
 
     /*
       run setup() at low priority to ensure CLI doesn't hang the
       system, and to allow initial sensor read loops to run
      */
     hal_px4_set_priority(APM_STARTUP_PRIORITY);
-    Print_Info("\n");
 
     schedulerInstance.hal_initialized();
 
-    Print_Info("\n");
     g_callbacks->setup();
-    Print_Info("\n");
     hal.scheduler->system_initialized();
-    Print_Info("\n");
 
 //    struct hrt_call loop_overtime_call;
     xTimerHandle loop_overtime_call;
@@ -146,7 +142,7 @@ static void main_loop(void *pvParameters)
 
 //    loop_overtime_call = xTimerCreate("loop overtime", 100/portTICK_RATE_MS, pdTRUE, NULL, loop_overtime, NULL);
  //   xTimerStart(loop_overtime_call, portMAX_DELAY);
-    Print_Info("main loop start\n");
+    Print_Info("main loop start thread\n");
     while (!_px4_thread_should_exit) {
         
         /*

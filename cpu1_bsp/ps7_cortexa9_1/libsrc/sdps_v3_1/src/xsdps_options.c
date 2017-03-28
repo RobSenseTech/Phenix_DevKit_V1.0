@@ -197,8 +197,7 @@ s32 XSdPs_Get_BusWidth(XSdPs *InstancePtr, u8 *SCR)
 			XSDPS_XFER_MODE_OFFSET,
 			XSDPS_TM_DAT_DIR_SEL_MASK | XSDPS_TM_DMA_EN_MASK);
 
-	//Xil_DCacheInvalidateRange((INTPTR)SCR, 8);
-    Xil_DCacheFlushRange((INTPTR)SCR, 8);
+	Xil_DCacheInvalidateRange((INTPTR)SCR, 8);
 
 	Status = XSdPs_CmdTransfer(InstancePtr, ACMD51, 0U, BlkCnt);
 	if (Status != XST_SUCCESS) {

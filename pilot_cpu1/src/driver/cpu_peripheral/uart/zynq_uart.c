@@ -340,32 +340,33 @@ int Uart_Ioctl(file_t *filp, int iCmd, unsigned long ulArg)
 			XUartPs_SetOperMode(pxUartDrvPrivate->pxUartInstPtr, uiUartOperMode);
 			break;
 		}	
-        case UART_IOC_SET_DATA_FORMAT:
+        case UART_IOC_GET_DATA_FORMAT:
         {
             if((UartDataFormat_t *)ulArg == NULL)
             {
                 Print_Err("Invald Param!!\n");
                 return -1;
             }
+        
+            XUartPsFormat *usr_format = (XUartPsFormat *)ulArg;
 
-            UartDataFormat_t *data_format = (UartDataFormat_t *)ulArg;
-            XUartPsFormat xil_format = {0};
+            //For ps uart, XUartPsFormat is equal to UartDataFormat_t
+            XUartPs_SetDataFormat(pxUartDrvPrivate->pxUartInstPtr, &usr_format);
 
-            XUartPs_GetDataFormat(pxUartDrvPrivate->pxUartInstPtr, &xil_format);
+            break;
+        }
+        case UART_IOC_SET_DATA_FORMAT:
+        {
+            if((XUartPsFormat *)ulArg == NULL)
+            {
+                Print_Err("Invald Param!!\n");
+                return -1;
+            }
 
-            if(data_format->iBaudRate != 0)
-                xil_format.BaudRate = data_format->iBaudRate;
-            
-            if(data_format->iDataBits != 0)
-                xil_format.DataBits = data_format->iDataBits;
-            
-            if(data_format->iParity != 0)
-                xil_format.Parity = data_format->iParity;
-       
-            if(data_format->iStopBits != 0)
-                xil_format.StopBits = data_format->iStopBits;
+            XUartPsFormat *drv_format = (XUartPsFormat *)ulArg;
 
-            XUartPs_SetDataFormat(pxUartDrvPrivate->pxUartInstPtr, &xil_format);
+            //For ps uart, XUartPsFormat is equal to UartDataFormat_t
+            XUartPs_SetDataFormat(pxUartDrvPrivate->pxUartInstPtr, &drv_format);
             break;
         }
 		default:

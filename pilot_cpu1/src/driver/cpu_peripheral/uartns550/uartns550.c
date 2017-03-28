@@ -114,12 +114,12 @@ uint32_t uartns_init(int32_t uartns_id)
 	/*
 	 * step4: set interrupt as rising edge triggered
 	 */
-	GicSetTriggerType(uartns_id, INTR_TRIGGER_HIGH_LEVEL);
+	GicSetTriggerType(intr_id, INTR_TRIGGER_RAISING_EDGE);
 
     /*
 	 * step5: register interrupt handler
 	 */
-	GicIsrHandlerRegister(uartns_id,(Xil_ExceptionHandler) uartns_isr,(void *)private);
+	GicIsrHandlerRegister(intr_id,(Xil_ExceptionHandler) uartns_isr,(void *)private);
 	if(status != XST_SUCCESS)
 	{
 		Print_Err("Set Uart%d interrupt handler failed:%d\n", uartns_id, status);
@@ -286,17 +286,13 @@ void uartns_isr(void *arg)
 
 ssize_t uartns_read(struct file *filp, char *buffer, size_t buflen)
 {
-    uint32_t ier = 0;
 	size_t read_len= 0;
 	uartns_private_t *private = (uartns_private_t *)filp->f_inode->i_private;
-	XUartNs550 *inst_ptr = private->uartns_inst_ptr;
 
 	/*
-	 * Enter a critical region by disabling all the UART interrupts to allow
-	 * this call to stop a previous operation that may be interrupt driven
-	 */
-	ier = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_IER_OFFSET);
-	XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_IER_OFFSET, 0);
+	 * Enter a critical region
+     */
+    irqstate_t state = irqsave();
 
 	while(read_len < buflen)
 	{
@@ -312,7 +308,7 @@ ssize_t uartns_read(struct file *filp, char *buffer, size_t buflen)
 	 * Restore the interrupt enable register to it's previous value such
 	 * that the critical region is exited
 	 */
-	XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_IER_OFFSET, ier);
+    irqrestore(state);
 
 	return read_len;
 
@@ -320,9 +316,8 @@ ssize_t uartns_read(struct file *filp, char *buffer, size_t buflen)
 
 ssize_t uartns_write(struct file *filp, const char *buffer, size_t buflen)
 {
-    uint8_t val;
-	size_t write_len = 0;
     uint32_t ier = 0;
+	size_t write_len = 0;
     uartns_private_t *private  = (uartns_private_t *)filp->f_inode->i_private;
 	XUartNs550 *inst_ptr = private->uartns_inst_ptr;
 
@@ -330,8 +325,7 @@ ssize_t uartns_write(struct file *filp, const char *buffer, size_t buflen)
 	 * Enter a critical region by disabling all the UART interrupts to allow
 	 * this call to stop a previous operation that may be interrupt driven
 	 */
-	ier = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_IER_OFFSET);
-	XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_IER_OFFSET, 0);
+    irqstate_t state = irqsave();
 
 	while (write_len < buflen) 
 	{
@@ -344,12 +338,123 @@ ssize_t uartns_write(struct file *filp, const char *buffer, size_t buflen)
 
 
 	/*
-	 * Restore the interrupt enable register to it's previous value such
-	 * that the critical region is exited, at the same time enable THRE interrupt
+	 * Enable THRE interrupt
 	 */
+	ier = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_IER_OFFSET);
 	XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_IER_OFFSET, ier | XUN_IER_TX_EMPTY);
+    irqrestore(state);
 
     return write_len;
+}
+
+static void structure_trans_to_drv(UartDataFormat_t *usr_format, XUartNs550Format *drv_format)
+{
+   drv_format->BaudRate = usr_format->iBaudRate;
+
+    switch(usr_format->iDataBits)
+    {
+        case UART_DATA_5_BIT:
+            drv_format->DataBits = XUN_FORMAT_5_BITS;
+            break;
+        case UART_DATA_6_BIT:
+            drv_format->DataBits = XUN_FORMAT_6_BITS;
+            break;
+        case UART_DATA_7_BIT:
+            drv_format->DataBits = XUN_FORMAT_7_BITS;
+            break;
+        case UART_DATA_8_BIT:
+            drv_format->DataBits = XUN_FORMAT_8_BITS;
+            break;
+        default:
+            drv_format->DataBits = XUN_FORMAT_8_BITS;
+            break;
+    }
+
+    switch(usr_format->iParity)
+    {
+        case UART_EVEN_PARITY:
+            drv_format->Parity = XUN_FORMAT_EVEN_PARITY;
+            break;
+        case UART_ODD_PARITY:
+            drv_format->Parity = XUN_FORMAT_ODD_PARITY;
+            break;
+        case UART_NO_PARITY:
+            drv_format->Parity = XUN_FORMAT_NO_PARITY;
+            break;
+        default:
+            drv_format->Parity = XUN_FORMAT_NO_PARITY;
+            break;
+    }
+
+
+    switch(usr_format->iStopBits)
+    {
+        case UART_1_STOP_BIT:
+            drv_format->StopBits = XUN_FORMAT_1_STOP_BIT;
+            break;
+        case UART_2_STOP_BIT:
+            drv_format->StopBits = XUN_FORMAT_1_STOP_BIT;
+            break;
+        default:
+            drv_format->StopBits = XUN_FORMAT_1_STOP_BIT;
+            break;
+    }
+
+}
+
+static void structure_trans_to_user(UartDataFormat_t *usr_format, XUartNs550Format *drv_format)
+{
+    usr_format->iBaudRate = drv_format->BaudRate;
+
+    switch(drv_format->DataBits)
+    {
+        case XUN_FORMAT_5_BITS:
+            usr_format->iDataBits = UART_DATA_5_BIT;
+            break;
+        case XUN_FORMAT_6_BITS:
+            usr_format->iDataBits = UART_DATA_6_BIT;
+            break;
+        case XUN_FORMAT_7_BITS:
+            usr_format->iDataBits = UART_DATA_7_BIT;
+            break;
+        case XUN_FORMAT_8_BITS:
+            usr_format->iDataBits = UART_DATA_8_BIT;
+            break;
+        default:
+            usr_format->iDataBits = UART_DATA_8_BIT;
+            break;
+    }
+
+    switch(drv_format->Parity)
+    {
+        case XUN_FORMAT_EVEN_PARITY:
+            usr_format->iParity = UART_EVEN_PARITY;
+            break;
+        case XUN_FORMAT_ODD_PARITY:
+            usr_format->iParity = UART_ODD_PARITY;
+            break;
+        case XUN_FORMAT_NO_PARITY:
+            usr_format->iParity = UART_NO_PARITY;
+            break;
+        default:
+            usr_format->iParity = UART_NO_PARITY;
+            break;
+    }
+
+
+    switch(drv_format->StopBits)
+    {
+        case XUN_FORMAT_1_STOP_BIT:
+            usr_format->iStopBits = UART_1_STOP_BIT;
+            break;
+        case XUN_FORMAT_2_STOP_BIT:
+            usr_format->iStopBits = UART_2_STOP_BIT;
+            break;
+        default:
+            usr_format->iStopBits = UART_1_STOP_BIT;
+            break;
+    }
+
 }
 
 int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
@@ -358,12 +463,7 @@ int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
 	uartns_private_t *private = (uartns_private_t *)filp->f_inode->i_private;
 	XUartNs550 *inst_ptr = private->uartns_inst_ptr;
 
-	/*
-	 * Enter a critical region by disabling all the UART interrupts to allow
-	 * this call to stop a previous operation that may be interrupt driven
-	 */
-	ier = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_IER_OFFSET);
-	XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_IER_OFFSET, 0);
+	irqstate_t state = irqsave();
 
 	switch(cmd)
     {
@@ -408,7 +508,7 @@ int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
 			XUartNs550_SetOptions(inst_ptr, mode);
 			break;
 		}
-        case UART_IOC_SET_DATA_FORMAT:
+        case UART_IOC_GET_DATA_FORMAT:
         {
             if((UartDataFormat_t *)arg == NULL)
             {
@@ -421,28 +521,30 @@ int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
 
             XUartNs550_GetDataFormat(inst_ptr, &xil_format);
 
-            if(data_format->iBaudRate != 0)
-                xil_format.BaudRate = data_format->iBaudRate;
-            
-            if(data_format->iDataBits != 0)
-                xil_format.DataBits = data_format->iDataBits;
-            
-            if(data_format->iParity != 0)
-                xil_format.Parity = data_format->iParity;
-       
-            if(data_format->iStopBits != 0)
-                xil_format.StopBits = data_format->iStopBits;
+            structure_trans_to_user(data_format, &xil_format);
+
+            break;
+        }
+        case UART_IOC_SET_DATA_FORMAT:
+        {
+            if((UartDataFormat_t *)arg == NULL)
+            {
+                Print_Err("Invald Param!!\n");
+                return -1;
+            }
+
+            UartDataFormat_t *data_format = (UartDataFormat_t *)arg;
+            XUartNs550Format xil_format = {0};
+
+            structure_trans_to_drv(data_format, &xil_format);
+            Print_Info("baud=%d databits=%d parity=%d stop=%d\n", xil_format.BaudRate, xil_format.DataBits, xil_format.Parity, xil_format.StopBits);
 
             XUartNs550_SetDataFormat(inst_ptr, &xil_format);
             break;
         }
     }
 
-    /*
-	 * Restore the interrupt enable register to it's previous value such
-	 * that the critical region is exited
-	 */
-	XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_IER_OFFSET, ier);
+    irqrestore(state);
 
 }
 

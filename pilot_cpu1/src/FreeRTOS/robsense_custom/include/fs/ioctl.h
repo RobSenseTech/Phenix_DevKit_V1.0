@@ -138,6 +138,7 @@
 
 #define UART_IOC_SET_MODE		    _DIOC(0x0005)
 #define UART_IOC_SET_DATA_FORMAT	_DIOC(0x0006)
+#define UART_IOC_GET_DATA_FORMAT    _DIOC(0x0007)
 
 
 /* NuttX block driver ioctl definitions *************************************/

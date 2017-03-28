@@ -21,6 +21,7 @@ static void prvUartSendTask( void *pvParameters )
 {
 	int iFd = (int)pvParameters;
 	char TestString[] = {1,2,3,4,5,6,7,8,9};
+	//char TestString[] = {'1','2','3','4','5','6','7','8','9', 'h', 'b'};
     int iNum = 0;
 
 	while(1)
@@ -28,6 +29,8 @@ static void prvUartSendTask( void *pvParameters )
         ioctl(iFd, FIONWRITE, (unsigned long)&iNum);
         if(iNum >= sizeof(TestString))      
     		write(iFd, TestString, sizeof(TestString));
+        else
+            Print_Err("send full\n");
 
 		vTaskDelay( 300 / portTICK_RATE_MS );
 	}
@@ -81,16 +84,20 @@ void UartTest()
 {
 	int iFd;
 	int iMode = UART_MODE_LOOP;	
+    UartDataFormat_t data_format = {0};
 
-	iFd = open("/dev/uartns0", O_RDWR);
+	iFd = open("/dev/uartns3", O_RDWR);
 	if(iFd < 0)
 	{
 		Print_Err("open uart driver failed:%d\n", iFd);
 		return;
 	}
 
+	ioctl(iFd, UART_IOC_GET_DATA_FORMAT, (unsigned long)&data_format);
+    data_format.iBaudRate = 115200;
+    ioctl(iFd, UART_IOC_SET_DATA_FORMAT, (unsigned long)&data_format);
 	ioctl(iFd, UART_IOC_SET_MODE, &iMode);
-	
+
 	Print_Info("create uart send task:%d\n", xTaskCreate(prvUartSendTask, "uart-send", configMINIMAL_STACK_SIZE*2, (void *)iFd, 1, NULL));
 	Print_Info("create uart recv task:%d\n", xTaskCreate(prvUartRecvTask, "uart-recv", configMINIMAL_STACK_SIZE*2, (void *)iFd, 1, NULL));
 }

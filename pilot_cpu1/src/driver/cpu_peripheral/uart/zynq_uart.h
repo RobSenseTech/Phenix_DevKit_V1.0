@@ -5,6 +5,7 @@ enum {
     UART_DATA_8_BIT = 1,
     UART_DATA_7_BIT,
     UART_DATA_6_BIT,
+    UART_DATA_5_BIT,
 };
 
 enum {

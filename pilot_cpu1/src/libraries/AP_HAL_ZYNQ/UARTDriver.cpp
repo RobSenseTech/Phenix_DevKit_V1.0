@@ -113,8 +113,9 @@ void PX4UARTDriver::begin(uint32_t baudrate, uint16_t rxS, uint16_t txS)
 	if (_baudrate != 0) {
         UartDataFormat_t data_format = {0};
 
+		ret = ioctl(_fd, UART_IOC_GET_DATA_FORMAT, (unsigned long)&data_format);
         data_format.iBaudRate = _baudrate;
-		ret = ioctl(_fd, UART_IOC_SET_DATA_FORMAT, (unsigned long)&_baudrate);
+		ret = ioctl(_fd, UART_IOC_SET_DATA_FORMAT, (unsigned long)&data_format);
         if(ret != 0)
         {
             Print_Err("set %s baudrate failed!!\n", _devpath);
