@@ -25,4 +25,4 @@ make clean;make -j8
 
 ​	Bcause the pilot code depends on cpu1 bsp, please make sure that you have compiled bsp before compiling pilot code.
 
-For those who have further questions, please push your questions onto our developers' forum at dev.robsense.com, we have developers and our engineering team there for Q&A. And also have the Wechat group, since it's only for invited developers, please add our coordinator Jie(his wechat account is: zhoushanjinjie) first and he will invite you to the Wechat group. 
+For those who have further questions, please push your questions onto our developers' forum at http://dev.robsense.com, we have developers and our engineering team there for Q&A. And also have the Wechat group, since it's only for invited developers, please add our coordinator Jie(his wechat account is: zhoushanjinjie) first and he will invite you to the Wechat group. 
