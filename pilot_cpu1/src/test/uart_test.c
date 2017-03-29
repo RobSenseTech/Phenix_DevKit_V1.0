@@ -32,7 +32,7 @@ static void prvUartSendTask( void *pvParameters )
         else
             Print_Err("send full\n");
 
-		vTaskDelay( 300 / portTICK_RATE_MS );
+		vTaskDelay( 100 / portTICK_RATE_MS );
 	}
 }
 
@@ -76,7 +76,7 @@ static void prvUartRecvTask( void *pvParameters )
 			}
 		}
 
-		vTaskDelay( 500 / portTICK_RATE_MS );
+		vTaskDelay( 800 / portTICK_RATE_MS );
 	}
 }
 

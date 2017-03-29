@@ -1,0 +1,9 @@
+
+Xilinx BusyBox ramdisk history:
+
+Jan 1, 2011:    Initial version
+March 16, 2011: Update to busybox 1.18
+May 3, 2011:    Use real mkdosfs rather than BusyBox version
+May 19, 2011:   Use ttyPS0 rather than ttyDF0
+June 2, 2011:   Use getty 115200 on ttyPS1
+

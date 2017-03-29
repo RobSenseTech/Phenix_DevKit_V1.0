@@ -737,7 +737,6 @@ void Copter::start_logging()
 
 void Copter::log_init(void)
 {
-    Print_Err(">>>>>>>>>>>>>......log init\n");
     DataFlash.Init(log_structure, ARRAY_SIZE(log_structure));
     if (!DataFlash.CardInserted()) {
         Print_Warn("No dataflash card inserted\n");

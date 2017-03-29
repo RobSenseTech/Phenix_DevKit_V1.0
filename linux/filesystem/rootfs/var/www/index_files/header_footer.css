@@ -1,0 +1,749 @@
+.xheader {
+	z-index:2;
+	position:relative;
+	width:960px;
+	margin:0 0 0 0;
+	padding:0 0 15px 0;
+	border:1px solid white;
+	border-width:1px 0 0 0;
+	height:110px;
+	background:white url(../images/css/header_footer/header-bkd.gif) 0 0 no-repeat;
+}
+#xlinks {
+	position:absolute;
+	top:0;
+	right:35px;
+	/* float:right;*/
+  margin:4px 5px 0 0;
+}
+#CNheader #xlinks {
+	margin-right:15px;
+}
+#JPheader #xlinks {
+	margin-right:15px;
+}
+#xlinks a:visited {
+	color:#117ada;
+}
+#xlinks a:hover {
+	color:#ee3424;
+}
+#ENheader .xlink {
+	float:left;
+	padding:0;
+	margin:0 0 0 28px;
+}
+#CNheader .xlink {
+	float:left;
+	padding:0;
+	margin:0 0 0 33px;
+}
+#JPheader .xlink {
+	float:left;
+	padding:0;
+	margin:0 0 0 33px;
+}
+.xlink a {
+	display:block;
+	color:#117ada;
+	text-decoration:none;
+	margin:1px 0;
+	padding:0;
+	font-size:0.9em;
+}
+#signIn {
+	color:#ccc;
+	margin-right:10px;
+}
+#signIn a#open-panel,
+#signIn a {
+        color:#ee3424;
+	display:inline;
+}
+#signInPanel-wrap {
+	position:absolute;
+	width:500px;
+	left:0px;
+	z-index:25;
+	text-align:center;
+}
+#signInPanel {
+	width:500px;
+	position:relative;
+	top:1px;
+	height:0px;
+	margin-left:auto;
+	margin-right:auto;
+	z-index:10;
+	overflow:hidden;
+	text-align:left;
+}
+#signInPanelContents {
+	border:1px solid white;
+	background:black;
+	filter:alpha(opacity=70);
+	-moz-opacity:0.70;
+	-khtml-opacity:0.70;
+	opacity: 0.70;
+	height:100%;
+	width:504px;
+	position:absolute;
+	z-index:-1;
+}
+#signInPanel h2 {
+	font-size:1em;
+	color:white;
+	font-weight:normal;
+	line-height:35px;
+	position:absolute;
+	top:10px;
+	left:275px;
+}
+#signInForm {
+	border:1px solid white;
+	width:200px;
+	height:150px;
+	position:absolute;
+	left:15px;
+	top:15px;
+	background:#46392f;
+	text-align:left;
+	padding-left:10px;
+}
+#noAccount {
+	width:200px;
+}
+#signInButton {
+	margin-left:auto;
+	margin-right:auto;
+	position:relative;
+	top:1px;
+	width:173px;
+	height:54px;
+	z-index:20;
+	filter:alpha(opacity-70);
+	-moz-opacity:0.70;
+	-khtml-opacity:0.70;
+	opacity: 0.70;
+	cursor:pointer;
+}
+#signInButton a {
+	text-decoration:none;
+	position:relative;
+	top:5px;
+	left:10px;
+}
+#signInHide {
+	display:none;
+}
+#xlogonew {
+	border:0;
+	position:absolute;
+	top:0;
+	margin:20px 0 0 0;
+	padding:0 0 0 15px;
+}
+#xsearch {
+	text-align:right;
+	width:200px;
+	position:absolute;
+	top:32px;
+	right:20px;
+}
+#JPheader #xsearch {
+	width:250px;
+}
+#ikeyword {
+	border:1px solid #cacbcc;
+	font-size:0.9em;
+	color:#666;
+	padding:2px 0;
+	width:150px;
+	height:16px;
+}
+#JPheader #ikeyword {
+	width:200px;
+}
+#isearch {
+	margin:0 0 -3px 2px;
+}
+#advSearch {
+	display:block;
+	font-size:0.8em;
+	color:#117ada;
+	margin:0 18px 0 0;
+	text-decoration:none;
+}
+#CNheader #advSearch {
+	margin-right:30px;
+}
+#JPheader #advSearch {
+	margin-right:30px;
+}
+#advSearch:hover {
+	color: #ee3424;
+}
+#xmenu {
+	position:absolute;
+	top:81px;
+	left:0;
+	height:28px;
+	width:98%;
+	background:url(../images/css/header_footer/header-border-btm.jpg) 50% 100% no-repeat;
+	padding:15px 0 0 15px;
+	margin:0 0 0 0;
+}
+#xmenu h2 {
+	margin:0;
+	padding:0;
+	font-size:1em;
+	color:black;
+}
+#xmenu a {
+	text-decoration:none;
+}
+/*** SUCKERFISH MENU ESSENTIAL STYLES ***/
+.sf-menu, .sf-menu, .lang-menu * {
+	margin:			0;
+	padding:		0;
+	list-style:		none;
+}
+.sf-menu, .lang-menu {
+	line-height:	1.0;
+}
+.sf-menu ul {
+	position:		absolute;
+	top:			-999em;
+	width:			15em; /* left offset of submenus need to match (see below) */
+}
+.lang-menu ul {
+	padding-top:            12px;
+	position:		absolute;
+	top:			-999em;
+	width:			5em; /* left offset of submenus need to match (see below) */
+}
+.sf-menu ul li, .lang-menu ul li {
+	width:			100%;
+}
+/*
+.sf-menu li:hover, .lang-menu li:hover {
+	visibility:		inherit; 
+}
+*/
+.sf-menu li, .lang-menu li {
+	float:			left;
+	position:		relative;
+}
+.sf-menu a, .lang-menu a {
+	display:		block;
+	position:		relative;
+}
+.mainNav li div.xmenuhover { /* Changed by Infosys as per new structure */
+	left: 0;
+	top: 2.3em;
+	z-index: 99;
+}
+.mainNav li li a:hover {
+	color:#ee3424;
+	outline:0;
+	z-index:1000;
+}
+.lang-menu li ul.xlanghover {
+	left: 0;
+	top:  1em;
+	z-index: 99;
+}
+.lang-menu li li a:hover {
+	color:#ee3424;
+	outline:0;
+	z-index:1000;
+}
+/*** DEMO SKIN ***/
+
+.lang-menu {
+	float:			        left;
+	margin-bottom:	        1em;
+	z-index:1000;
+}
+#xmenu ul {
+	margin:0 0 0 0;
+	padding:0;
+}
+#xmenu li {
+	list-style:none;
+	margin:0;
+	padding:0;
+}
+#ENheader #xmenu li.menu,
+#JPheader #xmenu li.menu,
+#CNheader #xmenu li.menu{
+	float:left;
+	margin:0 42px 0 0;
+}
+.lang-menu {
+	padding:	            0;
+	margin:					0 0 0 0;
+	list-style:				none;
+}
+ul.lang-menu li {
+	padding:	            0 0 0 0;
+	margin:					0 0 0 0;
+	list-style-image:		none;
+}
+.lang-menu li li {
+	margin:					3px 0;
+	width:					60px;
+	padding:	            2px 0;
+}
+.lang-menu li img {
+	border:					none;
+	margin:					0;
+}
+.lang-menu a#language {
+	background:			url(../images/css/header_footer/bluearrow.jpg) 100% 50% no-repeat; /* Changed by Infosys to refer to new image */
+	margin:				1px 5px 0 0;
+	padding:               2px 10px 0 0;
+}
+ul.lang-menu li li {
+	margin:				3px 0;
+	width:					60px;
+	padding:               0;
+}
+#languageSelect li {
+	margin:                0;
+	padding:               0;
+}
+/*** SIGN IN PANEL ***/
+#panel {
+	padding:0px 0px 0px 15px;
+	z-index:1100;
+	display:none;
+	color:white;
+	position:absolute;
+	top:-1px;
+	left:0px;
+	width:935px;
+	height:230px;
+	background:	black;
+	border:1px solid #ee3424;
+	border-width:0px 0 4px 0;
+	margin-left:10px;
+}
+#panel input {
+	margin-bottom:10px;
+}
+#panel #signinAcct {
+	border:1px dotted #666;
+	border-width:0 1px 0 0;
+	padding-right:65px;
+	width:225px;
+}
+#panel #signinAcct a {
+	font-size:0.9em;
+	display:block;
+}
+#panel #signinAcct p {
+	margin:0;
+}
+#panel #newAcct {
+	padding-right:0px;
+	width:510px;
+	float:right;
+	color:#888;
+}
+#panel #newAcct h3 {
+	color:#888;
+	background:none;
+}
+#panel a {
+	font-size:0.9em;
+	color:#888;
+}
+#panel a:hover {
+	color:#ee3424;
+}
+#panel a.close {
+	text-align:right;
+	float:right;
+	font-size:0.9em;
+	height: 20px;
+	padding:2px 10px 3px 5px;
+	line-height: 20px !important;
+	cursor: pointer;
+	display: block;
+	width: 935px;   /* modified by Infosys from 760px to 935px*/
+	position: absolute;
+	bottom:0px;
+	right: 0px;
+	color:#eaeaea;
+	background:		       #444; /* 1st level menu background */
+	filter:                 alpha(opacity=80);
+	-moz-opacity:           0.80;
+	-khtml-opacity:         0.80;
+	opacity:                0.80;
+	text-decoration:none;
+}
+#panel a.close:hover {
+	color:#ee3424;
+}
+#panel span {
+	font-weight:bold;
+	padding:3px 5px 3px 0;
+	color:#ee3424;
+	font-size:1.1em;
+}
+/* Navigation bar classes added By Infosys*/
+
+
+#navigation_bar {
+	background:transparent url(../images/css/header_footer/header_line.jpg) no-repeat scroll 50% 100%;
+	width:950px;
+	height:auto;
+	border: 0px solid black;
+	clear:both;
+	left: 0;
+	margin: 7px 0 0px 0;
+	height:28px;
+	padding: 0px 0 2px 10px;
+	position: absolute;
+	top: 81px;
+}
+/*.sign_in
+{
+	margin-right:240px;
+	margin-top:0px;
+	margin-botton:5px;
+	line-height:2.5em;
+}*/
+
+/* header bottom line */
+.header_line {
+	width:960px;
+	height:1px;
+	background-image:url(../images/css/header_footer/header_line.jpg);
+	background-repeat:no-repeat;
+	float:left;
+	font:0px;
+	margin-top:0px;
+}
+/******** navigation menu bar ********/
+
+.iframe_style {
+	position:absolute;
+	left:0px;
+	top:0px;
+}
+iframe {
+	background-color: #ffffff; /* changed to white from transparent to fix forum bg issue - tp */
+	color: red;
+	filter: alpha(opacity=100); /* changed opacity from 0 to 100 to fix forum bg issue - tp */
+}
+ul.mainNav {
+	list-style:none outside none;
+	margin:0;
+	padding:0;
+	z-index:1000;
+	position:relative;
+}
+ul.mainNav li {
+	list-style:none outside none;
+}
+ul.mainNav li:hover .megaDropDown {
+	left:0;
+}
+ul.mainNav li.mainItem {
+	z-index:201 !important;
+	border:none;
+	margin:0 10px 0 0px;
+	padding:0 14px 0 12px;
+	float:right;
+	list-style:none outside none;
+	display:inline;
+}
+.addArrowOnHover {
+	background:url(../images/css/header_footer/arrow_nav.gif) transparent no-repeat right center;
+}
+.megaDropdown li {
+	display:block;
+	float:left;
+	width:170px;
+	/*position:relative;*/ /* Changed by Infosys for navigation menu */
+		top: -10px;
+	border:none;
+	line-height:normal;
+	padding:0px 10px 10px 10px;/* Changed by Infosys for navigation menu */
+}
+/*.megaDropdown li.announcement { left: 760px; background: none }*/
+.megaDropdown li.col1 {
+	left:780px;
+}
+.megaDropdown li.col2 {
+	left:790px;
+}
+.megaDropdown li.col3 {
+	left:800px;
+}
+.megaDropdown li.col4 {
+	left:810px;
+}
+#ENheader .megaDropdown li a:hover,
+#JPheader .megaDropdown li a:hover,
+#CNheader .megaDropdown li a:hover{
+	color:#ee3424;
+}
+ul.mainNav ul li.linkSeparator {
+	float:left;
+	display:block;
+	padding:0;
+	margin:10px 0 00px;
+	width:2px;
+}
+ul.mainNav ul li.linkSeparator span {
+	width:2px;
+	padding-top:5000px;
+	margin-top:-5000px;
+	float:left;
+	height:100%;
+	margin:auto 0;
+	position:absolute;
+	background:url(../images/css/header_footer/seperator.jpg) repeat-y left center;
+}
+.megaDropdown li.announcement {
+	/* background:url(../images/featured_bg.jpg) #F4F9FD repeat-x bottom left;
+	padding:0px; /*  Changed by Infosys as per design*/
+	 width: 162px;
+	padding-right:7px;
+	top:0;
+	display:inline-block;
+	/*position:relative;*/
+	/*background-color:#f4fafd ;*/
+	display:block;
+}
+ul.mainNav ul li.announcement span.blueGradiant_Bg /* name Changed by Infosys as per new classes */ {
+	background:url(../images/css/header_footer/featured_bg.jpg) #F4F9FD repeat-x bottom left;
+	position: absolute;
+	width: 162px;
+	height: 100%;
+	bottom:0px;
+	height:160px;
+	display:inline-block;
+}
+ul.mainNav ul li.announcement span.blueGradiant_BgColor /* name Changed by Infosys as per new classes */ {
+	background-color:#f4fafd;
+	position: absolute;
+	width: 162px;
+	padding-bottom:10000px;
+	margin-bottom:-10000px;
+}
+ul.mainNav ul li.announcement div {
+	position:relative;
+	padding:0 10px 10px 10px;
+	width: 142px;
+	display:inline-block;
+}
+ul.mainNav .featuredContent {
+	background:url(../images/css/header_footer/featured_bg.jpg) #F4F9FD repeat-x bottom left;
+	float:left;
+	width:152px;
+	height:100%;
+	padding:10px 0px 10px 10px;
+	line-height:normal;
+	display:inline;
+}
+*html .featuredContent {
+	margin-bottom:-5000px;
+	padding-bottom:5000px
+}
+ul.mainNav ul li h5 {
+	margin:0px;
+}
+.megaDropdown li h3 {
+	margin-top:20px;
+	padding:0px;
+	font-size:1.1em;
+}
+ul.mainNav li.link1 a {
+	padding-right:7px;
+}
+#ENheader ul.mainNav li a.menuTitle,
+#JPheader ul.mainNav li a.menuTitle,
+#CNheader ul.mainNav li a.menuTitle
+{
+	text-decoration:none;
+	color:#000000;
+	font-weight:bold;
+	line-height:2.5em;
+	/* 	height:28px;*/
+				/*padding-bottom:2px;*/
+				letter-spacing:.05em; /* Letter spacing to increase space between letters in navigation menu */
+}
+.megaDropdown li.announcement a {
+	display:inline-block;
+	letter-spacing:-0.01em;
+	padding:0px;
+	margin:0px;
+}
+.megaDropdown li a {
+	text-align:inherit;
+	display:inline-block;
+	letter-spacing:-0.01em;
+	width:160px;
+	padding:0px;
+	margin-top:7px;
+}
+.megaDropdown li .subHeaderLinks {
+  margin:5px 0 5px 3px;
+  padding:0;}
+.megaDropdown li .subHeaderLinks a {
+  background:url(../images/css/square.gif) 0% 50% no-repeat;
+  margin:0;
+  padding:1px 0 1px 8px;}
+.megaDropdown {
+	background:url(../images/css/header_footer/doormat_menu.jpg) no-repeat center bottom #FFFFFF;
+	left:-9999em;
+	font-weight:normal;
+	border:1px solid #D6DDE3;
+	line-height:1.3em;
+	padding:0;
+	width:940px;
+	z-index:999999;
+	overflow:hidden;
+	position:absolute;
+}
+.megaDropdown ul {
+	/* background:url(../images/doormat_menu.jpg) no-repeat center;*/
+		/*background:url(../images/featured_bg.jpg) #F4F9FD repeat-x bottom left;*/ 
+                font-weight:normal;
+	line-height:1.3em;
+	margin:-1px 0 0;
+	padding:0;
+	float:left;
+	width:100%;
+	/*position:relative;*/ /* Changed by Infosys for navigation */
+		right:750px;
+}
+ul.mainNav li.mainItem:hover .megaDropdown, ul.mainNav li.sfhover .megaDropdown {
+	left:10px;
+}
+/*ul, ol, p
+{
+                margin-bottom:1em;
+                margin-top:0;
+}*/
+
+*html ul.mainNav li .megaDropdown {
+	margin-top:2px;
+}
+.megaDropdown li.image_container {
+	float:left;
+	height:100px;
+	width:200px;
+	border:1px solid red;
+	padding:10px;
+	margin-left:10px;
+}
+.spacewrap {
+	display:block;
+	white-space:nowrap;
+}
+.display_inline {
+	display:inline-block;
+}
+.inline_display {
+	display:inline;
+	float:left;
+}
+.menu_txtbox {
+	width:100px;
+	height:14px;
+	font-size:11px;
+}
+.width_150 {
+	width:150px;
+}
+.megaDropdown li h3 {
+	margin-top:20px;
+}
+.megaDropdown .followup {
+	text-align:right;
+	margin-top:20px;
+}
+#ENheader a, #ENheader a:visited,
+#JPheader a, #ENheader a:visited,
+#CNheader a, #ENheader a:visited {
+	color:#117ADA;
+	text-decoration:none;
+}
+#ENheader ul.mainNav li a.titleRed,
+#JPheader ul.mainNav li a.titleRed,
+#CNheader ul.mainNav li a.titleRed{
+	color:#ee3424;
+}
+
+/* ------------------------------------
+   FOOTER STYLES
+-------------------------------------*/
+#footer {
+  position:relative;}
+#fLcol {
+  margin-left:25px;
+  width:270px;}
+.fRcol {
+  margin-right:5px;
+  width:110px;
+  float:right;}
+#footer #value-statement {
+  background:url(/images/css/header_footer/dotted_underline.gif) top left no-repeat;}
+#footer #value-statement h3 {
+  padding-top:10px;}
+#footer .fRcol a {
+  display:block;
+  padding:3px 0;}
+#fConnect {
+  width:225px;}
+#fCompany {
+  width:165px;}
+#fSupport {
+  width:150px;}
+#fConnect h3 {
+  padding-left:8px;}
+#footer #fConnect a {
+  margin:6px 0;
+  padding:2px 0 2px 8px;}
+#fConnect img {
+  margin-bottom:-5px;
+  margin-right:5px;}
+#fConnect a img {
+  margin:-3px 5px 0 0;
+  clear:left;
+  float:left;}
+#footer {
+	width:960px;
+	background:white url(/images/css/header_footer/footer_line_wide.jpg) 0 0 no-repeat;
+	padding:10px 0 35px 0;
+	clear:both;}
+#footer a {
+	color:#117ada;
+	text-decoration:none;
+	margin:0;
+	padding:0 15px 0 0;
+	font-size:0.9em;
+	line-height:1em;}
+#footer a:hover {
+  text-decoration:underline;
+  color:#ee3424;}
+#footer .copyright {
+        padding-top:15px;
+	margin:15px 0 0 18px;
+        clear:both;
+	font-size:0.9em;
+	color:#999;}
+#footer .copyright a {
+  padding:0;
+  color:#999;
+  font-size:1em;}
+#footer .copyright a:hover {
+  color:#ee3424;}
+#footer .delimiter {
+  color:#ccc;
+  padding:0 10px;}

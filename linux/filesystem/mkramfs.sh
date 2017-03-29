@@ -33,4 +33,5 @@ else
 	echo "add file head"
 	mkimage -A arm -T ramdisk -C gzip -n Ramdisk -d ramdisk.image.gz uramdisk.image.gz
 	rm ramdisk.image.gz
+    cp uramdisk.image.gz ../../amp_system/linux_image/
 fi

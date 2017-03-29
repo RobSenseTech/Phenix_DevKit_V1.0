@@ -1,0 +1,494 @@
+/* -----------------------------------------------------    
+                  UNIVERSAL STYLES 
+------------------------------------------------------*/
+
+html {
+	margin:0;
+	padding:0;}
+body {
+position:relative;
+
+        background:white url(../images/css/body-background.png) 0 0 repeat-x;
+	font-size:12px;
+	font-family:Arial, Helvetica, sans-serif;
+	margin:0 auto 15px auto;
+	padding:0;
+	color:black;
+	width:960px;}
+#m {
+        border:1px solid white;
+        border-width:1px 0;
+        background:white;
+	margin:0 0 0 0;
+	padding:0 0 0 0;}
+#m #middle {
+        background:white;
+        overflow: hidden;
+        width: 100%;
+        z-index:1;
+	width:940px;
+	margin:0;
+	padding:10px 10px 20px 10px;}
+#lmr {
+	margin:0 0 0 0;
+	padding:0 0 0 0;}
+#mr {
+	margin:0 0 0 0;
+	padding:0 3px 0 0;
+	position:relative;}
+#lm {
+	margin:0 0 0 0;
+	padding:0 0 0 0;
+	background:url(../images/rma/graybar.gif) repeat-y;}
+#lm #l {
+	margin:20px 0 20px 0;
+	padding:0 0 0 0;
+	float:left;}
+#lm #m {
+	margin:0 0 0 161px;
+	padding:0 0 0 0;}
+
+	
+/* -----------------------------------------------------    
+                  HEADING STYLES 
+------------------------------------------------------*/
+
+h1 {
+	font-size:2em;
+	color:#ee3424;
+	margin:10px 0 10px 0;
+	font-weight:normal;
+	padding:0;}
+h1.nounderline {
+	background: none;}
+h3 {
+	font-size:1.1em;
+	color:#000000;
+	padding:0 0 2px 0;
+	margin:10px 0 3px 0;}
+h3.nounderline {
+	background:none;}
+h4 {
+	font-size:1em;
+	color:#810017;
+	margin:10px 0 3px 0;
+	padding:0;}
+h4.nounderline {
+	background:none;}
+h6, h2 {
+	font-size:1.2em;
+	color:#f26422;
+	font-weight:bold;
+	margin:10px 0 10px 0;
+	padding:0;}
+.overviewRCol h3,
+.overviewRCol h2,
+.overviewRCol h6 {
+  font-size:1em;}
+	
+/* -----------------------------------------------------    
+                  BREADCRUMBS
+------------------------------------------------------*/
+.breadcrumbs {
+        background:white;
+	color:#888;
+	font-size: 11px;
+        padding:10px 15px 0 10px;
+        margin:0;}
+.breadcrumbs a {
+	color:#888;}
+.breadcrumbs a:hover {
+	color:#ee3424;}
+#lm .breadcrumbs {
+	margin-left:170px;}
+	
+/* -----------------------------------------------------    
+                 LINK STYLES 
+------------------------------------------------------*/
+
+a {
+	color:#245cce;
+	text-decoration:none;}
+a:hover {
+	color:#ee3424;
+	text-decoration:underline;}
+a img {
+	border:none;}
+	
+/* -----------------------------------------------------    
+                  LIST STYLES 
+------------------------------------------------------*/
+
+ul {
+	list-style-image: url(/images/css/square.gif);
+	list-style-type: square;
+	list-style-position: outside;
+	margin:0;
+	padding:0 0 8px 20px;}
+.disklist ul {
+	list-style-type:decimal;
+	list-style-type:disc;
+	list-style-position:outside;
+	list-style-image:none;
+	margin:0 0 0 15px;
+	padding:0 0 8px 0px;}
+ol {
+	margin:0;
+	padding:0 0 0 22px;
+	list-style-position: outside;}
+ol.lower-alpha {list-style-type:lower-alpha;}	
+
+	
+/* -----------------------------------------------------    
+                  GENERAL STYLES 
+------------------------------------------------------*/
+p {
+        margin:10px 0;}
+.delimiter {
+	padding:0 5px;
+	color:#999;}
+.em {
+	font-weight:bold;}
+.allcaps {
+	text-transform:uppercase;}
+.small {
+	font-size:0.8em;}
+.italic {
+	font-style:italic;}
+.underline {
+	text-decoration:underline;}
+.center {
+	text-align:center;}
+.block {
+	margin:0 0 25px 0;
+	padding:0;}
+.indent-block {
+        margin-left:20px; }
+
+.alert {
+        border:1px dotted #ccc;
+        border-width:1px 0 1px 0;
+        background:#fefbdb; 
+        margin:0 0 0 0;
+        padding:8px;
+        color:#666;
+        font-size:0.9em;}
+.alert h3 {
+        color:#ee3424;
+        padding:0 0 0 18px;
+        font-size:1.1em;
+        font-weight:normal;
+        margin:0;
+        background:url(/images/css/i_alert.gif) 0 0 no-repeat;}
+.alert p {
+        margin:0 0 5px 0;
+        padding:0;}
+	
+/* --------------------------------------------------
+             EXPAND AND COLLAPSE MODULES
+-------------------------------------------------- */
+.ec {
+	border:1px solid #aacfe2;
+	border-width:1px 0px 0px 0px;
+	margin:0;
+	padding:5px 5px 10px 5px;}
+.ecbackground {
+	background-color:#f1faff;}
+.echover {
+	background-color:#fffdde;}
+a.eclink {
+	cursor:pointer;
+	padding:0 0 0 30px;
+	display:block;}
+.ec h4 {
+	margin:0 0 0 31px;
+	padding:0;
+	color:#555;}
+.ec .ec-content {
+	padding:0 0 15px 0;
+	margin:20px 0 0 31px;
+	display:none;}
+.ec .ec-content p {
+	margin:0 0 8px 0;
+	padding:0;}
+.ec .ec-content table {
+	border-width:0;}
+.ec .ec-content td {
+	border:1px dotted #eaeaea;
+	border-width:0 0 1px 0;
+	padding:5px 3px;}
+.showHide {
+	margin:10px 0;}
+.shortdesc {
+	margin:0;
+	padding:0;}
+.collapse {
+	background:url(/images/css/collapse.gif) center left no-repeat;}
+.expand {
+	background:url(/images/css/expand.gif) center left no-repeat;}
+.ecBorderBot {
+	border-bottom:1px solid #aacfe2;}
+	
+/* -----------------------------------------------------    
+            ROUNDED BOXES FOR DOCS , QUICK LINKS 
+------------------------------------------------------*/
+
+.docbox, .docbox_body, .docbox_head, .docbox_head h2 {
+	background: transparent url(/images/css/docs_bknd.png) no-repeat bottom right;}
+.docbox {
+	width: 220px !important; /* intended total box width - padding-right(next) */
+	width: 220px; /* IE Win = width - padding */
+	padding-right: 0px; /* the gap on the right edge of the image (not content padding) */
+	margin: 0px auto 20px auto; /* use to position the box */
+}
+/* set the top-right image */ 
+.docbox_head {
+	background-position: top right;
+	margin-right: 0px; /* pull the right image over on top of border */
+	padding-right: 40px; /* right-image-gap + right-inside padding */
+}
+/* set the top-left image */ 
+.docbox_head h2 {
+	background-position: top left;
+	margin: 0; /* reset main site styles*/
+	border: 0; /* ditto */
+	/*padding: 25px 0 15px 40px; */ /* padding-left = image gap + interior padding ... no padding-right */ 		
+        font-size:1em;
+	margin:0;
+	padding:5px 10px;
+	color:#f26422;
+	height: auto !important;
+	height: 1%; /* IE Holly Hack */
+}
+/* set the lower-left corner image */ 
+.docbox_body {
+	background-position: bottom left;
+	margin-right: 25px; /* interior-padding right */
+	padding: 5px 0 15px 15px; /* mirror .cssbox_head right/left */
+}
+.ctabox, .ctabox_body, .ctabox_head, .ctabox_head h2 {
+	background: transparent url(/images/css/cta_bknd.png) no-repeat bottom right;
+}
+.ctabox {
+	width: 220px !important; /* intended total box width - padding-right(next) */
+	width: 220px; /* IE Win = width - padding */
+	padding-right: 0px; /* the gap on the right edge of the image (not content padding) */
+	margin: 0px auto 10px auto; /* use to position the box */
+}
+/* set the top-right image */ 
+.ctabox_head {
+	background-position: top right;
+	margin-right: 0px; /* pull the right image over on top of border */
+	padding-right: 40px; /* right-image-gap + right-inside padding */
+}
+/* set the top-left image */ 
+.ctabox_head h2 {
+	background-position: top left;
+	margin: 0; /* reset main site styles*/
+	border: 0; /* ditto */
+	/*padding: 25px 0 15px 40px; */ /* padding-left = image gap + interior padding ... no padding-right */ 		
+        font-size:1em;
+	margin:0;
+	padding:5px 10px;
+	color:#f26422;
+	height: auto !important;
+	height: 1%; /* IE Holly Hack */
+}
+/* set the lower-left corner image */ 
+.ctabox_body {
+	background-position: bottom left;
+	margin-right: 25px; /* interior-padding right */
+	padding: 5px 0 15px 5px; /* mirror .cssbox_head right/left */
+}
+#cta {
+	list-style:none;
+	margin:0;
+	padding:3px 3px 3px 10px;}
+#cta-wrap {
+	background:white;
+	position:relative;
+	margin:0;
+	padding:0;}
+#cta li {
+	list-style-image:none;
+	padding:3px 2px 3px 0;}
+#cta a {
+        display:block;
+	padding:3px 0 3px 30px;
+	font-size:0.9em;}
+#cta a.form {
+	background: url(/images/css/i_form.gif) 0px 0px no-repeat;}
+#cta a.training {
+	background: url(/images/css/i_training.gif) 0px 0px no-repeat;}
+#cta a.key {
+	background: url(/images/css/i_key.gif) 0px 0px no-repeat;}
+#cta a.cart {
+	background: url(/images/css/i_cart.gif) 1px 0px no-repeat;}
+#cta a.video {
+	background: url(/images/css/i_video.gif) 0px 0px no-repeat;}
+#cta a.sales {
+	background: url(/images/css/i_sales.gif) 0px 0px no-repeat;}
+#cta a.support {
+	background: url(/images/css/i_support.gif) 0px 0px no-repeat;}
+#cta a.download {
+	background: url(/images/css/i_download.gif) 0px 1px no-repeat;}
+#cta a.partner {
+	background: url(/images/css/i_partner.gif) 0px 0px no-repeat;}
+#cta a.save {
+	background: url(/images/css/i_save.gif) 0px 0px no-repeat;}
+#cta a.email {
+	background: url(/images/css/i_email.gif) 0px 0px no-repeat;}
+#cta a.rss {
+	background: url(/images/css/i_rss.gif) 0px 0px no-repeat;}
+#cta a.print {
+	background: url(/images/css/i_print.gif) 0px 0px no-repeat;}
+
+/* --------------------------------------------------
+                    TABLE STYLES
+-------------------------------------------------- */   
+.stripeMe {
+	margin:10px 0 10px 0;
+	border:1px dotted #97b5d3;
+	border-width:0 0 0 1px;}
+.stripeMe td {
+	 padding:5px 3px;
+	border:1px dotted #97b5d3;
+	border-width:0px 1px 1px 0px;
+	text-align:left;
+	font-size:1em;}
+.stripeMe th {
+        padding:8px;
+        border-right:1px dotted #97b5d3;
+        border-bottom:1px dotted #97b5d3;
+        border-top:1px dotted #97b5d3;}
+.stripe,
+.odd {
+        background-color:#f4f9fc;}
+td.thBorder {
+	border-bottom:1px solid #97b5d3;}
+.hiliteFeatureRow {
+	background-color:#fffdde;}
+.hiliteColumn {
+	background-color:#ddeaf2;}
+.hiliteFeatureRowColumn {
+	background-color:#e3ebd4;}
+.ck {
+        background:url(/images/css/checkmark.gif) 50% 50% no-repeat;}
+.rowHeader {
+        font-weight:bold;
+        background-color:white;
+        border-top:1px solid #eaeaea;
+        border-bottom:1px solid #eaeaea;
+        padding:10px;
+        color:#b20838;}
+.featureTable .firstColumn {
+	margin:0;
+	padding:2px 2px 5px 2px;
+	text-align:left;
+	font-size:0.9em;
+	width:60%;}
+.featureTable {
+	border-spacing:0;
+	margin:0;
+	padding:0;
+	border:1px dotted #97b5d3;
+	border-width:0 0 0 1px;
+	font-size:0.9em;
+	width:98%}
+.featureTable tr {
+	padding:0;
+	margin:0;}
+.featureTable td {
+	vertical-align:top;
+	margin:0;
+	padding:5px 8px;
+	color:#666;
+	border:1px dotted #97b5d3;
+	border-width:0px 1px 1px 0px;
+	text-align:left;
+	font-size:1em;}
+.featureTable th {
+        text-align: left;
+        padding:5px;
+        border:1px dotted #97b5d3;
+        border-width:0 1px 1px 0; }
+.featureTable ul {
+	list-style-image:url(../images/square.gif);
+	width:300px;
+	margin:0 0 0 15px;}
+.featureTable ul li {
+	margin: 0;
+	padding:0;}
+.featureTable p {
+	margin:0 0 0 15px;
+	padding:0; }
+.featureTable h4{
+	color:#4169E1;
+	font-weight:normal; }
+.featureTable thead tr .header {
+	background-image: url(../images/css/bg.gif);
+	background-repeat: no-repeat;
+	background-position: center right;
+	cursor: pointer; }
+.featureTable tbody tr.odd td {
+	background-color:#f4f9fc; }
+.featureTable thead tr .headerSortUp {
+	background-image: url(../images/css/asc.gif); }
+.featureTable thead tr .headerSortDown {
+	background-image: url(../images/css/desc.gif); }
+.featureTable thead tr .headerSortDown, 
+.featureTable thead tr .headerSortUp {
+	background-color: #e9eaa6;}
+
+/* --------------------------------------------------
+ ACCORDION STYLES
+-------------------------------------------------- */   
+.accord  {
+  text-align:left;
+        width:220px;
+        margin:0 0 25px 0; /* added 25px bottom for bk gallery page */
+        padding:0;}
+.accord a {
+   color:#245cce;
+   text-decoration:none;}
+.accord a:hover {
+   color:#be0000; 
+   text-decoration:underline;}
+.accord div.accordOuter {
+        background:transparent url(/images/css/galleryAccordOuter220.gif) bottom left no-repeat;
+        margin:-2px 0px 2px 0;
+        padding:0;}
+.accord div.accordInner {
+        background:transparent url(/images/css/galleryAccordInner220.gif) 0 0 no-repeat;
+        z-index:500;
+        margin:0;
+        padding:10px;
+        height:165px;
+        overflow:auto;}
+.accord a.acTitle {
+        background:transparent url(/images/css/galleryAccord220.jpg) no-repeat;        
+        color:#245cce;
+	cursor:pointer;
+	display:block;
+	padding:5px;
+        margin:0 0 2px 0;
+	text-decoration: none;}
+.accord a.acTitle:hover {
+        text-decoration:underline;}
+.accord p {
+        margin:0 0 5px 0;}
+	
+/* -----------------------------------------------------    
+                 CLEAR
+------------------------------------------------------*/
+div.clearer {
+	clear: both;
+	line-height: 1px;
+	height: 0;}
+div.bot-clear {
+	margin: 0 0 10px 0;
+	padding: 0;}
+div.goto-top {
+	position: relative;
+	margin: 10px 0 7px 89%;
+	padding: 0;} /* anchor style taken from universal.css*/

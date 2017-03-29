@@ -1,0 +1,5 @@
+export PS1="\e[0;31mzynq>\e[m "
+
+if [ ! -z ${SSH_TTY} ]; then
+   export PATH=/sbin:/usr/sbin:/bin:/usr/bin
+fi

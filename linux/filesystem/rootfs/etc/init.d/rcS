@@ -1,0 +1,45 @@
+#!/bin/sh
+
+echo "Starting rcS..."
+
+echo "++ Mounting filesystem"
+mkdir -p /dev/pts
+mkdir -p /dev/i2c
+mount -a
+
+echo "++ Setting up mdev"
+
+echo /sbin/mdev > /proc/sys/kernel/hotplug
+mdev -s
+
+# the device driver is not creating this node, so for now
+# create the devcfg device node manually
+
+if [ ! -e /dev/xdevcfg ]
+then
+	mknod /dev/xdevcfg c 259 0
+fi
+
+echo "++ Starting telnet daemon"
+telnetd -l /bin/sh
+
+echo "++ Starting http daemon"
+httpd -h /var/www
+
+echo "++ Starting ftp daemon"
+tcpsvd 0:21 ftpd ftpd -w /&
+
+echo "++ Starting ssh daemon"
+chmod 600 /etc/ssh_host_*
+/usr/sbin/sshd
+
+if [ -f /mnt/init.sh ]
+then
+	echo "++ Running user script init.sh from SD Card"
+     	source /mnt/init.sh
+fi
+
+sleep 1
+
+./usr/rwmem.elf 0xfffffff0 0x1a000000
+echo "rcS Complete"

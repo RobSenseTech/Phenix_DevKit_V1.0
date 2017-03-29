@@ -1,0 +1,6 @@
+devpts			/dev/pts	devpts	gid=5,mode=620	0 0
+none			/proc		proc	defaults	0 0
+none			/sys		sysfs	defaults	0 0
+none			/tmp		tmpfs	defaults	0 0
+/dev/mmcblk0p1	/mnt	auto	defaults	0 0
+/dev/mmcblk0	/mnt	auto	defaults	0 0

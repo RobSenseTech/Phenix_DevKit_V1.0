@@ -1,0 +1,15 @@
+# Aliases extracted from modules themselves.
+alias aes aes_generic
+alias stdrng krng
+alias stdrng ansi_cprng
+alias of:N*T*Cxlnx,zynq_remoteproc* zynq_remoteproc
+alias of:N*T*Cxlnx,mb_remoteproc* mb_remoteproc
+alias virtio:d00000007v* virtio_rpmsg_bus
+alias netdev-tunl0 ipip
+alias net-pf-10 ipv6
+alias xfrm-mode-10-0 xfrm6_mode_transport
+alias xfrm-mode-10-1 xfrm6_mode_tunnel
+alias xfrm-mode-10-4 xfrm6_mode_beet
+alias netdev-sit0 sit
+alias rtnl-link-vlan 8021q
+alias net-pf-40 rpmsg_proto

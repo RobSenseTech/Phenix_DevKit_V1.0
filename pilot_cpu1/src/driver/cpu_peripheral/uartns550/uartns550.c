@@ -35,16 +35,23 @@ typedef struct{
     SemaphoreHandle_t uartns_rxmutex;
     SemaphoreHandle_t uartns_txmutex;
 }uartns_private_t;
+/************************** Variable Definitions ****************************/
+
+typedef void (*handler)(uartns_private_t *priv);
 
 XUartNs550 uartns_inst[XPAR_XUARTNS550_NUM_INSTANCES];	/* Instance of the UART Device */
+/************************** Function Prototypes *****************************/
+static void no_interrupt_handle(uartns_private_t *priv);
+static void recv_status_handle(uartns_private_t *priv);
+static void recv_timout_handle(uartns_private_t *priv);
+static void recv_handle(uartns_private_t *priv);
+static void send_data_handle(uartns_private_t *priv);
+static void modem_handle(uartns_private_t *priv);
 
-void uartns_isr(void *arg);
-
-ssize_t uartns_read(struct file *filp, char *buffer, size_t buflen);
-
-ssize_t uartns_write(struct file *filp, const char *buffer, size_t buflen);
-
-int uartns_ioctl(file_t *filp, int cmd, unsigned long arg);
+static void uartns_isr(void *arg);
+static ssize_t uartns_read(struct file *filp, char *buffer, size_t buflen);
+static ssize_t uartns_write(struct file *filp, const char *buffer, size_t buflen);
+static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg);
 
 const struct file_operations uartns_ops = {
 	.read =  uartns_read,
@@ -52,6 +59,25 @@ const struct file_operations uartns_ops = {
 	.ioctl = uartns_ioctl,
 };
 
+/* The following tables is a function pointer table that contains pointers
+ * to each of the handlers for specific kinds of interrupts. The table is
+ * indexed by the value read from the interrupt ID register.
+ */
+static handler handler_table[13] = {
+	modem_handle,		/* 0 */
+	no_interrupt_handle,	/* 1 */
+	send_data_handle,	/* 2 */
+	NULL,			/* 3 */
+	recv_handle,	/* 4 */
+	NULL,			/* 5 */
+	recv_status_handle,	/* 6 */
+	NULL,			/* 7 */
+	NULL,			/* 8 */
+	NULL,			/* 9 */
+	NULL,			/* 10 */
+	NULL,			/* 11 */
+	recv_timout_handle	/* 12 */
+};
 
 uint32_t uartns_init(int32_t uartns_id)
 {
@@ -88,7 +114,6 @@ uint32_t uartns_init(int32_t uartns_id)
 	iRingBufferInit(&private->tx_ringbuf, 512, sizeof(char));
     private->uartns_rxmutex = xSemaphoreCreateMutex();
     private->uartns_txmutex = xSemaphoreCreateMutex();
-
 
 	/*
 	 * setp2: init uartns config int SDK
@@ -147,144 +172,179 @@ uint32_t uartns_init(int32_t uartns_id)
 	return XST_SUCCESS;
 }
 
-void uartns_isr(void *arg)
-{
-	int32_t  ret = 0;
-	uint8_t  val = 0;
-	uint8_t isr_status;
-    uint32_t iir = 0;
-    uartns_private_t *private = (uartns_private_t *)arg;
-	XUartNs550 *inst_ptr = private->uartns_inst_ptr;
 
-	Xil_AssertVoid(inst_ptr!= NULL);
+static void modem_handle(uartns_private_t *priv)
+{
+	uint32_t msr;
+    XUartNs550 * inst_ptr = priv->uartns_inst_ptr;
 
 	/*
-	 * Read the interrupt ID register to determine which, only one,
-	 * interrupt is active
+	 * Read the modem status register so that the interrupt is acknowledged
+	 * and so that it can be passed to the callback handler with the event
 	 */
-	isr_status = (uint8_t)XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_IIR_OFFSET) & XUN_INT_ID_MASK;
+	msr = XUartNs550_ReadReg(inst_ptr->BaseAddress,	XUN_MSR_OFFSET);
+}
+
+static void no_interrupt_handle(uartns_private_t *priv)
+{
+	volatile uint32_t lsr;
+    XUartNs550 * inst_ptr = priv->uartns_inst_ptr;
+
+	/*
+	 * Reading the ID register clears the currently asserted interrupts
+	 */
+	lsr = XUartNs550_GetLineStatusReg(inst_ptr->BaseAddress);
+
+}
+
+static void send_data_handle(uartns_private_t *priv)
+{
+    int i = 0;
+    uint8_t send_bytes = 0;
+    uint32_t ier = 0;
+    uint16_t fifo_size = 0;
+    uint32_t available = 0;
+    XUartNs550 * inst_ptr = priv->uartns_inst_ptr;
+    uint32_t lsr = XUartNs550_GetLineStatusReg(inst_ptr->BaseAddress);
+    uint32_t iir = 0;
+    int32_t ret = 0;
+    uint8_t val;
 
 	iir = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_IIR_OFFSET);
-	/*
-	 * Handle interrupt 
-	 */
-    if(isr_status & XUN_IIR_RDA)
+    /*
+    * If the transmitter is not empty then don't send any data, the empty
+    * room in the FIFO is not available
+    */
+    if(lsr & (XUN_LSR_TX_BUFFER_EMPTY | XUN_LSR_TX_EMPTY))
     {
-	    uint32_t lsr = 0; 
-        uint8_t recv_bytes = 0;
-
-		while(recv_bytes < iRingBufferGetSpace(&private->rx_ringbuf))
+        /*
+         * Read the interrupt ID register to determine if FIFOs
+         * are enabled
+         */
+        if (iir & XUN_INT_ID_FIFOS_ENABLED) 
         {
             /*
-             * Read the Line Status Register to determine if there is any
-             * data in the receiver/FIFO
+             * Determine how many bytes can be sent depending on if
+             * the transmitter is empty, a FIFO size of N is really
+             * N - 1 plus the transmitter register
              */
-		    lsr = XUartNs550_GetLineStatusReg(inst_ptr->BaseAddress);
-            /*
-             * If there is a break condition then a zero data byte was put
-             * into the receiver, just read it and dump it and update the
-             * stats
-             */
-            if (lsr & XUN_LSR_BREAK_INT) {
-                (void)XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_RBR_OFFSET);
-                //XUartNs550_UpdateStats(inst_ptr, (uint8_t)lsr);
+            if (lsr & XUN_LSR_TX_EMPTY) {
+                fifo_size = XUN_FIFO_SIZE;
+            } else {
+                fifo_size = XUN_FIFO_SIZE - 1;
             }
 
             /*
-             * If there is data ready to be removed, then put the next byte
-             * received into the specified buffer and update the stats to
-             * reflect any receive errors for the byte
+             * FIFOs are enabled, if the number of bytes to send
+             * is less than the size of the FIFO, then send all
+             * bytes, otherwise fill the FIFO
              */
-            else if(lsr & XUN_LSR_DATA_READY) 
+            available = iRingBufferGetAvailable(&priv->tx_ringbuf);
+            if (available < fifo_size) 
             {
-                val = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_RBR_OFFSET);
-			    xRingBufferPut(&private->rx_ringbuf, &val, sizeof(uint8_t));
-                //XUartNs550_UpdateStats(inst_ptr, (uint8_t)lsr);
-                recv_bytes++;
+                send_bytes = available;
+                /*
+                 * Disable THRE interrupt for no data to transmit next time
+                 */
+                ier = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_IER_OFFSET);
+                XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_IER_OFFSET, ier & (~XUN_IER_TX_EMPTY));
+
             }
-            /*
-             * There's no more data buffered, so exit such that this
-             * function does not block waiting for data
-             */
             else
             {
-                break;
+                send_bytes = fifo_size;
+
             }
-        }
-    }
 
-    if(isr_status & XUN_IIR_THRE)
-    {
-        int i = 0;
-        uint8_t send_bytes = 0;
-	    uint32_t lsr = XUartNs550_GetLineStatusReg(inst_ptr->BaseAddress);
-        uint32_t ier = 0;
-        uint16_t fifo_size = 0;
-        uint32_t available = 0;
-
-        /*
-        * If the transmitter is not empty then don't send any data, the empty
-        * room in the FIFO is not available
-        */
-        if(lsr & XUN_LSR_TX_BUFFER_EMPTY)
-        {
-            /*
-             * Read the interrupt ID register to determine if FIFOs
-             * are enabled
-             */
-            if (iir & XUN_INT_ID_FIFOS_ENABLED) 
+            for(i = 0; i < send_bytes; i++)
             {
-                /*
-                 * Determine how many bytes can be sent depending on if
-                 * the transmitter is empty, a FIFO size of N is really
-                 * N - 1 plus the transmitter register
-                 */
-                if (lsr & XUN_LSR_TX_EMPTY) {
-                    fifo_size = XUN_FIFO_SIZE;
-                } else {
-                    fifo_size = XUN_FIFO_SIZE - 1;
-                }
-
-                /*
-                 * FIFOs are enabled, if the number of bytes to send
-                 * is less than the size of the FIFO, then send all
-                 * bytes, otherwise fill the FIFO
-                 */
-                available = iRingBufferGetAvailable(&private->tx_ringbuf);
-                if (available < fifo_size) 
+                ret = xRingBufferGet(&priv->tx_ringbuf, &val, sizeof(uint8_t));
+                if(ret == 0)
                 {
-                    send_bytes = available;
-                    /*
-                     * Disable THRE interrupt for no data to transmit next time
-                     */
-                    ier = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_IER_OFFSET);
-                    XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_IER_OFFSET, ier & (~XUN_IER_TX_EMPTY));
-
+                    XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_THR_OFFSET, val);
                 }
                 else
                 {
-                    send_bytes = fifo_size;
-
-                }
-
-                for(i = 0; i < send_bytes; i++)
-                {
-                    ret = xRingBufferGet(&private->tx_ringbuf, &val, sizeof(uint8_t));
-                    if(ret == 0)
-                    {
-                        XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_THR_OFFSET, val);
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    break;
                 }
             }
         }
     }
 }
 
-ssize_t uartns_read(struct file *filp, char *buffer, size_t buflen)
+static void recv_handle(uartns_private_t *priv)
+{
+    uint32_t lsr = 0; 
+    uint8_t recv_bytes = 0;
+    uint8_t val;
+    XUartNs550 *inst_ptr = priv->uartns_inst_ptr;
+
+    while(XUartNs550_GetLineStatusReg(inst_ptr->BaseAddress) & XUN_LSR_DATA_READY)
+    {
+        if(iRingBufferGetSpace(&priv->rx_ringbuf) > 0)
+        {
+            val = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_RBR_OFFSET);
+            xRingBufferPut(&priv->rx_ringbuf, &val, sizeof(uint8_t));
+        }
+        else
+        {
+            /*
+             * If buffer is full, force to write one byte, otherwise,
+             * rx interrupt will never trigger again
+             */
+            val = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_RBR_OFFSET);
+            xRingBufferForce(&priv->rx_ringbuf, &val, sizeof(uint8_t));
+            break;
+        }
+
+    }
+
+}
+
+static void recv_status_handle(uartns_private_t *priv)
+{
+    XUartNs550 *inst_ptr = priv->uartns_inst_ptr;
+
+    recv_handle(priv);
+}
+
+static void recv_timout_handle(uartns_private_t *priv)
+{
+    XUartNs550 *inst_ptr = priv->uartns_inst_ptr;
+
+    recv_handle(priv);
+}
+static void uartns_isr(void *arg)
+{
+    uartns_private_t *private = (uartns_private_t *)arg;
+	XUartNs550 *inst_ptr = private->uartns_inst_ptr;
+
+	uint8_t iir_status;
+
+	Xil_AssertVoid(inst_ptr!= NULL);
+    irqstate_t state = irqsave();
+
+	/*
+	 * Read the interrupt ID register to determine which, only one,
+	 * interrupt is active
+	 */
+	iir_status = (uint8_t)XUartNs550_ReadReg(inst_ptr->BaseAddress,
+					XUN_IIR_OFFSET) &
+					XUN_INT_ID_MASK;
+
+	/*
+	 * Make sure the handler table has a handler defined for the interrupt
+	 * that is active, and then call the handler
+	 */
+	Xil_AssertVoid(handler_table[iir_status] != NULL);
+
+	handler_table[iir_status](private);
+
+    irqrestore(state);
+}
+
+
+static ssize_t uartns_read(struct file *filp, char *buffer, size_t buflen)
 {
 	size_t read_len= 0;
 	uartns_private_t *private = (uartns_private_t *)filp->f_inode->i_private;
@@ -314,7 +374,7 @@ ssize_t uartns_read(struct file *filp, char *buffer, size_t buflen)
 
 }
 
-ssize_t uartns_write(struct file *filp, const char *buffer, size_t buflen)
+static ssize_t uartns_write(struct file *filp, const char *buffer, size_t buflen)
 {
     uint32_t ier = 0;
 	size_t write_len = 0;
@@ -457,9 +517,8 @@ static void structure_trans_to_user(UartDataFormat_t *usr_format, XUartNs550Form
 
 }
 
-int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
+static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
 {
-    uint32_t ier = 0;
 	uartns_private_t *private = (uartns_private_t *)filp->f_inode->i_private;
 	XUartNs550 *inst_ptr = private->uartns_inst_ptr;
 

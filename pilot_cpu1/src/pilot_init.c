@@ -213,10 +213,10 @@ static void pilot_first_task(void *param)
 
     uorb_main();
 
-//    start_main_list();
+    start_main_list();
 //    ImuTest();
 //    SpiTest();
-    UartTest();
+//    UartTest();
     //SbusTest();
     
 

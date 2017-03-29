@@ -1,0 +1,287 @@
+/* --------------------------------------------------
+   GENERIC TEMPLATE
+-------------------------------------------------- */
+#generic-wrap {
+   padding:0 0 0 0;
+   margin:0 0 50px 0;
+   width:940px;}
+
+/* --------------------------------------------------
+  MAJOR COLUMN LAYOUTS
+-------------------------------------------------- */
+.overviewLCol {
+   margin:0 0 50px 0;
+   padding:0;}
+.overviewRCol { 
+   float:right;
+   margin:0;
+   padding:0;
+   width:220px }  
+
+/* two column layout - Middle, Right */
+.overviewLCol {   
+   width:710px !important; 
+   width:706px;}
+.overviewLCol .block {
+   clear:left;}
+
+/* three column layout - Left, Middle, Right */
+.three-columns .LCol { 
+   padding:0;
+   margin:0;
+   float:left;
+   width:180px; }
+.three-columns .overviewLCol { 
+   width:520px !important;
+   margin: 0 190px 15px 190px ;}
+.three-columns .overviewLCol .block {
+   clear:none;}
+.three-columns .overviewRCol { 
+   width:220px; }
+
+/* two-column reverse - Left, Middle */
+.two-columns-reverse .overviewRCol {
+   display:none;}
+.two-columns-reverse .overviewLCol {
+   margin-left:190px; 
+   width:750px !important; 
+   width:746px;}
+.two-columns-reverse .LCol { 
+   padding:0;
+   margin:0;
+   float:left;
+   width:180px; }
+   
+
+/* --------------------------------------------------
+  MODULE STYLING
+-------------------------------------------------- */
+#tnav {
+  margin:0;
+  background:#f7f7f7;}
+#tnav h2 {
+  margin:0;
+  padding:4px 4px 4px 10px;}
+#tnav a {
+  border-top:1px solid #d6d6d6;
+  display:block;
+  padding:5px 5px 5px 10px;}
+#tnav a.highlight,
+#tnav a:hover {
+  text-decoration:none;
+  color:white;
+  background:#ec891d;}
+  
+
+/* --------------------------------------------------
+  GENERAL STYLING
+-------------------------------------------------- */
+.banner-top {
+  margin-bottom:10px;}
+#generic-wrap ul#cta {
+   border:1px solid white;}
+#generic-wrap p {
+   margin:10px 0;}
+#generic-wrap img.floatIMG {
+ float:left;
+  padding:0 10px 10px 0;}
+.block {
+  margin:0 0 25px 0;
+  padding:0;}
+.block p {
+  margin-bottom:5px;}
+.block ol {
+  padding:10px 35px;}
+.block ol li {
+  padding:5px 0;}
+.note {
+  background-color:#fffdde;
+  margin:0 35px;
+  padding:10px;}
+.note h5 {
+  font-size:1em;
+  margin-bottom:8px;}
+.rndCorner {
+  background-color:#aacfe2;
+  margin:0 0 25px 0;}
+.overviewRCol .block {
+  text-align:center;}
+.rndCorner {
+  background-color:#aacfe2;
+  margin:0 0 25px 0;}
+#prodTable {
+  text-align:center;}
+#prodTable h3 {
+  margin-bottom:2px;
+  padding:0;}
+
+/* --------------------------------------------------
+ ACCORDION STYLES
+-------------------------------------------------- */   
+.accord  {
+  text-align:left;
+        width:220px;
+        margin:0 0 25px 0; /* added 25px bottom for bk gallery page */
+        padding:0;}
+.accord a {
+   color:#245cce;
+   text-decoration:none;}
+.accord a:hover {
+   color:#be0000; 
+   text-decoration:underline;}
+.accord div.accordOuter {
+        background:transparent url(/images/css/galleryAccordOuter220.gif) bottom left no-repeat;
+        margin:-2px 0px 2px 0;
+        padding:0;}
+.accord div.accordInner {
+        background:transparent url(/images/css/galleryAccordInner220.gif) 0 0 no-repeat;
+        z-index:500;
+        margin:0;
+        padding:10px;
+        height:165px;
+        overflow:auto;}
+.accord a.acTitle {
+        background:transparent url(/images/css/galleryAccord220.jpg) no-repeat;        
+        color:#245cce;
+	cursor:pointer;
+	display:block;
+	padding:5px;
+        margin:0 0 2px 0;
+	text-decoration: none;}
+.accord a.acTitle:hover {
+        text-decoration:underline;}
+.accord p {
+        margin:0 0 5px 0;}
+
+
+/* --------------------------------------------------
+  FEATURE TABLE STYLES
+-------------------------------------------------- */   
+.overviewLCol table,
+#TB_window table {
+   margin:10px 0 25px 0;
+   border-left:1px dotted #97b5d3;}
+.overviewLCol table td,
+#TB_window table td {
+   font-size:0.9em;
+   border:0;
+   padding:4px;
+   border:1px dotted #97b5d3;
+   border-width:0px 1px 1px 0px;
+   text-align:left;
+   vertical-align:top;}
+.overviewLCol table th,
+#TB_window table th {
+  text-align:left;
+  border-bottom:1px dotted #97b5d3;
+  border-right:1px dotted #97b5d3;
+  border-left:0;
+  padding:4px;}
+#TB_window .rowHeader {
+  font-weight:bold;
+  background-color:white;
+  border-top:1px solid #eaeaea;
+  border-bottom:1px solid #eaeaea;
+  padding:10px;
+  color:#b20838;}
+.overviewLCol table td.center {
+  text-align:center;}
+
+/* ------------------------------------------------------
+    TAB STYLING
+-------------------------------------------------------*/
+#tabs {
+  float:left;}
+.ui-tabs-panel {
+  width:97%;
+  top:25px;}
+
+/* ------------------------------------------------------
+    COMPANY PAGES
+-------------------------------------------------------*/
+.managementPos {
+  overflow:hidden;
+  margin-bottom:25px;
+  width:100%;}
+.managementPos img {
+  float:left;}
+.managementPos .managementRCol {
+  border:1px solid #aacfe2;
+  border-width:1px 0;
+  width:84%;
+  margin-left:110px;}
+
+/* ------------------------------------------------------
+   SURVEYPRO PAGES
+-------------------------------------------------------*/
+.survey table,
+.survey table td {
+  border:0;}
+
+/* ----------------------------------------------------
+     WRAP Project
+------------------------------------------------------*/
+#action-wrap{
+margin:0 0 25px 0;
+}
+.accessBox {
+  background-color:#f1faff;
+  border:1px solid #aacfe2;
+  width:31%;
+  height:168px;
+  margin:0 0 0 0;
+  padding:0 0 0 8px;  
+  }
+.accessBox a{
+font-size:0.9em;
+}
+.accessBox input{
+  width:250px;
+  font-size:0.9em;   
+margin:0 0 0 0;
+padding:0 0 3px 0;
+}
+
+.accessBox form{
+margin:0 0 0 0;
+padding:0 0 0 0;
+}
+.srchBox {
+  width:32%;
+  height:168px;
+  float:right;
+  margin:0 0 0 0;
+  }
+#service {
+ margin-right:0px;
+ padding:0 0 0 8px;
+ background-color:white;
+ border:1px solid #aacfe2;
+}
+#support-search {
+  background: #e9eaa6;  
+  margin:0 7px 0 0;
+  padding:0 4px 2px 8px;
+  height:170px;
+}
+#support-search form {
+  margin:0;
+  padding:0;}
+#support-search a {
+  padding:3px 1px 1px 1px;
+  font-size:0.9em;}
+#support-search input,
+#support-search select {
+  padding:2px;
+  margin-bottom:4px;
+  font-size:0.9em;}
+#support-search select {
+  width:287px;}
+#srch-field {
+  margin: 4px 0 0 0;
+  width:250px;
+  color:#888;}
+#srchbutton {
+ width:258px;
+}
+

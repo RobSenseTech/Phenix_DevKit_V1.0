@@ -1,0 +1,822 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- saved from url=(0044)http://testlinx/products/zynq-7000/linux.htm -->
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<script src="./index_files/jquery.min.js" type="text/javascript"></script>
+<script src="./index_files/csi_HF.min.js" type="text/javascript"></script>
+<script src="./index_files/universal.min.js" type="text/javascript"></script>
+
+
+<meta name="language" content="en">
+<title>Zynq-7000 Extensible Processing Platform : Zynq-7000 EPP Linux Solution</title>
+<meta name="history" content="10/25/11 : new : lparker">
+<meta name="keywords" content="extensible processing platform, zynq, 7000, linux">
+<meta name="description" content="The Zynq-7000 EPP Linux solution combines the benefits of the Linux open source operating system together with a customized solution geared towards designing software applications on this platform.">
+
+<link rel="stylesheet" href="./index_files/xuniversal.css" type="text/css">
+<link rel="stylesheet" href="./index_files/xgeneric.css" type="text/css">
+<link rel="stylesheet" href="./index_files/header_footer.css" type="text/css">
+<link rel="stylesheet" href="./index_files/thickbox.css" type="text/css">
+<!-- XIA – CW -->
+<style type="text/css">@media print { #feedlyMiniIcon { display: none; } }</style></head>
+
+<body feedly-version="---"><div id="loadheader">
+	<a name="top"></a>
+
+	
+    				        		                <div class="xheader" id="ENheader"> <a name="top"></a>
+  <div id="panel">
+    <h1>Sign In</h1>
+    <div id="newAcct">
+    <h3 class="no-underline">Don't have a Xilinx account yet?</h3><ul><li>Choose to receive important news and product information</li><li>Gain access to special content</li><li>Personalize your web experience on Xilinx.com</li></ul>
+      <p><a href="https://secure.xt.xilinx.com/webreg/createUser.do?" id="createAcct">Create Account</a></p>
+    </div>
+    <div id="signinAcct">
+      <form name="LoginForm" method="post" action="https://secure.xt.xilinx.com/webreg/loginAction.do?">
+        <p>Username</p>
+        <input type="text" name="XPROF#USER_ID#upd" size="30" value="">
+        <p>Password</p>
+        <input type="password" name="XPROF#LDAP_PASSWORD#upd" size="30" value="">
+        <input type="image" name="SignIn" src="./index_files/reg_login.gif" alt="Sign In">
+        <a href="https://secure.xt.xilinx.com/webreg/resetPasswordRequest.do?" id="pwdReset">Forgot your password?</a>
+      </form>
+    </div>
+    <a id="close-panel" class="close" href="http://testlinx/products/zynq-7000/linux.htm#"><span>X</span>Close Panel</a> </div>
+  <div id="xlinks">
+    <div class="xlink" id="signIn"><a style="margin-top:2px; float:left; color:#FF0000;" href="http://testlinx/products/zynq-7000/linux.htm#" id="open-panel">Sign in</a></div>
+    <div class="xlink">
+      <ul class="lang-menu">
+        <li><a href="" id="language">Language</a>
+          <ul id="languageSelect">
+            <li>
+             
+        	<a href="http://www.xilinx.com/" name="&amp;lid=header-English Site"><img src="./index_files/englishMenu_s.gif" alt="English Site" title="English Site" border="0"></a>
+    
+  </li><li>
+             
+        	<a href="http://japan.xilinx.com/" name="&amp;lid=header-Japan Site"><img src="./index_files/japanMenu_s.gif" alt="Japan Site" title="Japan Site" border="0"></a>
+    
+  </li><li>
+             
+        	<a href="http://china.xilinx.com/" name="&amp;lid=header-China Site"><img src="./index_files/chinaMenu_s.gif" alt="China Site" title="China Site" border="0"></a>
+    
+  </li>          </ul>
+        </li>
+      </ul>
+    </div>
+	
+    	        	
+	<div class="xlink">
+	    	<a href="http://testlinx/support/">Documentation</a>
+	  </div><div class="xlink">
+	    	<a href="http://testlinx/support/download/index.htm">Downloads</a>
+	  </div><div class="xlink">
+	    	<a href="http://testlinx/company/contact/index.htm">Contact Us</a>
+	  </div>	
+  </div>
+  <!-- END xlinks -->
+    <div id="xlogo-wrap"> <a href="http://testlinx/" title="Xilinx.com Home"><img src="./index_files/xlogo_bg.gif" alt="Xilinx Home" id="xlogonew"></a> </div>
+  <div id="xsearch">
+    
+    <div>
+      <form action="http://testlinx/cgi-bin/search/googleSearch" method="get" name="gs" onsubmit="return checkCollection();"><input name="site" type="hidden" value="EntireSite"><input name="btnG" type="hidden" value="Google Search"><input name="output" type="hidden" value="xml_no_dtd"><input name="sort" type="hidden" value="date:D:L:d1"><input name="ie" type="hidden" value="iso-8859-1"><input name="client" type="hidden" value="xilinx"><input name="oe" type="hidden" value="iso-8859-1"><input name="proxystylesheet" type="hidden" value="xilinx"><input name="filter" type="hidden" value="0"><input name="requiredfields" type="hidden" value=""><input id="ikeyword" name="q" type="text" value="enter keywords"><input id="isearch" name="submit2" src="./index_files/search.gif" type="image" value="Search"><a href="http://testlinx/company/advanced-search.htm" id="advSearch">Advanced Search</a></form>
+    </div>
+    </div>
+
+    <!-- Navigation bar starts -->
+    <div id="navigation_bar">
+
+      <!--Top Gradient image of the navigation-->
+      <ul class="mainNav">
+		
+        <!-- Main Navigation menu starts -->
+
+
+
+
+		<li class="mainItem">
+          <a class="menuTitle" href="http://testlinx/about/index.htm" title="">About Xilinx</a>
+
+          <!-- BEGIN About Xilinx Sub Menu -->
+          <div class="megaDropdown">
+            <ul>
+              <li class="announcement">
+
+<h3>Announcing Zynq™-7000 EPP</h3>
+<p>The Zynq™-7000 EPP class of product combines an industry-standard ARM® dual-core Cortex™-A9 MPCore™ processing system with Xilinx unified 28nm technology. <a href="http://testlinx/products/silicon-devices/epp/zynq-7000/index.htm">View Video</a></p>
+</li>
+              <li class="col1">
+
+
+<h3>Our Company</h3>
+
+      <a href="http://testlinx/about/company-overview/index.htm" title="">Company Overview</a>
+  
+
+      <a href="http://testlinx/about/management-team/index.htm" title="">Management Team</a>
+  
+
+      <a href="http://testlinx/about/customer-innovation/index.htm" title="">Customer Innovation</a>
+  
+
+      <a href="http://testlinx/about/environmental-health-and-safety/index.htm" title="">Environmental Health and Safety</a>
+  
+
+      <a href="http://testlinx/about/technology-investments/index.htm" title="">Technology Investments</a>
+  
+
+      <a href="http://testlinx/about/community-relations/index.htm" title="">Community Relations</a>
+  
+
+
+              </li>
+              <li class="col2">
+
+
+<h3>News Room</h3>
+
+      <a href="http://press.xilinx.com/phoenix.zhtml?c=212763&p=irol-currentnews" title="">Press Releases</a>
+  
+
+      <a href="http://press.xilinx.com/phoenix.zhtml?c=212763&p=mediamention" title="">Xilinx in the News</a>
+  
+
+
+
+
+<h3>Investor Relations</h3>
+
+      <a href="http://investor.xilinx.com/" title="">Investor Relations</a>
+  
+
+
+              </li>
+              <li class="col3">
+
+
+<h3>Contact Xilinx</h3>
+
+      <a href="http://testlinx/company/contact/index.htm" title="">Contact Us</a>
+  
+
+
+
+
+<h3>Events</h3>
+
+      <a href="http://testlinx/events/index.htm" title="">Events</a>
+  
+
+
+
+
+<h3>Careers</h3>
+
+      <a href="http://testlinx/hr" title="">Jobs at Xilinx</a>
+  
+
+
+              </li>
+              <li class="col4">
+
+
+<h3>Xilinx Worldwide</h3>
+
+      <a href="http://china.xilinx.com/" title="">China</a>
+  
+
+      <a href="http://japan.xilinx.com/" title="">Japan</a>
+  
+
+      <a href="http://testlinx/company/india" title="">India</a>
+  
+
+      <a href="http://testlinx/kr" title="">Korea</a>
+  
+
+      <a href="http://testlinx/tw" title="">Taiwan</a>
+  
+
+
+              </li>
+            </ul>
+          </div>
+          <!-- END About Xilinx Sub Menu -->
+        </li>
+  
+
+		<li class="mainItem">
+          <a class="menuTitle" href="http://testlinx/onlinestore/index.htm" title="">Buy</a>
+
+          <!-- BEGIN Buy Sub Menu -->
+          <div class="megaDropdown">
+            <ul>
+              <li class="announcement">
+
+<h3>Virtex-6 LXT FPGA ML605 Evaluation Kit</h3>
+<p>Jumpstart your design development with the Virtex-6 LXT FPGA ML605 Evaluation Kit - a full featured design environment for designs requiring high performance, serial connectivity, and advanced memory interfacing. <a href="http://testlinx/products/boards-and-kits/EK-V6-ML605-G.htm">Buy now</a></p>
+</li>
+              <li class="col1">
+
+
+<h3>Sales and Distribution Network</h3>
+
+      <a href="http://testlinx/company/contact/index.htm" title="">Contact Local Sales</a>
+  
+
+      <a href="http://testlinx/company/contact/index.htm#authDisti" title="">Authorized Distributors</a>
+  
+
+
+              </li>
+              <li class="col2">
+
+
+<h3>Buy Online</h3>
+
+      <a href="http://testlinx/onlinestore/" title="">Online Store</a>
+  
+
+      <a href="http://testlinx/publications/prod_mktg/index.htm" title="">Product Literature</a>
+  
+
+
+              </li>
+            </ul>
+          </div>
+          <!-- END Buy Sub Menu -->
+        </li>
+  
+
+		<li class="mainItem">
+          <a class="menuTitle" href="http://testlinx/support/" title="">Support</a>
+
+          <!-- BEGIN Support Sub Menu -->
+          <div class="megaDropdown">
+            <ul>
+              <li class="announcement">
+
+<h3>Mobile Access for Forums</h3>
+<p>You can now access our User Community Forums on most smart phones.<br>Simply navigate to <a href="http://forums.xilinx.com/">http://forums.xilinx.com</a> on your mobile device today!</p>
+</li>
+              <li class="col1">
+
+
+<h3>Support</h3>
+
+      <a href="http://testlinx/support/" title="">Product Support &amp; Documentation</a>
+  
+
+      <a href="http://testlinx/support/solcenters.htm" title="">Solution Centers</a>
+  
+
+      <a href="http://forums.xilinx.com/" title="">User Community Forums</a>
+  
+
+
+              </li>
+              <li class="col2">
+
+
+<h3>Downloads and Licensing</h3>
+
+      <a href="http://testlinx/support/download/index.htm" title="">Downloads</a>
+  
+
+      <a href="http://testlinx/getlicense/" title="">Get License File</a>
+  
+
+      <a href="http://testlinx/getlicense/" title="">Redeem Product Voucher</a>
+  
+
+      <a href="http://testlinx/support/licensing_solution_center.htm" title="">Licensing Solutions</a>
+  
+
+
+              </li>
+              <li class="col3">
+
+
+<h3>Training</h3>
+
+      <a href="http://testlinx/training/index.htm" title="">Training</a>
+  
+
+      <a href="http://testlinx/training/courses.htm" title="">Course Listing</a>
+  
+
+      <a href="http://testlinx/training/worldwide-schedule.htm" title="">Training Schedule </a>
+  
+
+      <a href="http://testlinx/training/fpga/fpga-design-curriculum.htm" title="">Curriculum Paths </a>
+  
+
+      <a href="http://testlinx/training/interactive-online-fpga-training.htm" title="">Live Online Training </a>
+  
+
+      <a href="http://testlinx/training/free-video-courses.htm" title="">Videos</a>
+  
+
+
+              </li>
+              <li class="col4">
+
+
+<h3>Contact Support</h3>
+
+      <a href="http://testlinx/support/techsup/tappinfo.htm" title="">Technical Support</a>
+  
+
+      <a href="http://testlinx/support/clearexpress/websupport.htm" title="">Open a WebCase</a>
+  
+
+      <a href="http://testlinx/products/quality/rma.htm" title="">Returns and RMA</a>
+  
+
+
+              </li>
+            </ul>
+          </div>
+          <!-- END Support Sub Menu -->
+        </li>
+  
+
+		<li class="mainItem">
+          <a class="menuTitle" href="http://testlinx/applications/index.htm" title="">Applications</a>
+
+          <!-- BEGIN Applications Sub Menu -->
+          <div class="megaDropdown">
+            <ul>
+              <li class="announcement">
+
+<h3>New Development Kit for Optical Transport Networks</h3>
+<p>Accelerate 100G OTN applications development with the Virtex-6 HXT FPGA OTN Kit.&nbsp;See full kit features and learn more about this new kit.</p><p><a href="http://testlinx/products/boards-and-kits/EK-V6-ML630-G.htm">Learn More</a></p>
+</li>
+              <li class="col1">
+
+
+<h3>By Market</h3>
+
+      <a href="http://testlinx/applications/aerospace-and-defense/index.htm" title="">Aerospace and Defense</a>
+  
+
+      <a href="http://testlinx/applications/automotive/index.htm" title="">Automotive</a>
+  
+
+      <a href="http://testlinx/applications/broadcast/index.htm" title="">Broadcast</a>
+  
+
+      <a href="http://testlinx/applications/consumer-electronics/index.htm" title="">Consumer Electronics</a>
+  
+
+      <a href="http://testlinx/applications/high-performance-computing/index.htm" title="">High Performance Computing</a>
+  
+
+
+              </li>
+              <li class="col2">
+
+
+<h3>&nbsp;</h3>
+
+      <a href="http://testlinx/applications/industrial/index.htm" title="">Industrial</a>
+  
+
+      <a href="http://testlinx/applications/medical/index.htm" title="">Medical</a>
+  
+
+      <a href="http://testlinx/applications/test-and-measurement/index.htm" title="">Test and Measurement</a>
+  
+
+      <a href="http://testlinx/applications/wireless-communications/index.htm" title="">Wireless Communications</a>
+  
+
+      <a href="http://testlinx/applications/wired-communications/index.htm" title="">Wired Communications</a>
+  
+
+
+              </li>
+              <li class="col3">
+
+
+<h3>By Technology</h3>
+
+      <a href="http://testlinx/applications/asic-prototyping/asic-prototyping.htm" title="">ASIC Prototyping and Emulation</a>
+  
+
+      <a href="http://testlinx/applications/audio/index.htm" title="">Audio</a>
+  
+
+      <a href="http://testlinx/applications/security/index.htm" title="">Security</a>
+  
+
+      <a href="http://testlinx/applications/video-and-imaging/index.htm" title="">Video and Imaging</a>
+  
+<div class="more">
+      <a href="http://testlinx/applications/index.htm" title="">All Applications &gt;</a>
+  </div>
+
+              </li>
+            </ul>
+          </div>
+          <!-- END Applications Sub Menu -->
+        </li>
+  
+
+		<li class="mainItem">
+          <a class="menuTitle" href="http://testlinx/products/index.htm" title="">Products</a>
+
+          <!-- BEGIN Products Sub Menu -->
+          <div class="megaDropdown">
+            <ul>
+              <li class="announcement">
+
+<h3>Announcing Zynq™-7000 EPP</h3>
+<p>The Zynq™-7000 EPP class of product combines an industry-standard ARM® dual-core Cortex™-A9 MPCore™ processing system with Xilinx unified 28nm technology. <a href="http://testlinx/products/silicon-devices/epp/zynq-7000/index.htm">View Video</a></p>
+</li>
+              <li class="col1">
+
+
+<h3>Product Families</h3>
+
+      <a href="http://testlinx/products/silicon-devices/fpga/artix-7/index.htm" title="">Artix-7</a>
+  
+
+      <a href="http://testlinx/products/silicon-devices/fpga/kintex-7/index.htm" title="">Kintex-7</a>
+  
+
+      <a href="http://testlinx/products/silicon-devices/fpga/virtex-7/index.htm" title="">Virtex-7</a>
+  
+
+      <a href="http://testlinx/products/silicon-devices/fpga/easypath-7/index.htm" title="">EasyPath-7</a>
+  
+
+      <a href="http://testlinx/products/silicon-devices/epp/zynq-7000/index.htm" title="">Zynq-7000 EPP</a>
+  
+
+      <a href="http://testlinx/products/design-tools/ise-design-suite/index.htm" title="">ISE Design Suite</a>
+  
+
+      <a href="http://testlinx/products/silicon-devices/fpga/virtex-6/index.htm" title="">Virtex-6</a>
+  
+
+      <a href="http://testlinx/products/silicon-devices/fpga/easypath-6/index.htm" title="">EasyPath-6</a>
+  
+
+      <a href="http://testlinx/products/silicon-devices/fpga/spartan-6/index.htm" title="">Spartan-6</a>
+  
+
+      <a href="http://testlinx/products/silicon-devices/cpld/coolrunner-ii/index.htm" title="">CoolRunner-II</a>
+  
+<div class="more">
+      <a href="http://testlinx/products/index.htm" title="">All Products &gt;</a>
+  </div>
+
+              </li>
+              <li class="col2">
+
+
+<h3>Product Types</h3>
+
+      <a href="http://testlinx/products/silicon-devices/index.htm" title="">Silicon Devices</a>
+<div class="subHeaderLinks">
+<a href="http://testlinx/products/silicon-devices/fpga/index.htm">FPGA</a>
+<a href="http://testlinx/products/silicon-devices/epp/index.htm">EPP</a>
+<a href="http://testlinx/products/silicon-devices/cpld/index.htm">CPLD</a>
+<a href="http://testlinx/products/silicon-devices/configuration-memory/index.htm">Configuration Memory</a>
+</div>
+  
+
+      <a href="http://testlinx/products/design-tools/ise-design-suite/index.htm" title="">Software and Design Tools</a>
+  
+
+      <a href="http://testlinx/products/boards-and-kits/index.htm" title="">Boards and Kits</a>
+  
+
+      <a href="http://testlinx/products/targeted_design_platforms.htm" title="">Targeted Design Platforms</a>
+  
+
+      <a href="http://testlinx/products/intellectual-property/index.htm" title="">Intellectual Property</a>
+  
+
+      <a href="http://testlinx/services/index.htm" title="">Engineering Services</a>
+  
+
+
+              </li>
+              <li class="col3">
+
+
+<h3>Product Technologies</h3>
+
+      <a href="http://testlinx/products/technology/agile-mixed-signal/index.htm" title="">Agile Mixed Signal</a>
+  
+
+      <a href="http://testlinx/products/technology/dsp/index.htm" title="">DSP</a>
+  
+
+      <a href="http://testlinx/products/technology/embedded-processing/index.htm" title="">Embedded Processing</a>
+  
+
+      <a href="http://testlinx/products/technology/connectivity/index.htm" title="">Connectivity</a>
+  
+
+      <a href="http://testlinx/products/technology/memory-solutions/index.htm" title="">Memory Solutions</a>
+  
+
+      <a href="http://testlinx/products/technology/power/index.htm" title="">Power Advantage</a>
+  
+
+      <a href="http://testlinx/products/technology/signal-integrity/index.htm" title="">Signal Integrity</a>
+  
+
+      <a href="http://testlinx/products/technology/configuration-solutions/index.htm" title="">Configuration Solutions</a>
+  
+
+      <a href="http://testlinx/products/technology/design-security/index.htm" title="">Design Security</a>
+  
+
+      <a href="http://testlinx/products/technology/stacked-silicon-interconnect/stacked-silicon-interconnect.htm" title="">Stacked Silicon Interconnect</a>
+  
+
+
+              </li>
+              <li class="col4">
+
+
+<h3>Resources</h3>
+
+      <a href="http://testlinx/support/design-center/getting-started.htm" title="">Getting Started</a>
+  
+
+
+              </li>
+            </ul>
+          </div>
+          <!-- END Products Sub Menu -->
+        </li>
+  
+
+		<li class="mainItem" style="margin-top: 0px; margin-right: 0px; margin-bottom: 0px; margin-left: 0px; ">
+          <a class="menuTitle" href="http://testlinx/innovation/index.htm" title="">Innovation</a>
+
+          <!-- BEGIN Innovation Sub Menu -->
+          <div class="megaDropdown">
+            <ul>
+              <li class="announcement">
+
+<h3>Announcing Zynq™-7000 EPP</h3>
+<p>The Zynq™-7000 EPP class of product combines an industry-standard ARM® dual-core Cortex™-A9 MPCore™ processing system with Xilinx unified 28nm technology.&nbsp; <a href="http://testlinx/products/silicon-devices/epp/zynq-7000/index.htm">View Video</a></p>
+</li>
+              <li class="col1">
+
+
+<h3>Leadership</h3>
+
+      <a href="http://testlinx/innovation/accelerating-change.htm" title="">Accelerating Change</a>
+  
+
+      <a href="http://testlinx/innovation/the-programmable-imperative.htm" title="">The Programmable Imperative</a>
+  
+
+      <a href="http://testlinx/products/quality/index.htm" title="">Quality</a>
+  
+
+      <a href="http://testlinx/innovation/awards.htm" title="">Awards</a>
+  
+
+
+              </li>
+              <li class="col2">
+
+
+<h3>Technology Roadmaps</h3>
+
+      <a href="http://testlinx/products/targeted_design_platforms.htm" title="">Targeted Design Platforms</a>
+  
+
+      <a href="http://testlinx/technology/roadmap/28g-serial-transceiver-technology.htm" title="">28Gbps Serial Transceiver Technology</a>
+  
+
+      <a href="http://testlinx/technology/roadmap/ssi-technology.htm" title="">Stacked Silicon Interconnect Technology</a>
+  
+
+      <a href="http://testlinx/innovation/extensible-processing-platform.htm" title="">Extensible Processing Platform</a>
+  
+
+      <a href="http://testlinx/innovation/7-series-fpgas.htm" title="">7 Series FPGAs</a>
+  
+
+
+              </li>
+              <li class="col3">
+
+
+<h3>Alliance Ecosystem</h3>
+
+      <a href="http://testlinx/alliance/index.htm" title="">Alliance Program</a>
+  
+
+
+
+
+<h3>Research</h3>
+
+      <a href="http://testlinx/university/index.htm" title="">University Program</a>
+  
+
+      <a href="http://testlinx/innovation/research-labs.htm" title="">Research Labs</a>
+  
+
+
+              </li>
+              <li class="col4">
+
+
+<h3>Publications</h3>
+
+      <a href="http://testlinx/publications/xcellonline/" title="">Xcell Journal</a>
+  
+
+      <a href="http://testlinx/events/webcasts.htm" title="">Webcasts</a>
+  
+
+      <a href="http://testlinx/support/documentation/white_papers.htm" title="">White Papers</a>
+  
+
+
+              </li>
+            </ul>
+          </div>
+          <!-- END Innovation Sub Menu -->
+        </li>
+        </ul>
+    </div>
+    <!-- Navigation bar ends -->
+		
+	<!--END xmenu -->
+</div>
+<!-- END xheader-->
+
+
+  	
+	  </div>
+<div class="breadcrumbs"> <a href="http://testlinx/">Home</a> : <a href="http://testlinx/products/index.htm">Products</a> : <a href="http://testlinx/products/silicon-devices/epp/zynq-7000/index.htm">Zynq-7000 Extensible Processing Platform</a> : Zynq-7000 EPP Linux Solution</div>
+<div id="m">
+<div id="middle">
+  <h1>Zynq-7000 EPP Linux Solution</h1>
+  <!-- enter body content here -->
+  <div id="generic-wrap">
+    <div class="overviewRCol">
+      <div class="docbox">
+        <div class="docbox_head">
+          <h2>Downloads</h2>
+        </div>
+        <div class="docbox_body">
+          <ul>
+            <li><a href="http://testlinx/member/zynq_linux/zynq_linux.tar.gz">Zynq-7000 EPP Linux Image &amp; QEMU Emulator</a></li>
+            <li><a href="http://testlinx/member/mentor_codebench/arm-2010.09-62-arm-xilinxa9-linux-gnueabi.bin">Mentor Sourcery CodeBench GNU toolchain</a></li>
+          </ul>
+        </div>
+      </div>
+      <!-- END CTABOX -->
+      <div class="docbox">
+        <div class="docbox_head">
+          <h2>Developer Resources</h2>
+        </div>
+        <div class="docbox_body">
+          <ul>
+            <li><a href="http://testlinx/products/design-tools/ise-design-suite/embedded-edition.htm">ISE® Design Suite Embedded Edition</a></li>
+            <li><a href="http://testlinx/products/zynq-7000/extensible-virtual-platform.htm">Zynq-7000 EPP Extensible Virtual Platform</a></li>
+          </ul>
+        </div>
+      </div>
+     </div>
+    <!-- END DIV OVERVIEWRCOL -->
+    <div class="overviewLCol">
+      <p>The Zynq™-7000  EPP Linux solution combines the benefits of the Linux open source operating  system together with a customized solution geared towards designing software  applications on this platform.</p>
+      <p>This solution provides:</p>
+      <ul>
+        <li>Fully  tested and user ready, out-of-the-box  solution targeting Zynq-7000 EPP boards</li>
+        <li>Board  support package and drivers that are merged into mainline kernel.org tree,  providing the benefits of latest kernel features</li>
+        <li>Linux  kernel that use device tree for run-time configuration which allows the same  kernel image to run on different hardware configurations</li>
+        <li>QEMU  system model of the Zynq processing system to run and debug software  applications</li>
+        <li>Access  to a growing community of software developers interested in the Zynq-7000 EPP  platform</li>
+        <li>Access  to world-class commercial solutions from Linux partners</li>
+        </ul>
+      <h2>Zynq-7000 EPP Linux Developer Resources</h2>
+      <table width="70%" cellspacing="0">
+        <tbody><tr>
+          <td><p><strong>GIT repository</strong> of Cortex-A9 MPCore kernel sources, software  drivers, Board Support Package (BSP) for Zynq-7000 EPP boards<br>
+            &nbsp;&nbsp;<a href="http://wiki.xilinx.com/using-git" target="_blank">&gt;&gt;Learn More</a><br>
+            </p></td>
+        </tr>
+        <tr class="stripe">
+          <td><p><strong>Mentor Sourcery CodeBench GNU toolchain</strong> includes C/C++ compilers, optimized C/C++ libraries with NEON support and GDB debugger <br>
+            &nbsp;&nbsp;<a href="http://wiki.xilinx.com/zynq-tools" target="_blank">&gt;&gt;Learn More</a><br>
+            </p></td>
+        </tr>
+        <tr>
+          <td><p><strong>Open  source QEMU system model</strong> of the  Zynq-7000 EPP Processing System for running and debugging the software<br>
+            &nbsp;&nbsp;<a href="http://wiki.xilinx.com/zynq-qemu" target="_blank">&gt;&gt;Learn More</a></p></td>
+        </tr>
+        <tr class="stripe">
+          <td><p><strong>Extensible  Virtual Platform</strong> of the  Zynq-7000 EPP Processing System for running and debugging the software<br>
+            &nbsp;&nbsp;<a href="http://www.xilinx.com/zynq/evp" target="_blank">&gt;&gt;Learn More</a></p></td>
+          </tr>
+        <tr>
+          <td><p>Contribute patches to  Zynq-7000 EPP Linux source distribution, which will be pushed to <strong>mainline kernel.org</strong> source tree<br>
+            &nbsp;&nbsp;<a href="http://wiki.xilinx.com/using-git" target="_blank">&gt;&gt;Learn More</a></p></td>
+        </tr>
+        <tr class="stripe">
+          <td><p>Zynq-7000 EPP <strong>Linux Wiki</strong> offers technical  instructions and guide to design software solutions using open source Linux<br>
+            &nbsp;&nbsp;<a href="http://wiki.xilinx.com/zynq-linux" target="_blank">&gt;&gt;Learn More</a></p></td>
+        </tr>
+        <tr>
+          <td><p>Participate in the Zynq-7000 EPP <strong>Linux Forums</strong>, to exchange ideas and  be part of the Zynq-7000 EPP community<br>
+            &nbsp;&nbsp;<a href="http://forums.xilinx.com/t5/Embedded-Linux/bd-p/ELINUX" target="_blank">&gt;&gt;Learn More</a></p></td>
+        </tr>
+      </tbody></table>
+<h2>Commercial Linux  Solutions</h2>
+      <p>Xilinx works with industry leaders to provide a best-in-class Linux solution for the Zynq-7000 EPP platform. Products supporting Zynq-7000 EPP include:</p>
+      <ul>
+        <li><a href="http://www.arm.com/products/tools/software-tools/ds-5/index.php" target="_blank">ARM®  Development Studio 5 (DS-5)</a></li>
+        <li><a href="http://www.lauterbach.com/pro/pro__xilinx.html" target="_blank">Lauterbach  TRACE32 PowerTools</a></li>
+        <li><a href="http://www.mentor.com/embedded-software/sourcery-tools/sourcery-codebench/" target="_blank">Mentor  Sourcery CodeBench toolchain</a></li>
+        <li><a href="http://www.petalogix.com/zynq" target="_blank">PetaLogix  PetaLinux System Development Kit (SDK)</a></li>
+      </ul>
+      <!-- END DIV OVERVIEWLCOL -->
+	  </div>
+    <!-- END DIV OVERVIEWLCOL -->
+  </div>
+  <!-- END GENERIC-WRAP -->
+</div>
+<!-- END DIV MIDDLE -->
+  <div class="clearer">&nbsp;</div>
+</div>
+<!-- END DIV FOR M -->
+<div id="includeFooter" style="display: none; ">/csi/footer.htm</div>
+<script src="./index_files/jquery.thickbox.min.js" type="text/javascript"></script>
+<script src="./index_files/generic.js" type="text/javascript"></script>
+<script src="./index_files/jquery.expand_collapse.js" type="text/javascript"></script>
+
+
+<div id="loadfooter"><!-- Begin Footer -->
+
+<div id="footer">
+<div class="fRcol" id="fConnect"><h3>Connect</h3>
+	  	      <a href="http://testlinx/company/contact/index.htm"><img src="./index_files/contact_18x18.gif"> Contact Us</a>
+  
+	  	      <a href="http://www.facebook.com/XilinxInc"><img src="./index_files/FaceBook_18x18.gif"> Connect on Facebook</a>
+  
+	  	      <a href="http://www.twitter.com/XilinxInc"><img src="./index_files/Twitter_18x18.gif"> Follow us on Twitter</a>
+  
+	  	      <a href="http://www.linkedin.com/company/xilinx"><img src="./index_files/LinkedIn_18x18.gif"> Connect on LinkedIn</a>
+  
+	  	      <a href="http://www.youtube.com/XilinxInc"><img src="./index_files/YouTube_18x18.gif"> Watch us on YouTube</a>
+  
+	  	      <a href="http://forums.xilinx.com/"><img src="./index_files/Forums_18x18.gif"> Join our Community</a>
+  
+	  	      <a href="http://xilinx.performark.com/subscriptions/"><img src="./index_files/Email_18x18.gif"> Subscribe to Newsletter</a>
+  </div><div class="fRcol" id="fSupport"><h3>Support</h3>
+      <a href="http://testlinx/support/" title="">Documentation</a>
+  
+      <a href="http://testlinx/support/download/index.htm" title="">Downloads</a>
+  
+      <a href="http://testlinx/support/licensing_solution_center.htm" title="">Licensing</a>
+  
+      <a href="http://testlinx/training/index.htm" title="">Training</a>
+  
+      <a href="http://testlinx/support/solcenters.htm" title="">Solution Centers</a>
+  </div><div class="fRcol" id="fCompany"><h3>Company</h3>
+      <a href="http://testlinx/about/" title="">About Us</a>
+  
+      <a href="http://investor.xilinx.com/" title="">Investor Relations</a>
+  
+      <a href="http://press.xilinx.com/phoenix.zhtml?c=212763&p=mediamention" title="">Xilinx in the News</a>
+  
+      <a href="http://testlinx/publications/xcellonline/" title="">Xcell Journal</a>
+  
+      <a href="http://testlinx/hr" title="">Jobs at Xilinx</a>
+  </div>
+<div id="fLcol"><h3>Xilinx, Inc.</h3><div id="value-statement"><h3>Engineering Innovation</h3><p>Xilinx delivers programmable platforms to help design engineers make their vision a reality.</p></div>
+
+</div>
+
+
+	<div class="copyright">&nbsp;©&nbsp;Copyright 2011 Xilinx Inc.<span class="delimiter">|</span>
+	    	<a href="http://testlinx/legal.htm#privacy">Privacy</a>
+	  <span class="delimiter">|</span>
+	    	<a href="http://testlinx/legal.htm#trademarks">Trademarks</a>
+	  <span class="delimiter">|</span>
+	    	<a href="http://testlinx/legal.htm">Legal</a>
+	  <span class="delimiter">|</span>
+	    	<a href="http://testlinx/toc.htm">Sitemap</a>
+	  <span class="delimiter">|</span>
+	    	<a href="http://testlinx/askx/feedback_form.htm">Feedback</a>
+	  </div>
+</div>	
+<!-- Start GA Code -->
+ 
+<!-- End GA Code -->
+  <!-- End Footer -->
+</div><img id="feedlyMiniIcon" title="feedly mini" style="position: fixed; bottom: 50px; right: 4px; z-index: 99; cursor: pointer; border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px; border-style: initial; border-color: initial; -webkit-transition-property: opacity; -webkit-transition-duration: 0.3s; -webkit-transition-timing-function: ease; -webkit-transition-delay: initial; visibility: visible; width: 24px; height: 24px; max-height: 24px; max-width: 24px; overflow-x: hidden; overflow-y: hidden; opacity: 0.35; " width="24" height="24" src="data:image/png;base64,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"></body></html>
