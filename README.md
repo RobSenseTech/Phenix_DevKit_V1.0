@@ -1,6 +1,5 @@
 # Phenix Devkit Firmware v0.1
-
-This version is not a perfect one, baudrate of the uart can't be configured because its uartlite IP core in FPGA is licensed without programmability, and the filesystem and data logging function with original ardupilot are not supported so far in the DevKit, but will be coming soon.
+The PhenixPro DevKit is a intelligent flight control, computing and networking platform. It's integrated in a Xilinx Zynq SoC, with dual core ARM Cortex-A9 CPU and FPGA fabric on a signal chip. It is also running PhenOS(based on freeRTOS) and Linux on each CPU core respectively. Attitude estimation, flight control, navigation are implemented by ArduPilot(http://ardupilot.org). So far, it only support quadcopter.
 
 Here is a simple process for developers to compile the source code.
 
