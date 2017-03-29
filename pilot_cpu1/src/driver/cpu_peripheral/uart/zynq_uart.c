@@ -335,7 +335,6 @@ int Uart_Ioctl(file_t *filp, int iCmd, unsigned long ulArg)
                 uiUartOperMode = XUARTPS_OPER_MODE_NORMAL; 
             }
 
-
 			pxUartDrvPrivate->iUartOperMode = uiUartOperMode;
 			XUartPs_SetOperMode(pxUartDrvPrivate->pxUartInstPtr, uiUartOperMode);
 			break;
@@ -351,7 +350,7 @@ int Uart_Ioctl(file_t *filp, int iCmd, unsigned long ulArg)
             XUartPsFormat *usr_format = (XUartPsFormat *)ulArg;
 
             //For ps uart, XUartPsFormat is equal to UartDataFormat_t
-            XUartPs_SetDataFormat(pxUartDrvPrivate->pxUartInstPtr, &usr_format);
+            XUartPs_SetDataFormat(pxUartDrvPrivate->pxUartInstPtr, usr_format);
 
             break;
         }
@@ -366,7 +365,7 @@ int Uart_Ioctl(file_t *filp, int iCmd, unsigned long ulArg)
             XUartPsFormat *drv_format = (XUartPsFormat *)ulArg;
 
             //For ps uart, XUartPsFormat is equal to UartDataFormat_t
-            XUartPs_SetDataFormat(pxUartDrvPrivate->pxUartInstPtr, &drv_format);
+            XUartPs_SetDataFormat(pxUartDrvPrivate->pxUartInstPtr, drv_format);
             break;
         }
 		default:

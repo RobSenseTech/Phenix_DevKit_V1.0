@@ -193,7 +193,7 @@ bool DataFlash_File::log_exists(const uint16_t lognum) const
         return false; // ?!
     }
     bool ret = file_exists(filename);
-    vPortFree(filename);
+    free(filename);
     return ret;
 }
 
@@ -371,7 +371,7 @@ void DataFlash_File::Prep_MinSpace()
                                 filename_to_remove, (double)avail, (double)min_avail_space_percent);
             if (unlink(filename_to_remove) == -1) {
                 hal.console->printf("Failed to remove %s: %s\n", filename_to_remove, strerror(errno));
-                vPortFree(filename_to_remove);
+                free(filename_to_remove);
                 if (errno == ENOENT) {
                     // corruption - should always have a continuous
                     // sequence of files...  however, there may be still
@@ -381,7 +381,7 @@ void DataFlash_File::Prep_MinSpace()
                     break;
                 }
             } else {
-                vPortFree(filename_to_remove);
+                free(filename_to_remove);
             }
         }
         log_to_remove++;
@@ -455,12 +455,12 @@ void DataFlash_File::EraseAll()
             break;
         }
         unlink(fname);
-        vPortFree(fname);
+        free(fname);
     }
     char *fname = _lastlog_file_name();
     if (fname != NULL) {
         unlink(fname);
-        vPortFree(fname);
+        free(fname);
     }
 #endif
     _cached_oldest_log = 0;
@@ -566,7 +566,7 @@ uint16_t DataFlash_File::find_last_log()
         return ret;
     }
     int fd = open(fname, O_RDONLY);
-    vPortFree(fname);
+    free(fname);
     if (fd != -1) {
         char buf[10];
         memset(buf, 0, sizeof(buf));
@@ -589,10 +589,10 @@ uint32_t DataFlash_File::_get_log_size(const uint16_t log_num) const
     }
     struct stat st;
     if (::stat(fname, &st) != 0) {
-        vPortFree(fname);
+        free(fname);
         return 0;
     }
-    vPortFree(fname);
+    free(fname);
     return st.st_size;
 #endif
 }
@@ -608,10 +608,10 @@ uint32_t DataFlash_File::_get_log_time(const uint16_t log_num) const
     }
     struct stat st;
     if (::stat(fname, &st) != 0) {
-        vPortFree(fname);
+        free(fname);
         return 0;
     }
-    vPortFree(fname);
+    free(fname);
     return st.st_mtime;
 #endif
 }
@@ -688,10 +688,10 @@ int16_t DataFlash_File::get_log_data(const uint16_t list_entry, const uint16_t p
                      fname, strerror(saved_errno));
             hal.console->printf("Log read open fail for %s - %s\n",
                                 fname, strerror(saved_errno));
-            vPortFree(fname);
+            free(fname);
             return -1;            
         }
-        vPortFree(fname);
+        free(fname);
         _read_offset = 0;
         _read_fd_log_num = log_num;
     }
@@ -838,10 +838,10 @@ uint16_t DataFlash_File::start_new_log(void)
                  fname, strerror(saved_errno));
         hal.console->printf("Log open fail for %s - %s\n",
                             fname, strerror(saved_errno));
-        vPortFree(fname);
+        free(fname);
         return 0xFFFF;
     }
-    vPortFree(fname);
+    free(fname);
     _write_offset = 0;
     _writebuf_head = 0;
     _writebuf_tail = 0;
@@ -853,7 +853,7 @@ uint16_t DataFlash_File::start_new_log(void)
     // we avoid fopen()/fprintf() here as it is not available on as many
     // systems as open/write (specifically the QURT RTOS)
     int fd = open(fname, O_WRONLY|O_CREAT, 0644);
-    vPortFree(fname);
+    free(fname);
     if (fd == -1) {
         return 0xFFFF;
     }
@@ -893,7 +893,7 @@ void DataFlash_File::LogReadProcess(const uint16_t list_entry,
         return;
     }
     _read_fd = ::open(fname, O_RDONLY);
-    vPortFree(fname);
+    free(fname);
     if (_read_fd == -1) {
         return;
     }
@@ -1008,7 +1008,7 @@ void DataFlash_File::ListAvailableLogs(AP_HAL::BetterStream *port)
                                    (unsigned)tm->tm_min);
                                    */
                 }
-            vPortFree(filename);
+            free(filename);
         }
     }
 #endif

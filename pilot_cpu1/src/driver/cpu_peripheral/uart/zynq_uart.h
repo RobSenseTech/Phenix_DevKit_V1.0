@@ -25,8 +25,8 @@ enum {
 typedef struct UartDataFormat
 {
     uint32_t iBaudRate;
-	int32_t iDataBits;	/**< Number of data bits */
-	int32_t iParity;	/**< Parity */
+	uint32_t iDataBits;	/**< Number of data bits */
+	uint32_t iParity;	/**< Parity */
 	uint8_t iStopBits;	/**< Number of stop bits */
 
 }UartDataFormat_t;

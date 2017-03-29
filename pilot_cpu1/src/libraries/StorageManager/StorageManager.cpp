@@ -187,7 +187,7 @@ bool StorageAccess::write_block(uint16_t addr, const void *data, size_t n) const
             // the data crosses a boundary between two areas
             count = length - addr;
         }
-        Print_Warn("type=%d addr=%x, offset=%x, count=%d\n", area.type, addr, offset, count);
+        //Print_Warn("type=%d addr=%x, offset=%x, count=%d\n", area.type, addr, offset, count);
         hal.storage->write_block(addr+offset, b, count);
         n -= count;
 

@@ -596,7 +596,7 @@ static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
             XUartNs550Format xil_format = {0};
 
             structure_trans_to_drv(data_format, &xil_format);
-            Print_Info("baud=%d databits=%d parity=%d stop=%d\n", xil_format.BaudRate, xil_format.DataBits, xil_format.Parity, xil_format.StopBits);
+            //Print_Info("baud=%d databits=%d parity=%d stop=%d\n", xil_format.BaudRate, xil_format.DataBits, xil_format.Parity, xil_format.StopBits);
 
             XUartNs550_SetDataFormat(inst_ptr, &xil_format);
             break;
