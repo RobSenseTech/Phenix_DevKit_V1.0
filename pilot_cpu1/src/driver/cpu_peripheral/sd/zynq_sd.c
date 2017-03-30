@@ -167,9 +167,11 @@ static ssize_t mmcsd_read(struct inode *inode, unsigned char *buffer, size_t sta
     mmcsd_takesem(priv);
     status = mmcsd_status(priv);
 	if ((status & SDIO_STATUS_NOINIT) != 0U) {
+        mmcsd_givesem(priv);
 		return 0;
 	}
 	if (nsectors == 0U) {
+        mmcsd_givesem(priv);
 		return 0;
 	}
 
@@ -181,7 +183,10 @@ static ssize_t mmcsd_read(struct inode *inode, unsigned char *buffer, size_t sta
     //Print_Info("loc_sector=%x instance=%x hcs=%x\n", (int)loc_sector, (int)priv->p_instance, (int)priv->p_instance->HCS);
 	status = XSdPs_ReadPolled(priv->p_instance, (uint32_t)loc_sector, nsectors, buffer);
     if(status != XST_SUCCESS)
+    {
+        mmcsd_givesem(priv);
         return 0;
+    }
 
     mmcsd_givesem(priv);
 
@@ -200,9 +205,11 @@ static ssize_t mmcsd_write(FAR struct inode *inode, FAR const unsigned char *buf
     mmcsd_takesem(priv);
     status = mmcsd_status(priv);
 	if ((status & SDIO_STATUS_NOINIT) != 0U) {
+        mmcsd_givesem(priv);
 		return 0;
 	}
 	if (nsectors == 0U) {
+        mmcsd_givesem(priv);
 		return 0;
 	}
 
@@ -215,7 +222,10 @@ static ssize_t mmcsd_write(FAR struct inode *inode, FAR const unsigned char *buf
     //Print_Info("loc_sector=%x instance=%x hcs=%x\n", (int)loc_sector, (int)priv->p_instance, (int)priv->p_instance->HCS);
 	status = XSdPs_WritePolled(priv->p_instance, (uint32_t)loc_sector, nsectors, buffer);
     if(status != XST_SUCCESS)
+    {
+        mmcsd_givesem(priv);
         return 0;
+    }
 
     mmcsd_givesem(priv);
 
