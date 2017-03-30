@@ -27,9 +27,9 @@
 
 #define MAX_CREFS               0xff
 
-#define SDIO_STATUS_NOINIT      0x00 /* Bit 0=1: SDIO card present */
-#define SDIO_STATUS_PRESENT     0x01 /* Bit 0=1: SDIO card present */
-#define SDIO_STATUS_WRPROTECTED 0x02 /* Bit 1=1: SDIO card write protected */
+#define SDIO_STATUS_NOINIT      0x01U	/* Drive not initialized */
+#define SDIO_STATUS_PRESENT     0x02U	/* No medium in the drive */
+#define SDIO_STATUS_WRPROTECTED 0x04U	/* Write protected */
 #define mmcsd_givesem(p) sem_post(&priv->sem)
 
 typedef struct{
