@@ -468,7 +468,6 @@ void FreeRTOS_Tick_Handler( void )
 	{
 		ulPortYieldRequired = pdTRUE;
 	}
-//	xil_printf("...\n");
 
 	/* Ensure all interrupt priorities are active again. */
 	portCLEAR_INTERRUPT_MASK();

@@ -136,7 +136,6 @@ void AccelCalibrator::new_sample(const Vector3f& delta_velocity, float dt) {
 
         _samples_collected++;
 
-        Print_Info("_samples_collected=%d _conf_num_samples=%d\n", _samples_collected, _conf_num_samples);
         if (_samples_collected >= _conf_num_samples) {
             run_fit(MAX_ITERATIONS, _fitness);
 

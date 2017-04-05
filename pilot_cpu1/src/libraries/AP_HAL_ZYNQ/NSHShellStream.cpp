@@ -9,12 +9,12 @@
 #if 0
 #include <stdio.h>
 #include <stdarg.h>
-
+#include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <apps/nsh.h>
-
-#include <ioctl.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 #include "Scheduler.h"
 
 extern const AP_HAL::HAL& hal;

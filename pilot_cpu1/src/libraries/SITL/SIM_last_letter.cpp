@@ -19,7 +19,7 @@
 
 #include "SIM_last_letter.h"
 
-
+#include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>

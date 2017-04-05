@@ -270,5 +270,6 @@ line interface. */
 
 #endif
 
+//#include "trcRecorder.h"
 #endif /* FREERTOS_CONFIG_H */
 

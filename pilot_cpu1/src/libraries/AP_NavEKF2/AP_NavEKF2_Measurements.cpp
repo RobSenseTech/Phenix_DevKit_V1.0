@@ -263,7 +263,6 @@ void NavEKF2_core::readIMUData()
 
     // remove sensor bias errors
     imuDataNew.delAng -= stateStruct.gyro_bias * (imuDataNew.delAngDT / dtEkfAvg);
-    //printf("delAng_x=%9.5f gyro_bias_x=%9.5f delAngDT=%9.5f\n", imuDataNew.delAng.x, stateStruct.gyro_bias.x, imuDataNew.delAngDT);
     imuDataNew.delVel.z -= stateStruct.accel_zbias * (imuDataNew.delVelDT / dtEkfAvg);
 
     // Accumulate the measurement time interval for the delta velocity and angle data
@@ -495,7 +494,6 @@ bool NavEKF2_core::readDeltaAngle(uint8_t ins_index, Vector3f &dAng) {
 
     if (ins_index < ins.get_gyro_count()) {
         ins.get_delta_angle(ins_index,dAng);
-//        Print_Info("delta angle x=%9.5f y=%9.5f z=%9.5f\n", dAng.x, dAng.y, dAng.z);
         return true;
     }
     return false;

@@ -34,7 +34,7 @@ void panic(const char *errormsg, ...)
     va_start(ap, errormsg);
     vdprintf(1, errormsg, ap);
     va_end(ap);
-    write(1, "\n", 1);           /////////////
+    write(1, "\n", 1);
 
     hal.scheduler->delay_microseconds(10000);
     _px4_thread_should_exit = true;
@@ -62,7 +62,3 @@ uint64_t millis64()
 }
 
 } // namespace AP_HAL
-
-
-
-

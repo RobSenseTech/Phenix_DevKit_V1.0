@@ -163,7 +163,7 @@ void NavEKF2_core::setAidingMode()
 void NavEKF2_core::checkAttitudeAlignmentStatus()
 {
     // Check for tilt convergence - used during initial alignment
-    float alpha = 1.0f*imuDataDelayed.delAngDT;//越小越好,但是check的时间会久
+    float alpha = 1.0f*imuDataDelayed.delAngDT;
     float temp=tiltErrVec.length();
 //    Print_Info("tiltErrFilt=%f alpha=%f tmp=%f\n", tiltErrFilt, alpha, temp);
     tiltErrFilt = alpha*temp + (1.0f-alpha)*tiltErrFilt;

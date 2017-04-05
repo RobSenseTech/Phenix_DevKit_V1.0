@@ -35,7 +35,6 @@ static main_t main_list[]=
     {rgbled_main, 5, {"rgbled_main", "rgb", "16", "16", "16"}},
 //    {rgbled_main, 2, {"rgbled_main", "test"}},
     {fmu_main, 2, {"fmu_main", "mode_pwm4"}},
-    //{mpu6000_main, 3, {"mpu6000_main","start","-X"}},
     {i3g4250d_main, 2, {"i3g4250d_main","start"}},
 //    {i3g4250d_main, 4, {"i3g4250d_main", "-R", "10","start"}},
 //    {iis328dq_main, 4, {"iis328dq_main", "-R", "6","start"}},

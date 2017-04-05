@@ -95,14 +95,14 @@ static uint8_t mmcsd_status(sd_private_t *priv)
 
 	reg = XSdPs_GetPresentStatusReg((uint32_t)priv->p_instance->Config.BaseAddress);
     if(reg & XSDPS_PSR_CARD_INSRT_MASK) 
+    {
         status |= SDIO_STATUS_PRESENT;
-    else
-        status &= ~(SDIO_STATUS_PRESENT);
+        status &= ~(SDIO_STATUS_NOINIT);
+    }
 
 	if ((reg & XSDPS_PSR_WPS_PL_MASK) == 0U)
         status |= SDIO_STATUS_WRPROTECTED;
-    else
-        status &= ~(SDIO_STATUS_WRPROTECTED);
+
 
     return status;
 } 
@@ -263,7 +263,7 @@ static int mmcsd_geometry(FAR struct inode *inode, struct geometry *geometry)
     {
         mmcsd_takesem(priv);
         status = mmcsd_status(priv);
-        if(status & SDIO_STATUS_NOINIT)
+        if(status & SDIO_STATUS_NOINIT != 0)
         {
             Print_Err("no sd card\n");
             ret = -ENODEV;

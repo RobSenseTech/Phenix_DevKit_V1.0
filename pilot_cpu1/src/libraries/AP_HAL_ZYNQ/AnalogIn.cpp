@@ -399,7 +399,6 @@ float PX4AnalogSource::_pin_scaler(void)
  */
 float PX4AnalogSource::voltage_average()
 {
-    //adc¿¿¿¿¿¿
     return _pin_scaler()*1500;
 }
 

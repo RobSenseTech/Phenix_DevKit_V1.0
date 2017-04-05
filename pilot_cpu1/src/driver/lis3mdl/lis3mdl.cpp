@@ -132,7 +132,7 @@ static const int ERROR = -1;
 #define LIS3MDL_REG1_X_Y_AXES_OPERATING_MODE_CLEAN   0x9F
 #define LIS3MDL_REG1_X_Y_AXES_MEDIUM_POWER_OPERATING_MODE   (1 << 5)
 #define LIS3MDL_REG1_X_Y_AXES_HIGH_PERFORMANCE_OPERATING_MODE   (2 << 5)
-#define LIS3MDL_REG1_X_Y_AXES_ULTRA_HIGH_PERFORMANCE_OPERATING_MODE   (2 << 5)
+#define LIS3MDL_REG1_X_Y_AXES_ULTRA_HIGH_PERFORMANCE_OPERATING_MODE   (3 << 5)
 #define LIS3MDL_REG1_TEMP_SENSOR_ENABLE	(1 << 7)  /* default 0 */
 
 #define LIS3MDL_REG2_SOFT_RESET_ENABLE	(1 << 2)  /* default 0 */
@@ -142,7 +142,7 @@ static const int ERROR = -1;
 #define LIS3MDL_REG3_SINGLE_CONVERSION_MODE          (1 << 0)
 #define LIS3MDL_REG3_POWER_DOWN_MODE                 (2 << 0)
 #define LIS3MDL_REG3_SPI_3_WIRE_MODE	(1 << 2)  /* default 0, 0: 4-wire interface; 1: 3-wire interface*/
-#define LIS3MDL_REG3_LOW_POWER_MODE	    (1 << 5)  /* default 0, If this bit is ???? DO[2:0] is set to 0.625 Hz and the system performs; Once the bit is set to ???? the magnetic data rate is configured by the DO bits */
+#define LIS3MDL_REG3_LOW_POWER_MODE	    (1 << 5)  /* default 0, If this bit is ‘1’, DO[2:0] is set to 0.625 Hz and the system performs; Once the bit is set to ‘0’, the magnetic data rate is configured by the DO bits */
 
 
 
@@ -150,7 +150,7 @@ static const int ERROR = -1;
 #define LIS3MDL_REG1_Z_AXES_OPERATING_MODE_CLEAN   0xF3
 #define LIS3MDL_REG1_Z_AXES_MEDIUM_POWER_OPERATING_MODE   (1 << 2)
 #define LIS3MDL_REG1_Z_AXES_HIGH_PERFORMANCE_OPERATING_MODE   (2 << 2)
-#define LIS3MDL_REG1_Z_AXES_ULTRA_HIGH_PERFORMANCE_OPERATING_MODE   (2 << 2)
+#define LIS3MDL_REG1_Z_AXES_ULTRA_HIGH_PERFORMANCE_OPERATING_MODE   (3 << 2)
 
 #define LIS3MDL_REG5_BLOCK_DATA_UPDATE_ENABLE	(1 << 6)  /* default 0, 0: continuous update; 1: output registers not updated until MSb and LSb have been read*/
 #define LIS3MDL_REG5_FAST_READ_ENABLE	        (1 << 7)  /* default 0, 0: FAST_READ disabled; 1: FAST_READ enabled (function: reading the high part of DATA OUT only)*/
@@ -752,7 +752,6 @@ LIS3MDL::read(struct file *filp, char *buffer, size_t buflen)
 		 * we are careful to avoid racing with them.
 		 */
 		while (count--) {
-//			if (_reports->get(mag_buf)) {
 			if (0 == xRingBufferGet(_reports, mag_buf, sizeof(mag_report))) {	
 				ret += sizeof(struct mag_report);
 				mag_buf++;
@@ -1075,8 +1074,6 @@ LIS3MDL::collect()
 	float yraw_f;
 	float zraw_f;
 
-	//irqstate_t flags = irqsave();
-    //portDISABLE_INTERRUPTS();
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
 	new_report.timestamp = hrt_absolute_time();
 //	new_report.error_count = perf_event_count(_comms_errors);
@@ -1229,8 +1226,6 @@ LIS3MDL::collect()
 
 out:
 //	perf_end(_sample_perf);
-  //  portENABLE_INTERRUPTS();
-	//irqrestore(flags);
 	return ret;
 }
 

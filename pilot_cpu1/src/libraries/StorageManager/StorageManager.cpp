@@ -146,7 +146,6 @@ bool StorageAccess::read_block(void *data, uint16_t addr, size_t n) const
             // the data crosses a boundary between two areas
             count = length - addr;
         }
-     //   Print_Err("type=%d addr=%x, offset=%x, count=%d\n", area.type, addr, offset, count);
         hal.storage->read_block(b, addr+offset, count);
         n -= count;
 
@@ -187,7 +186,6 @@ bool StorageAccess::write_block(uint16_t addr, const void *data, size_t n) const
             // the data crosses a boundary between two areas
             count = length - addr;
         }
-        //Print_Warn("type=%d addr=%x, offset=%x, count=%d\n", area.type, addr, offset, count);
         hal.storage->write_block(addr+offset, b, count);
         n -= count;
 

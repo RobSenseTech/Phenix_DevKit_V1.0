@@ -51,7 +51,6 @@ void AP_AccelCal::update()
             _gcs->set_snoop(NULL);
             _start_collect_sample = false;
         }
-      //  Print_Info("_status=%d\n", _status);
         switch(_status) {
             case ACCEL_CAL_NOT_STARTED:
             	printf("ACCEL_CAL_NOT_STARTED\n");

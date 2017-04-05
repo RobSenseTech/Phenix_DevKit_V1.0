@@ -21,7 +21,7 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
-
+#include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -359,7 +359,7 @@ void JSBSim::send_servos(const struct sitl_input &input)
              input.wind.turbulence);
     ssize_t buflen = strlen(buf);
     ssize_t sent = sock_control.send(buf, buflen);
-    vPortFree(buf);
+    free(buf);
     if (sent < 0) {
         if (errno != EAGAIN) {
             fprintf(stderr, "Fatal: Failed to send on control socket: %s\n",

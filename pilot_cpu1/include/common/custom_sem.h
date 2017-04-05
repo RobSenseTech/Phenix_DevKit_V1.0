@@ -15,6 +15,7 @@
 #define SEM_VALUE_MAX   0x7fff
 
 typedef SemaphoreHandle_t sem_t;
+extern uint32_t ulPortInterruptNesting;
 
 /*
 static inline sem_t sem_init(uint32_t max_count, uint32_t start_value)
@@ -63,10 +64,16 @@ static inline int32_t sem_wait(sem_t *sem)
 
 static inline int32_t sem_post(sem_t *sem)
 {
+    int ret = 0;
     portBASE_TYPE xHigherPriorityTaskWoken;
     xHigherPriorityTaskWoken = pdFALSE;
 
-    if(xSemaphoreGiveFromISR((SemaphoreHandle_t)*sem, &xHigherPriorityTaskWoken))
+    if(ulPortInterruptNesting)
+        ret = xSemaphoreGiveFromISR((SemaphoreHandle_t)*sem, &xHigherPriorityTaskWoken);
+    else
+        ret = xSemaphoreGive((SemaphoreHandle_t)*sem);
+
+    if(ret)
         return OK;
     else
         return ERROR;

@@ -216,8 +216,6 @@ void PX4Storage::read_block(void *dst, uint16_t loc, size_t n)
 	}
     xSemaphoreTake(dirty_sem, portMAX_DELAY);
 	_storage_open();
-//    if(n == 4)
-  //      Print_Info("loc=%d: %x %x %x\n", loc, _buffer[0], _buffer[1], _buffer[2]);
 	memcpy(dst, &_buffer[loc], n);
     xSemaphoreGive(dirty_sem);
 }

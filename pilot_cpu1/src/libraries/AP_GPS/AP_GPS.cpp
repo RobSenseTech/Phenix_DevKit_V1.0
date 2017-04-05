@@ -269,7 +269,6 @@ AP_GPS::detect_instance(uint8_t instance)
         if ((_type[instance] == GPS_TYPE_AUTO || _type[instance] == GPS_TYPE_UBLOX) &&
             _baudrates[dstate->last_baud] >= 38400 &&
             AP_GPS_UBLOX::_detect(dstate->ublox_detect_state, data)) {
-            Print_Info("baudrate=%d data=%x\n", _baudrates[dstate->last_baud], data);
             _broadcast_gps_type("u-blox", instance, dstate->last_baud);
             new_gps = new AP_GPS_UBLOX(*this, state[instance], _port[instance]);
         } 

@@ -109,7 +109,7 @@ typedef struct tmrTimerControl
 	UBaseType_t				uxAutoReload;		/*<< Set to pdTRUE if the timer should be automatically restarted once expired.  Set to pdFALSE if the timer is, in effect, a one-shot timer. */
 	void 					*pvTimerID;			/*<< An ID to identify the timer.  This allows the timer to be identified when the same callback is used for multiple timers. */
 	TimerCallbackFunction_t	pxCallbackFunction;	/*<< The function that will be called when the timer expires. */
-    void                    *pvCallbackArg;     /*Robsense改动，勿删，用于向callback函数传入用户私有参数*/
+    void                    *pvCallbackArg;     /*Robsense modify，勿删，用于向callback函数传入用户私有参数*/
 	#if( configUSE_TRACE_FACILITY == 1 )
 		UBaseType_t			uxTimerNumber;		/*<< An ID assigned by trace tools such as FreeRTOS+Trace */
 	#endif

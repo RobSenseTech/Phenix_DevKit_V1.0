@@ -43,7 +43,7 @@ static Empty::I2CDeviceManager i2c_mgr_instance;
 #define UARTB_DEFAULT_DEVICE "/dev/uartns3"         //1st GPS
 #define UARTC_DEFAULT_DEVICE "/dev/uartns0"         //uart2 telem1
 #define UARTD_DEFAULT_DEVICE "/dev/uartns1"         //uart3 telem2
-#define UARTE_DEFAULT_DEVICE "/dev/uartns4"         //uart6 2and GPS
+#define UARTE_DEFAULT_DEVICE "/dev/uartns4"         //
 
 // 3 UART drivers, for GPS plus two mavlink-enabled devices
 static PX4UARTDriver uartADriver(UARTA_DEFAULT_DEVICE, "APM_uartA");

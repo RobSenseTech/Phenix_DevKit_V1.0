@@ -120,7 +120,7 @@ const AP_Param::GroupInfo AP_AHRS::var_info[] = {
     // @Description: This controls whether the NavEKF Kalman filter is used for attitude and position estimation and whether fallback to the DCM algorithm is allowed. Note that on copters "disabled" is not available, and will be the same as "enabled - no fallback"
     // @Values: 0:Disabled,1:Enabled,2:Enable EKF2
     // @User: Advanced
-    AP_GROUPINFO("EKF_TYPE",  14, AP_AHRS, _ekf_type, 2),//HEBIN
+    AP_GROUPINFO("EKF_TYPE",  14, AP_AHRS, _ekf_type, 2),
 #endif
 
     AP_GROUPEND
@@ -251,7 +251,6 @@ void AP_AHRS::update_trig(void)
     }
     _cos_pitch = constrain_float(_cos_pitch, 0, 1.0);
     _cos_roll = constrain_float(_cos_roll, -1.0, 1.0); // this relies on constrain_float() of infinity doing the right thing
-//    Print_Info("_cos_pitch=%f _cos_roll=%f\n", _cos_pitch, _cos_roll);
 
     // sin_roll, sin_pitch
     _sin_pitch = -temp.c.x;

@@ -168,6 +168,8 @@ void AP_Terrain::open_file(void)
     char *p = &file_path[strlen(file_path)-12];
     if (*p != '/') {
         io_failure = true;
+        free(file_path);
+        file_path = NULL;
         return;        
     }
     snprintf(p, 13, "/%c%02u%c%03u.DAT",
@@ -194,11 +196,15 @@ void AP_Terrain::open_file(void)
                             file_path, strerror(errno));
 #endif
         io_failure = true;
+        free(file_path);
+        file_path = NULL;
         return;
     }
 
     file_lat_degrees = block.lat_degrees;
     file_lon_degrees = block.lon_degrees;
+    free(file_path);
+    file_path = NULL;
 }
 
 /*
