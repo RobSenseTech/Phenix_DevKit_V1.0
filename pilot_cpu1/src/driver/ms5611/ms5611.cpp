@@ -120,7 +120,7 @@ protected:
 	ms5611::prom_u		_prom;
 //	ms5611::prom_u     _prom_u;
 	
-//	struct work_s		_work;
+    xTimerHandle    _work;
 	unsigned		_measure_ticks;
 
 	RingBuffer_t	*_reports;
@@ -219,8 +219,6 @@ extern "C"  __EXPORT int ms5611_main(int argc, char *argv[]);
 
 MS5611::MS5611(int bus, const char* path, ESpi_device_id device) :
 	CDev("ms5611", path),
-//	_interface(interface),
-//	_prom(prom_buf.s),
 	_measure_ticks(0),
 	_reports(NULL),
 	_collect_phase(false),
@@ -244,8 +242,6 @@ MS5611::MS5611(int bus, const char* path, ESpi_device_id device) :
 							  "ms5611",
 							  ESPI_CLOCK_MODE_2,
 							  (11*1000*1000));
-	//work_cancel in stop_cycle called from the dtor will explode if we don't do this...
-//	memset(&_work, 0, sizeof(_work));
 	_class_instance = 0;
 }
 
@@ -269,7 +265,6 @@ MS5611::~MS5611()
 //	perf_free(_comms_errors);
 //	perf_free(_buffer_overflows);
 
-//	free(_interface); 
 }
 
 
@@ -298,9 +293,6 @@ int MS5611::spi_read(unsigned address, void *data, unsigned count)
 	return ret;
 }
 
-
-
-
 int MS5611::spi_write(unsigned address, void *data, unsigned count)
 {
 	uint8_t buf[32];
@@ -311,14 +303,8 @@ int MS5611::spi_write(unsigned address, void *data, unsigned count)
 
 	buf[0] = address | DIR_WRITE;
 	memcpy(&buf[1], data, count);
-	Print_Info("LIS3MDL step ------------spi_write\r\n");
 	return SpiTransfer(&_devInstance, &buf[0], &buf[0], count + 1);
 }
-
-
-
-
-
 
 int
 MS5611::write_reg(uint8_t reg, uint8_t val)
@@ -397,22 +383,18 @@ MS5611::init()
 {
 	int ret = DEV_FAILURE;
 
-	Print_Info("MS5611 -------------------------IntoMS5611::init()\r\n ");
 	ret = reset_sensor();
 	if (ret != OK) {
 		Print_Err("reset sensor failed\n");
 		goto out;
 	}
 	
-	Print_Info("ms5611::init ------------------------step1\r\n");
 	ret = _read_prom();
 	if (ret != OK) {
 		Print_Err("read prom failed\n");
 		goto out;
 	}
 	
-	
-	Print_Info("ms5611::init ------------------------step2\r\n");		
 	ret = CDev::init();
 
 	if (ret != OK) {
@@ -437,10 +419,6 @@ MS5611::init()
 		goto out;
 	}
 
-	
-	Print_Info("ms5611::init ------------------------step1\r\n");	
-	
-	
 	/* register alternate interfaces if we have to */
 	_class_instance = register_class_devname(BARO_BASE_DEVICE_PATH);
 
@@ -521,9 +499,7 @@ MS5611::read(struct file *filp, char *buffer, size_t buflen)
 		 * we are careful to avoid racing with them.
 		 */
 		while (count--) {
-//			if (_reports->get(brp)) {
 			if (0 == xRingBufferGet(_reports, brp, sizeof(struct baro_report))) {
-             //   Print_Warn("HEBIN altitude=%f pressure=%f\n", brp->altitude, brp->pressure);
 				ret += sizeof(struct baro_report);
 				brp++;
 			}
@@ -537,7 +513,6 @@ MS5611::read(struct file *filp, char *buffer, size_t buflen)
 	do {
 		_measure_phase = 0;
 		vRingBufferFlush(_reports);	
-//		_reports->flush();
 
 		/* do temperature first */
 		if (OK != measure()) {
@@ -729,26 +704,20 @@ MS5611::ms5611_spi_read(unsigned offset, void *data, unsigned count)
 void
 MS5611::start_cycle(unsigned delay_ticks)
 {
-    xTimerHandle timout_timer;
 	/* reset the report ring and state machine */
 	_collect_phase = false;
 	_measure_phase = 0;
-//	_reports->flush();
 	vRingBufferFlush(_reports);	
-	Print_Info("MS5611 start _measure_ticks=%d   ------------step1\n", _measure_ticks);	
-	timout_timer = xTimerCreate("poll_ms5611", USEC2TICK(_measure_ticks * 1000), pdTRUE, NULL, &MS5611::cycle_trampoline, this);
-	Print_Info("LIS3MDL start   ------------step2   \r\n");		
-	xTimerStart(timout_timer, portMAX_DELAY);
+	_work = xTimerCreate("poll_ms5611", USEC2TICK(_measure_ticks * 1000), pdTRUE, NULL, &MS5611::cycle_trampoline, this);
+	xTimerStart(_work, portMAX_DELAY);
 	
 	/* schedule a cycle to start things */
-//	work_queue(HPWORK, &_work, (worker_t)&MS5611::cycle_trampoline, this, delay_ticks);
 }
 
 void
 MS5611::stop_cycle()
 {
-//s	work_cancel(HPWORK, &_work);
-	;
+	xTimerStop(_work, portMAX_DELAY);
 }
 
 void
@@ -783,7 +752,6 @@ MS5611::cycle()
 
 			/* issue a reset command to the sensor */
 //added by prj
-//			_interface->ioctl(IOCTL_RESET, dummy);
 			uint8_t cmd = ADDR_RESET_CMD | DIR_WRITE;
 			SpiTransfer(&_devInstance, &cmd, NULL, 1);
 			/* reset the collection state machine and try again - we need
@@ -805,14 +773,6 @@ MS5611::cycle()
 		if ((_measure_phase != 0) &&
 		    (_measure_ticks > USEC2TICK(MS5611_CONVERSION_INTERVAL))) {
 
-			/* schedule a fresh cycle call when we are ready to measure again */
-			//added by prj
-			//work_queue(HPWORK,
-			//	   &_work,
-			//	   (worker_t)&MS5611::cycle_trampoline,
-			//	   this,
-			//	   _measure_ticks - USEC2TICK(MS5611_CONVERSION_INTERVAL));
-
 			return;
 		}
 	}
@@ -823,7 +783,6 @@ MS5611::cycle()
 	if (ret != OK) {
 		/* issue a reset command to the sensor */
 		//added by  prj
-//		_interface->ioctl(IOCTL_RESET, dummy);
 		uint8_t cmd = ADDR_RESET_CMD | DIR_WRITE;
 		SpiTransfer(&_devInstance, &cmd, NULL, 1);
 		/* reset the collection state machine and try again 
@@ -834,15 +793,6 @@ MS5611::cycle()
 
 	/* next phase is collection */
 	_collect_phase = true;
-
-	/* schedule a fresh cycle call when the measurement is done */
-	
-	//added by prj
-//	work_queue(HPWORK,
-//		   &_work,
-//		   (worker_t)&MS5611::cycle_trampoline,
-//		   this,
-//		   USEC2TICK(MS5611_CONVERSION_INTERVAL));
 }
 
 int
@@ -853,7 +803,7 @@ MS5611::measure()
 	/*
 	 * In phase zero, request temperature; in other phases, request pressure.
 	 */
-	u8 addr = (_measure_phase == 0) ? ADDR_CMD_CONVERT_D2 : ADDR_CMD_CONVERT_D1;
+	uint8_t addr = (_measure_phase == 0) ? ADDR_CMD_CONVERT_D2 : ADDR_CMD_CONVERT_D1;
 
 	/*
 	 * Send the command to begin measuring.
@@ -873,7 +823,7 @@ MS5611::collect()
 
 //	perf_begin(_sample_perf);
 
-	struct baro_report report;
+	struct baro_report report = {0};
 	/* this should be fairly close to the end of the conversion, so the best approximation of the time */
 	report.timestamp = hrt_absolute_time();
 //	report.error_count = perf_event_count(_comms_errors);
@@ -1109,18 +1059,13 @@ start(bool external_bus)
 	} else {
 		g_dev[external_bus] = new MS5611(SPI_DEVICE_ID_FOR_SENSOR, MS5611_BARO_DEVICE_PATH_INT, (ESpi_device_id)ESPI_DEVICE_TYPE_BARO);
 	}
-	Print_Info("MS5611 -------------------------Into step1 \r\n ");
 	if (g_dev[external_bus] == NULL)
 		goto fail;
-	Print_Info("MS5611 -------------------------Into step2 \r\n");
 	
 	
 	if (OK != g_dev[external_bus]->init())
 		goto fail;
 	
-	
-	
-	Print_Info("MS5611 -------------------------Into step3 \r\n");	
 	/* set the poll rate to default, starts automatic data collection */
 	if(external_bus)
 		fd = open(MS5611_BARO_DEVICE_PATH_EXT, O_RDONLY);

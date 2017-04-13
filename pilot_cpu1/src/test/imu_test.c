@@ -186,7 +186,7 @@ static void prvBaroTask(void *pvParameters)
         struct baro_report baro_report;
         
         read(fd, (char*)&baro_report, sizeof(baro_report));
-        Print_Info("HEBIN altitude=%f pressure=%f\n", baro_report.altitude, baro_report.pressure);
+        Print_Info("altitude=%f pressure=%f\n", baro_report.altitude, baro_report.pressure);
 
 		vTaskDelay( 300 / portTICK_RATE_MS );
     }

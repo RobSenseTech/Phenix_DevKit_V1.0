@@ -248,12 +248,10 @@ static void send_data_handle(uartns_private_t *priv)
                  */
                 ier = XUartNs550_ReadReg(inst_ptr->BaseAddress, XUN_IER_OFFSET);
                 XUartNs550_WriteReg(inst_ptr->BaseAddress, XUN_IER_OFFSET, ier & (~XUN_IER_TX_EMPTY));
-
             }
             else
             {
                 send_bytes = fifo_size;
-
             }
 
             for(i = 0; i < send_bytes; i++)
@@ -549,7 +547,7 @@ static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
             if((uint32_t *)arg == NULL)
             {
                 Print_Err("Invald Param!!\n");
-                return -1;
+                goto ERR_OUT;
             }
 		
             uint32_t mode = *(uint32_t *)(arg);
@@ -572,7 +570,7 @@ static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
             if((UartDataFormat_t *)arg == NULL)
             {
                 Print_Err("Invald Param!!\n");
-                return -1;
+                goto ERR_OUT;
             }
 
             UartDataFormat_t *data_format = (UartDataFormat_t *)arg;
@@ -589,7 +587,7 @@ static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
             if((UartDataFormat_t *)arg == NULL)
             {
                 Print_Err("Invald Param!!\n");
-                return -1;
+                goto ERR_OUT;
             }
 
             UartDataFormat_t *data_format = (UartDataFormat_t *)arg;
@@ -601,9 +599,18 @@ static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
             XUartNs550_SetDataFormat(inst_ptr, &xil_format);
             break;
         }
+        default:
+            Print_Err("No such ioctl command:%x!!\n", cmd);
+            goto ERR_OUT;
     }
 
     irqrestore(state);
+
+    return 0;
+
+ERR_OUT:
+    irqrestore(state);
+    return -1;
 
 }
 

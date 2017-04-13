@@ -53,8 +53,9 @@ INCLUDEPATH := -I../src/FreeRTOS \
 LSCRIPT := ../src/lscript.ld
 
 #flags in makefile
-DEBUG_FLAG = -g3 -O2 -Wall -c -fmessage-length=0 -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard
-RELEASE_FLAG =   -O2 -Wall -c -fmessage-length=0 -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard
+#don't use any optimization! it's devil!!
+DEBUG_FLAG = -g3 -O0 -Wall -c -fmessage-length=0 -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard
+RELEASE_FLAG =   -O0 -Wall -c -fmessage-length=0 -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard
 RM := rm -rf
 
 #list all dirs

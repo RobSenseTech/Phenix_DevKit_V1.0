@@ -149,7 +149,7 @@ private:
 #ifdef USE_HRT
 	struct hrt_call		_call;
 #else
-    xTimerHandle timout_timer;
+    xTimerHandle    _call;
 #endif
 	unsigned		_call_interval;
 
@@ -787,8 +787,8 @@ IIS328DQ::start()
     if(ticks == 0)
         ticks = 1;//定时器时间间隔不可为0
 	/* reset the report ring and state machine */
-	timout_timer = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, NULL, &IIS328DQ::measure_trampoline, this);
-	xTimerStart(timout_timer, portMAX_DELAY);
+	_call = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, NULL, &IIS328DQ::measure_trampoline, this);
+	xTimerStart(_call, portMAX_DELAY);
 #endif
 }
 
@@ -798,7 +798,7 @@ IIS328DQ::stop()
 #ifdef USE_HRT
 	hrt_cancel(&_call);
 #else
-    xTimerDelete(timout_timer, portMAX_DELAY);
+    xTimerDelete(_call, portMAX_DELAY);
 #endif
 }
 
@@ -887,7 +887,7 @@ IIS328DQ::measure()
 	} raw_accel_report;
     uint8_t raw_data[8];
 
-	accel_report accel_report;
+	accel_report accel_report = {0};
 
 	check_registers();
 

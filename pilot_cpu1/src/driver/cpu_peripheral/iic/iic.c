@@ -202,10 +202,13 @@ int Iic_transfer(iic_priv_s *iic_priv, const uint8_t *send, unsigned send_len, u
 	u32 actclk = XIicPs_GetSClk(InstancePtr);
     portBASE_TYPE xHigherPriorityTaskWoken;
     xHigherPriorityTaskWoken = pdFALSE;
-	
-
 	int Status = -1;	
 
+    if((sizeof(buf) < send_len + 1) && (regaddrflag == 1))
+    {
+        Print_Err("iic send buf too long:%d\n", send_len);
+        return XST_FAILURE;
+    }
 //	Print_Info("actclk is %dKHz\r\n",actclk/1000);
     xSemaphoreTake(iic_priv->iic_mutex, portMAX_DELAY);
 

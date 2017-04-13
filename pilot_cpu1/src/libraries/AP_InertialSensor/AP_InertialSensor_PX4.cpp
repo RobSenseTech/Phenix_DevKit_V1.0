@@ -281,7 +281,6 @@ void AP_InertialSensor_PX4::_get_sample()
         bool accel_valid = _get_accel_sample(i,accel_report);
 
         while(gyro_valid || accel_valid) {
-        //	printf("HEBIN gyro_valid=%d accel_valid=%d\n", gyro_valid, accel_valid);
             // interleave accel and gyro samples by time - this will allow sculling corrections later
             // check the next gyro measurement to see if it needs to be integrated first
             if(gyro_valid && accel_valid && gyro_report.timestamp <= accel_report.timestamp) {
@@ -293,14 +292,12 @@ void AP_InertialSensor_PX4::_get_sample()
             if(accel_valid) {
                 _new_accel_sample(i,accel_report);
                 accel_valid = _get_accel_sample(i,accel_report);
-             //   printf("HEBIN accel x_raw=%d y_raw=%d z_raw=%d\n", accel_report.x_raw, accel_report.y_raw, accel_report.z_raw);
                 continue;
             }
             // if not, we've only got gyro samples left in the buffer
             if(gyro_valid) {
                 _new_gyro_sample(i,gyro_report);
                 gyro_valid = _get_gyro_sample(i,gyro_report);
-           //     printf("HEBIN gyro x_raw=%d y_raw=%d z_raw=%d\n", gyro_report.x_raw, gyro_report.y_raw, gyro_report.z_raw);
             }
         }
     }

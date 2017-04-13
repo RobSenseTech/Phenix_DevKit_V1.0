@@ -311,7 +311,7 @@ AP_GPS::detect_instance(uint8_t instance)
 
 found_gps:
 	if (new_gps != NULL) {
-		Print_Info("HEBIN instance:%d find GPS\n", instance);
+		Print_Info("instance:%d find GPS\n", instance);
         state[instance].status = NO_FIX;
         drivers[instance] = new_gps;
         timing[instance].last_message_time_ms = now;

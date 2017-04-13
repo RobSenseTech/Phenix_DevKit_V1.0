@@ -56,7 +56,6 @@ void AP_Baro_PX4::update(void)
             instance.temperature_sum += baro_report.temperature; // degrees celcius
             instance.sum_count++;
             instance.last_timestamp = baro_report.timestamp;
-//            Print_Info("HEBIN altitude=%f pressure=%f timestamp=%d\n", baro_report.altitude, baro_report.pressure, baro_report.timestamp);
         }
     }
 

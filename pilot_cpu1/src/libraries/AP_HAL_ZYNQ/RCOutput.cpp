@@ -184,7 +184,6 @@ void PX4RCOutput::enable_ch(uint8_t ch)
     if (ch >= PX4_NUM_OUTPUT_CHANNELS) {
         return;
     }
- //   printf("HEBIN PX4RCOutput::enable_ch:%d\n", ch);
     if (ch >= 8 && !(_enabled_channels & (1U<<ch))) {
         // this is the first enable of an auxillary channel - setup
         // aux channels now. This delayed setup makes it possible to
@@ -202,7 +201,6 @@ void PX4RCOutput::disable_ch(uint8_t ch)
     if (ch >= PX4_NUM_OUTPUT_CHANNELS) {
         return;
     }
-//	printf("HEBIN PX4RCOutput::disable_ch:%d\n", ch);
     _enabled_channels &= ~(1U<<ch);
     _period[ch] = PWM_IGNORE_THIS_CHANNEL;
 }

@@ -10,6 +10,7 @@
 /***************************** Include Files *********************************/
 #include "spi_init_api.h"
 #include "xstatus.h"
+#include "FreeRTOS_Print.h"
 
 /************************** Constant Definitions *****************************/
 
@@ -57,7 +58,7 @@ s32 spi_clock_active_enable(u32 spi_id) {
 
 		Return = Xil_In32(XSLCR_APER_CLK_CTRL_ADDR);
 		if (Register != Return) {
-			xil_printf("spi_clock_active_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+			Print_Err("spi_clock_active_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 			Status = XST_FAILURE;
 		}
 	}
@@ -85,7 +86,7 @@ s32 spi_clock_active_disable(u32 spi_id) {
 
 		Return = Xil_In32(XSLCR_APER_CLK_CTRL_ADDR);
 		if (Register != Return) {
-			xil_printf("spi_clock_active_disable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+			Print_Err("spi_clock_active_disable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 			Status = XST_FAILURE;
 		}
 	}
@@ -113,7 +114,7 @@ s32 spi_reference_clock_enable(u32 spi_id) {
 
 		Return = Xil_In32(XSLCR_SPI_CLK_CTRL_ADDR);
 		if (Register != Return) {
-			xil_printf("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+			Print_Err("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 			Status = XST_FAILURE;
 		}
 	}
@@ -133,7 +134,7 @@ s32 spi_clock_source_select(enum clock_source clock) {
 
 	Return = Xil_In32(XSLCR_SPI_CLK_CTRL_ADDR);
 	if (Register != Return) {
-		xil_printf("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+		Print_Err("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 		Status = XST_FAILURE;
 	}
 
@@ -153,11 +154,11 @@ s32 spi_clock_source_divisor(u32 divisor) {
 
 		Return = Xil_In32(XSLCR_SPI_CLK_CTRL_ADDR);
 		if (Register != Return) {
-			xil_printf("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+			Print_Err("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 			Status = XST_FAILURE;
 		}
 	} else {
-		xil_printf("spi_clock_source_divisor failed, illegal value %d  (wanted: 0 <= divisor <= 63)\r\n",divisor);
+		Print_Err("spi_clock_source_divisor failed, illegal value %d  (wanted: 0 <= divisor <= 63)\r\n",divisor);
 		Status = XST_FAILURE;
 	}
 	return Status;
@@ -168,19 +169,19 @@ s32 spi_clock_source_divisor(u32 divisor) {
 	s32 Status = XST_SUCCESS;
 
 	if (spi_clock_active_enable(spi_id) != XST_SUCCESS) {
-		xil_printf("spi_clock_active_enable failed\r\n");
+		Print_Err("spi_clock_active_enable failed\r\n");
 		Status = XST_FAILURE;
 	} else if (spi_clock_source_select(clock) != XST_SUCCESS) {
-		xil_printf("spi_clock_source_select failed\r\n");
+		Print_Err("spi_clock_source_select failed\r\n");
 		Status = XST_FAILURE;
 	} else if (spi_clock_source_divisor(clock_divisor) != XST_SUCCESS) {
-		xil_printf("spi_clock_source_divisor failed\r\n");
+		Print_Err("spi_clock_source_divisor failed\r\n");
 		Status = XST_FAILURE;
 	} else if (spi_reference_clock_enable(spi_id) != XST_SUCCESS) {
-		xil_printf("spi_reference_clock_enable failed\r\n");
+		Print_Err("spi_reference_clock_enable failed\r\n");
 		Status = XST_FAILURE;
 	} else {
-		xil_printf("SPI clock enable successful\r\n");
+		Print_Info("SPI clock enable successful\r\n");
 	}
 	spi_SCLK_init(spi_id);
 	spi_MOSI_init(spi_id);
@@ -195,19 +196,19 @@ s32 spi_clock_source_divisor(u32 divisor) {
 	{
 		Xil_Out32(XSLCR_SCLK_SPI_1_ADDR, Register);
 		Register = Xil_In32(XSLCR_SCLK_SPI_1_ADDR);
-	 	xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_SCLK_SPI_1_ADDR, Register);
+	 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_SCLK_SPI_1_ADDR, Register);
 		return XST_SUCCESS;
 	}
 	else if (spi_id == 0)
 	{
 		Xil_Out32(XSLCR_SCLK_SPI_0_ADDR, Register);
 		Register = Xil_In32(XSLCR_SCLK_SPI_0_ADDR);
-	 	xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_SCLK_SPI_0_ADDR, Register);
+	 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_SCLK_SPI_0_ADDR, Register);
 		return XST_SUCCESS;
  	}
  else
  	{
-	 xil_printf("spi_id error!\r\n");
+	 Print_Err("spi_id error!\r\n");
 	 return XST_FAILURE;
  	}
 }
@@ -218,21 +219,21 @@ s32 spi_clock_source_divisor(u32 divisor) {
 		{
 			Xil_Out32(XSLCR_MOSI_SPI_1_ADDR, Register);
 			Register = Xil_In32(XSLCR_MOSI_SPI_1_ADDR);
-		 	xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MOSI_SPI_1_ADDR, Register);
+		 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MOSI_SPI_1_ADDR, Register);
 			return XST_SUCCESS;
 		}
 		else if (spi_id == 0)
 		{
 			Xil_Out32(XSLCR_MOSI_SPI_0_ADDR, Register);
 			Register = Xil_In32(XSLCR_MOSI_SPI_0_ADDR);
-		 	xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MOSI_SPI_0_ADDR, Register);
+		 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MOSI_SPI_0_ADDR, Register);
 			return XST_SUCCESS;
 		}
 		else
-	  {
-	 	 xil_printf("spi_id error!\r\n");
-	 	 return XST_FAILURE;
-	  }
+	    {
+            Print_Err("spi_id error!\r\n");
+            return XST_FAILURE;
+	    }
  }
 
  s32 spi_MISO_init(u32 spi_id) {
@@ -241,19 +242,19 @@ s32 spi_clock_source_divisor(u32 divisor) {
 		{
 			Xil_Out32(XSLCR_MISO_SPI_1_ADDR, Register);
 			Register = Xil_In32(XSLCR_MISO_SPI_1_ADDR);
-		 	xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MISO_SPI_1_ADDR, Register);
+		 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MISO_SPI_1_ADDR, Register);
 			return XST_SUCCESS;
 		}
 		else if (spi_id == 0)
 		{
 			Xil_Out32(XSLCR_MISO_SPI_0_ADDR, Register);
 			Register = Xil_In32(XSLCR_MISO_SPI_0_ADDR);
-		 	xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MISO_SPI_0_ADDR, Register);
+		 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MISO_SPI_0_ADDR, Register);
 			return XST_SUCCESS;
 		}
 		else
 		{
-	 	 xil_printf("spi_id error!\r\n");
+	 	 Print_Err("spi_id error!\r\n");
 	 	 return XST_FAILURE;
 	  }
 	}

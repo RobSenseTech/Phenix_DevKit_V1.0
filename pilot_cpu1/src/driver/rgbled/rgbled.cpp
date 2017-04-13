@@ -580,7 +580,6 @@ RGBLED::send_led_enable(bool enable)
 
 	const uint8_t msg[2] = { SUB_ADDR_SETTINGS, settings_byte};
 
-	Print_Info("msg[0] = %x, msg[1] = %x\r\n",msg[0],msg[1]);
 	return Iic_transfer(rgbled, msg, sizeof(msg), NULL, 0, 0);
 }
 
@@ -684,7 +683,6 @@ int rgbled_main(int argc, char *argv[])
 			warnx("already started");
 			return 1;
 		}
-		Print_Info("step1:--------------\r\n");
 		//if (i2cdevice == -1) {
 		//	// try the external bus first
 		//	i2cdevice = PX4_I2C_BUS_ONBOARD;
@@ -721,7 +719,6 @@ int rgbled_main(int argc, char *argv[])
 				return 1;
 			}
 		}
-		Print_Info("step2:--------------\r\n");
 		return 0;
 	}
 

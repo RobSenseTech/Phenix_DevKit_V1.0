@@ -50,6 +50,7 @@
 #include "drv_pwm_servo.h"
 #include "driver_define.h"
 #include "pwm_g.h"
+#include "FreeRTOS_Print.h"
 
 static void		pwm_timer_init(unsigned timer);
 static void		pwm_timer_set_rate(unsigned timer, unsigned rate);
@@ -210,7 +211,7 @@ up_pwm_servo_arm(bool armed)
 	/* iterate timers and arm/disarm appropriately */
 	for (i = 0; i < PWM_SERVO_MAX_TIMERS; i++) {
 		if (pwm_timers[i].base != 0) {
-			printf("up_pwm_servo_arm timer[%d] arm=%d\n", i, armed);
+			Print_Info("up_pwm_servo_arm timer[%d] arm=%d\n", i, armed);
 			if (armed) {
 				// nothing to do;
 			} else {

@@ -703,7 +703,6 @@ int SpiPsInit(u16 Spi_Id, u8 isIntcOn) {
 	}
 
     spi_sem[Spi_Id] = xSemaphoreCreateMutex();
-    Print_Info("sem[0]=%x sem[1]=%x\n", spi_sem[0], spi_sem[1]);
 
 	Status = spi_driver_init(SpiInstancePtr, Spi_Id);
 	if (Status != XST_SUCCESS) {
@@ -775,14 +774,12 @@ int SpiPsInit(u16 Spi_Id, u8 isIntcOn) {
 
 int SpiTransfer(struct SDeviceViaSpi *instanceptr, u8 *send, u8 *recv, u32 len) {
 	int Status;
-    portBASE_TYPE xHigherPriorityTaskWoken;
-    xHigherPriorityTaskWoken = pdFALSE;
 
-//    Print_Warn("devname-%s instanceptr=%x device=%x mutex=%x\n", instanceptr->device.devname, instanceptr, &instanceptr->device, instanceptr->device.spi_mutex);
     xSemaphoreTake(instanceptr->device.spi_mutex, portMAX_DELAY);
 	Status = spi_set_clock_prescaler(&(instanceptr->device));
 	if (Status != XST_SUCCESS) {
 		Print_Err("SPI set clock prescaler Failed %d\r\n", Status);
+        xSemaphoreGive(instanceptr->device.spi_mutex);
 		return XST_FAILURE;
 	}
     Status =  spi_transfer(&(instanceptr->device), send, recv, len);

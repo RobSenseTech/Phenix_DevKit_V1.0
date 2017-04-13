@@ -197,7 +197,7 @@ protected:
 
 private:
 //	work_s			_work;
-    xTimerHandle timout_timer;
+    xTimerHandle    _work;
 	unsigned		_measure_ticks;
 
 	RingBuffer_t	*_reports;
@@ -490,7 +490,6 @@ LIS3MDL::init()
 
 	if (CDev::init() != OK)
 		goto out;
-		Print_Info("LIS3MDL step ------------init1\r\n");	
 	/* allocate basic report buffers */
 //	_reports = new ringbuffer::RingBuffer(2, sizeof(mag_report));
 	if (_reports != NULL) {
@@ -508,7 +507,6 @@ LIS3MDL::init()
 	reset();
 
 	_class_instance = register_class_devname(MAG_BASE_DEVICE_PATH);
-		Print_Info("LIS3MDL step ------------init 5 \r\n");
 	ret = OK;
 	/* sensor is ok, but not calibrated */
 	_sensor_ok = true;
@@ -559,7 +557,6 @@ int LIS3MDL::set_range(unsigned range)
 		_range_scale = 1.0f / 1711.0f;
 		_range_ga = 16.0f;
 	}
-		Print_Info("LIS3MDL_----------------set_range \r\n");
 	/*
 	 * Send the command to set the range
 	 */
@@ -570,10 +567,8 @@ int LIS3MDL::set_range(unsigned range)
 	if (OK != ret) {
 //		perf_count(_comms_errors);
 	}
-		Print_Info("LIS3MDL_----------------set_range2 \r\n");
 	uint8_t range_bits_in = 0;
 	ret = read_reg(ADDR_CONF_CTRL_REG2, range_bits_in);
-		Print_Info("LIS3MDL_----------------set_range3 \r\n");
 	if (OK != ret) {
 //		perf_count(_comms_errors);
 	}
@@ -699,8 +694,6 @@ int LIS3MDL::get_config_from_device(uint8_t config_register, uint8_t &val)
 	return OK;
 }
 
-
-
 int LIS3MDL::spi_write(unsigned address, void *data, unsigned count)
 {
 	uint8_t buf[32];
@@ -711,10 +704,8 @@ int LIS3MDL::spi_write(unsigned address, void *data, unsigned count)
 
 	buf[0] = address | DIR_WRITE;
 	memcpy(&buf[1], data, count);
-//	Print_Info("LIS3MDL step ------------spi_write\r\n");
 	return SpiTransfer(&_devInstance, &buf[0], &buf[0], count + 1);
 }
-
 
 int LIS3MDL::spi_read(unsigned address, void *data, unsigned count)
 {
@@ -730,7 +721,6 @@ int LIS3MDL::spi_read(unsigned address, void *data, unsigned count)
 	memcpy(data, &buf[1], count);
 	return ret;
 }
-
 
 ssize_t
 LIS3MDL::read(struct file *filp, char *buffer, size_t buflen)
@@ -766,7 +756,6 @@ LIS3MDL::read(struct file *filp, char *buffer, size_t buflen)
 	/* XXX really it'd be nice to lock against other readers here */
 	do {
 		vRingBufferFlush(_reports);
-		Print_Info("LIS3MDL read ------------measure\r\n");	
 		/* trigger a measurement */
 		if (OK != measure()) {
 			ret = -EIO;
@@ -823,7 +812,6 @@ LIS3MDL::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 					/* if we need to start the poll state machine, do it */
 					if (want_start) {
-						Print_Info("LIS3MDL step ------------start 1111111\r\n");	
 						start();
 					}
 
@@ -951,26 +939,21 @@ LIS3MDL::start()
 	/* reset the report ring and state machine */
 	_collect_phase = false;
 	vRingBufferFlush(_reports);
-	Print_Info("LIS3MDL start   ------------step1   \r\n");	
-	timout_timer = xTimerCreate("poll_lis3mdl", _measure_ticks, pdTRUE, NULL, &LIS3MDL::cycle_trampoline, this);
-	Print_Info("LIS3MDL start   ------------step2   \r\n");		
-	xTimerStart(timout_timer, portMAX_DELAY);
+
+	_work = xTimerCreate("poll_lis3mdl", _measure_ticks, pdTRUE, NULL, &LIS3MDL::cycle_trampoline, this);	
+	xTimerStart(_work, portMAX_DELAY);
 	
-	/* schedule a cycle to start things */
-//	work_queue(HPWORK, &_work, (worker_t)&LIS3MDL::cycle_trampoline, this, 1);
 }
 
 void
 LIS3MDL::stop()
 {
-//	work_cancel(HPWORK, &_work);
-    xTimerDelete(timout_timer, portMAX_DELAY);
+    xTimerDelete(_work, portMAX_DELAY);
 }
 
 int
 LIS3MDL::reset()
 {
-		Print_Info("LIS3MDL step ------------reset\r\n");
 	/* set range */
 	return set_range(_range_ga);
 }
@@ -979,7 +962,6 @@ void
 LIS3MDL::cycle_trampoline(xTimerHandle xTimer, void *arg)
 {
 	LIS3MDL *dev = (LIS3MDL *)arg;
-//	Print_Info("LIS3MDL step ------------cycle\r\n");
 	dev->cycle();
 }
 
@@ -1067,7 +1049,7 @@ LIS3MDL::collect()
 	uint8_t check_counter;
 
 //	perf_begin(_sample_perf);
-	struct mag_report new_report;
+	struct mag_report new_report = {0};
 	bool sensor_is_onboard = false;
 
 	float xraw_f;
@@ -1400,7 +1382,6 @@ start(bool external_bus, enum Rotation rotation)
 {
 	int fd;
 
-	Print_Info("LIS3MDL step ------------1\r\n");
 	if (g_dev[external_bus] != NULL)
 	{
 		errx(0, "already started");
@@ -1421,20 +1402,12 @@ start(bool external_bus, enum Rotation rotation)
 	
 	if (g_dev[external_bus] == NULL)
 		goto fail;
-	Print_Info("LIS3MDL step  ------------init \r\n");	
+
 	if (OK != g_dev[external_bus]->init())
 		goto fail;
 	
-	
-	Print_Info("LIS3MDL step ------------2\r\n");
-	
-
 	if (OK != g_dev[external_bus]->probe())
 		goto fail;
-
-	Print_Info("LIS3MDL step ------------3\r\n");
-	
-
 	
 	/* set the poll rate to default, starts automatic data collection */
 	if(external_bus)
@@ -1578,7 +1551,6 @@ int calibrate(bool external_bus)
 {
 	int ret;
 	int fd;
-	Print_Info("LIS3MDL step ------------calibrate---1\r\n");	
 	if(external_bus)
 		fd = open(LIS3MDL_EXT_DEVICE_PATH, O_RDONLY);
 	else
@@ -1592,7 +1564,6 @@ int calibrate(bool external_bus)
 	if (OK != (ret = ioctl(fd, MAGIOCCALIBRATE, fd))) {
 		warnx("failed to enable sensor calibration mode\r\n");
 	}
-		Print_Info("LIS3MDL step ------------temp_enable---2\r\n");
 	close(fd);
 
 	return ret;
@@ -1651,7 +1622,6 @@ temp_enable(bool external_bus, bool enable)
 		err(1, "set temperature compensation failed");
 		return 0;
 	}
-		Print_Info("LIS3MDL step ------------temp_enable\r\n");
 	close(fd);
 	return 0;
 }
@@ -1724,19 +1694,15 @@ lis3mdl_main(int argc, char *argv[])
 	 */
 	if (!strcmp(verb, "start")) {
 		lis3mdl::start(external_bus, rotation);
-		Print_Info("LIS3MDL step ------------4\r\n");
 		if (calibrate && lis3mdl::calibrate(external_bus) != 0) {
 			errx(1, "calibration failed\r\n");
 			return 1;
 		}
-		Print_Info("LIS3MDL step ------------5\r\n");
 		if (temperature_enable) {
-				Print_Info("LIS3MDL step ------------temp_enable\r\n");
 			// we consider failing to setup temperature
 			// compensation as non-fatal
 			lis3mdl::temp_enable(external_bus, true);
 		}
-		Print_Info("LIS3MDL start ------------out\r\n");
 		return 0;
 	}
 

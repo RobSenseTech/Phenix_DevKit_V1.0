@@ -252,7 +252,7 @@ PX4FMU::PX4FMU() :
 	memset(&_rc_in, 0, sizeof(_rc_in));
 	_rc_in.input_source = input_rc_s::RC_INPUT_SOURCE_PX4FMU_PPM;
 #endif
-    Print_Info("timer=%d\n", USEC2TICK(CONTROL_INPUT_DROP_LIMIT_MS * 1000));
+    //Print_Info("timer=%d\n", USEC2TICK(CONTROL_INPUT_DROP_LIMIT_MS * 1000));
 	_work = xTimerCreate("FMU_Timer",
 						USEC2TICK(CONTROL_INPUT_DROP_LIMIT_MS * 1000),
 						pdTRUE,
@@ -610,7 +610,7 @@ PX4FMU::cycle()
 			update_rate_in_ms = 100;
 		}
 
-		DEVICE_DEBUG("adjusted actuator update interval to %ums\n", update_rate_in_ms);
+		//DEVICE_DEBUG("adjusted actuator update interval to %ums\n", update_rate_in_ms);
 
 		for (unsigned i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
 			if (_control_subs[i] > 0) {
@@ -924,7 +924,6 @@ PX4FMU::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case PWM_SERVO_ARM:
-		printf("HEBIN fmu.cpp PWM_SERVO_ARM\n");
 		up_pwm_servo_arm(true);
 		break;
 
@@ -933,11 +932,9 @@ PX4FMU::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 	case PWM_SERVO_SET_FORCE_SAFETY_OFF:
 	case PWM_SERVO_SET_FORCE_SAFETY_ON:
 		// these are no-ops, as no safety switch
-		printf("HEBIN empty\n");
 		break;
 
 	case PWM_SERVO_DISARM:
-		printf("HEBIN fmu.cpp PWM_SERVO_DISARM\n");
 		up_pwm_servo_arm(false);
 		break;
 
@@ -946,7 +943,7 @@ PX4FMU::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 		break;
 
 	case PWM_SERVO_SET_UPDATE_RATE:
-		printf("all pwm update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", _pwm_default_rate, arg);
+		Print_Info("all pwm update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", _pwm_default_rate, arg);
 		ret = set_pwm_rate(_pwm_alt_rate_channels, _pwm_default_rate, arg);
 		break;
 
@@ -955,7 +952,7 @@ PX4FMU::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 		break;
 
 	case PWM_SERVO_SET_SELECT_UPDATE_RATE:
-		printf("pwm %d update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", arg, _pwm_default_rate, _pwm_alt_rate);
+		Print_Info("pwm %d update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", arg, _pwm_default_rate, _pwm_alt_rate);
 		ret = set_pwm_rate(arg, _pwm_default_rate, _pwm_alt_rate);
 		break;
 
@@ -1355,7 +1352,7 @@ ssize_t
 PX4FMU::write(file *filp, const char *buffer, size_t len)
 {
 	unsigned count = len / 2;
-	uint16_t values[6];
+	uint16_t values[16];
 
 	if (count > 8) {
 		// we have at most 8 outputs

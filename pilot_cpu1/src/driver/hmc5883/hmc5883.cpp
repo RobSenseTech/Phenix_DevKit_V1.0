@@ -66,7 +66,7 @@
 
 #define HMC5883_DEVICE_PATH "/dev/hmc5883"
 #define HMC5883_EXT_DEVICE_PATH "/dev/hmc5883_ext"
-#define HMC5883_MAX_INSTANCE 2 //若联飞控，目前最多一款传感器接两个
+#define HMC5883_MAX_INSTANCE 2
 
 
 
@@ -157,8 +157,7 @@ protected:
 
 private:
 //added by prj
-//	work_s			_work;
-    xTimerHandle timout_timer;
+    xTimerHandle    _work;
 	int				_bus;
 	uint16_t		_address;
 	uint32_t		_frequency;
@@ -403,9 +402,6 @@ HMC5883::HMC5883(int bus, int dev_addr, uint32_t frequency, const char *path, en
 	_scale.z_offset = 0;
 	_scale.z_scale = 1.0f;
 
-	// work_cancel in the dtor will explode if we don't do this...
-	//added by prj
-//	memset(&_work, 0, sizeof(_work));
 }
 
 HMC5883::~HMC5883()
@@ -832,20 +828,15 @@ HMC5883::start()
 	_collect_phase = false;
 	vRingBufferFlush(_reports);
 	
-	Print_Info("LIS3MDL start   ------------step1   \r\n");	
-	timout_timer = xTimerCreate("poll_hmc5883", _measure_ticks, pdTRUE, NULL, &HMC5883::cycle_trampoline, this);
+	_work = xTimerCreate("poll_hmc5883", _measure_ticks, pdTRUE, NULL, &HMC5883::cycle_trampoline, this);
 
-	xTimerStart(timout_timer, portMAX_DELAY);
-	Print_Info("LIS3MDL start   ------------step2   \r\n");		
-	/* schedule a cycle to start things */
-//	work_queue(HPWORK, &_work, (worker_t)&HMC5883::cycle_trampoline, this, 1);
+	xTimerStart(_work, portMAX_DELAY);
 }
 
 void
 HMC5883::stop()
 {
-//	work_cancel(HPWORK, &_work);
-    xTimerDelete(timout_timer, portMAX_DELAY);
+    xTimerDelete(_work, portMAX_DELAY);
 }
 
 
@@ -962,13 +953,6 @@ HMC5883::cycle()
 		 */
 		if (_measure_ticks > USEC2TICK(HMC5883_CONVERSION_INTERVAL)) {
 
-			/* schedule a fresh cycle call when we are ready to measure again */
-			//work_queue(HPWORK,
-			//	   &_work,
-			//	   (worker_t)&HMC5883::cycle_trampoline,
-			//	   this,
-			//	   _measure_ticks - USEC2TICK(HMC5883_CONVERSION_INTERVAL));
-
 			return;
 		}
 	}
@@ -981,12 +965,6 @@ HMC5883::cycle()
 	/* next phase is collection */
 	_collect_phase = true;
 
-	/* schedule a fresh cycle call when the measurement is done */
-	//work_queue(HPWORK,
-	//	   &_work,
-	//	   (worker_t)&HMC5883::cycle_trampoline,
-	//	   this,
-	//	   USEC2TICK(HMC5883_CONVERSION_INTERVAL));
 }
 
 int
@@ -1024,7 +1002,7 @@ HMC5883::collect()
 	uint8_t check_counter;
 
 //	perf_begin(_sample_perf);
-	struct mag_report new_report;
+	struct mag_report new_report = {0};
 	bool sensor_is_onboard = false;
 
 	float xraw_f;

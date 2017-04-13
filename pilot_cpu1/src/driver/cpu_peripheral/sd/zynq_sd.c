@@ -102,7 +102,8 @@ static uint8_t mmcsd_status(sd_private_t *priv)
 
 	if ((reg & XSDPS_PSR_WPS_PL_MASK) == 0U)
         status |= SDIO_STATUS_WRPROTECTED;
-
+    else
+        status &= ~(SDIO_STATUS_WRPROTECTED);
 
     return status;
 } 

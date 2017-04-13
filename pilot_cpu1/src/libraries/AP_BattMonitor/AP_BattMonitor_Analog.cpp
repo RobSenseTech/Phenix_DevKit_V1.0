@@ -28,7 +28,6 @@ AP_BattMonitor_Analog::read()
 
     // get voltage
     _state.voltage = _volt_pin_analog_source->voltage_average() * _mon._volt_multiplier[_state.instance];
-//	printf("HEBIN %s: voltage=%d.%d\n", __func__, (int)_state.voltage, ((int)(_state.voltage*10))%10);
     // read current
     if (_mon.has_current(_state.instance)) {
         // calculate time since last current read

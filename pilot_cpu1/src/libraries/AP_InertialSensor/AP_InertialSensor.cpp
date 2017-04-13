@@ -783,13 +783,11 @@ AP_InertialSensor::_init_gyro()
         converged[k] = false;
     }
 
-    Print_Info("\n");
     for(int8_t c = 0; c < 5; c++) {
         hal.scheduler->delay(5);
         update();
     }
 
-    Print_Info("\n");
     // the strategy is to average 50 points over 0.5 seconds, then do it
     // again and see if the 2nd average is within a small margin of
     // the first
@@ -858,7 +856,6 @@ AP_InertialSensor::_init_gyro()
         }
     }
 
-	printf("%s: line:%d\n", __func__, __LINE__);
     // we've kept the user waiting long enough - use the best pair we
     // found so far
     hal.console->println();
@@ -875,7 +872,6 @@ AP_InertialSensor::_init_gyro()
         }
     }
 
-	printf("%s: line:%d\n", __func__, __LINE__);
     // restore orientation
     _board_orientation = saved_orientation;
 

@@ -218,7 +218,7 @@ private:
 #ifdef USE_HRT
 	struct hrt_call		_call;
 #else
-    xTimerHandle timout_timer;
+    xTimerHandle    _call;
 #endif
 	unsigned		_call_interval;
 
@@ -874,8 +874,8 @@ I3G4250D::start()
     if(ticks == 0)
         ticks = 1;//定时器时间间隔不可为0
 	/* reset the report ring and state machine */
-	timout_timer = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, NULL, &I3G4250D::measure_trampoline, this);
-	xTimerStart(timout_timer, portMAX_DELAY);
+	_call = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, NULL, &I3G4250D::measure_trampoline, this);
+	xTimerStart(_call, portMAX_DELAY);
 #endif
 	
 }
@@ -886,7 +886,7 @@ I3G4250D::stop()
 #ifdef USE_HRT
 	hrt_cancel(&_call);
 #else
-    xTimerDelete(timout_timer, portMAX_DELAY);
+    xTimerDelete(_call, portMAX_DELAY);
 #endif
 }
 
@@ -982,7 +982,7 @@ I3G4250D::measure()
 	} raw_report;
     uint8_t raw_data[9];
 
-	gyro_report report;
+	gyro_report report = {0};
 
         check_registers();
 

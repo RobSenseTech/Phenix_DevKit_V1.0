@@ -32,8 +32,6 @@
 
 #include <math.h>
 
-//#define FLT_EPSILON 1.1920929e-07F  /* 1E-5 */
-
 template <typename T>
 struct Vector2
 {

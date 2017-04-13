@@ -97,7 +97,7 @@ uint32_t UartPsClkInit(int32_t iUartId)
 		APER_CLK_CTRL = uiVal;
 	}
 
-	Print_Info("Uart%d UART_CLK_CTRL=%x APER_CLK_CTRL=%x\n", iUartId, UART_CLK_CTRL, APER_CLK_CTRL);
+//	Print_Info("Uart%d UART_CLK_CTRL=%x APER_CLK_CTRL=%x\n", iUartId, UART_CLK_CTRL, APER_CLK_CTRL);
 
 	return 0;
 }
@@ -370,6 +370,7 @@ int Uart_Ioctl(file_t *filp, int iCmd, unsigned long ulArg)
         }
 		default:
 			Print_Err("Unknow Command\n");
+            return -1;
 	}
 	return 0;
 }

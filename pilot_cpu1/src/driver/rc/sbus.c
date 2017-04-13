@@ -25,7 +25,7 @@ static hrt_abstime last_frame_time;
 
 static uint8_t	frame[SBUS_FRAME_SIZE];
 
-static unsigned partial_frame_count;
+static unsigned partial_frame_count = 0;
 
 unsigned sbus_frame_drops;
 
@@ -224,13 +224,12 @@ bool sbus_input(int sbus_fd, uint16_t *values, uint16_t *num_values, bool *sbus_
         {
             break;
         }
-        else
+
+        if(frame[0] == 0x0f)
         {
-            if(frame[0] == 0x0f)
-            {
-                partial_frame_count++;
-            }
+            partial_frame_count++;
         }
+
     }
 
     //找到头，则拷数据，没找到直接返回
@@ -244,7 +243,10 @@ bool sbus_input(int sbus_fd, uint16_t *values, uint16_t *num_values, bool *sbus_
 	/*
 	 * Add bytes to the current frame
 	 */
-	partial_frame_count += ret;
+	if(ret > 0)
+		partial_frame_count += ret;
+	else
+		return false;
 
 
 	/*
