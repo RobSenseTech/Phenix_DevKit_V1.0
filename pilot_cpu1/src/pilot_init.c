@@ -40,7 +40,7 @@ static main_t main_list[]=
 //    {iis328dq_main, 4, {"iis328dq_main", "-R", "6","start"}},
     {iis328dq_main, 4, {"iis328dq_main", "-R", "10","start"}},
 //	{lis3mdl_main, 4, {"lis3mdl_main", "-R", "6","start"}},
-	{lis3mdl_main, 4, {"lis3mdl_main", "-R", "8","start"}},
+	{lis3mdl_main, 4, {"lis3mdl_main", "-R", "12","start"}},
 	{ms5611_main, 2, {"ms5611_main","start"}},
 //	{hmc5883_main, 2, {"hmc5883_main","start"}}
     {ArduPilot_main, 2, {"ArduPilot_main", "start"}},
@@ -217,7 +217,7 @@ static void pilot_first_task(void *param)
 //    SpiTest();
 //    UartTest();
     //SbusTest();
-    
+    //top_main();   
 
 //    sd_test();
 

@@ -8,5 +8,6 @@ SRCS_TEST += $(TEST_ROOT_PATH)/sd_test.c
 SRCS_TEST += $(TEST_ROOT_PATH)/sbus_test.c
 SRCS_TEST += $(TEST_ROOT_PATH)/spi_test.c
 SRCS_TEST += $(TEST_ROOT_PATH)/imu_test.c
+SRCS_TEST += $(TEST_ROOT_PATH)/top.c
 
 OBJS_TEST += $(SRCS_TEST:%.c=%.o)

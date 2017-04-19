@@ -167,7 +167,7 @@ void PX4Storage::_storage_open(void)
 	if (fd == -1) {
             AP_HAL::panic("Failed to open " MTD_PARAMS_FILE);
 	}
-        lseek(fd, 0, SEEK_SET);
+        //lseek(fd, 0, SEEK_SET);
         const uint16_t chunk_size = 128;
         for (uint16_t ofs=0; ofs<sizeof(_buffer); ofs += chunk_size) {
             bus_lock(true);

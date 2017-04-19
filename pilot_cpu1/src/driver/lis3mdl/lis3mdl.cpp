@@ -321,7 +321,7 @@ private:
 	 *
 	 * @param arg		Instance pointer for the driver that is polling.
 	 */
-	static void		cycle_trampoline(xTimerHandle xTimer, void *arg);
+	static void		cycle_trampoline(xTimerHandle xTimer);
 
 	/**
 	 * Write a register.
@@ -940,7 +940,7 @@ LIS3MDL::start()
 	_collect_phase = false;
 	vRingBufferFlush(_reports);
 
-	_work = xTimerCreate("poll_lis3mdl", _measure_ticks, pdTRUE, NULL, &LIS3MDL::cycle_trampoline, this);	
+	_work = xTimerCreate("poll_lis3mdl", _measure_ticks, pdTRUE, this, &LIS3MDL::cycle_trampoline);	
 	xTimerStart(_work, portMAX_DELAY);
 	
 }
@@ -959,9 +959,10 @@ LIS3MDL::reset()
 }
 
 void
-LIS3MDL::cycle_trampoline(xTimerHandle xTimer, void *arg)
+LIS3MDL::cycle_trampoline(xTimerHandle xTimer)
 {
-	LIS3MDL *dev = (LIS3MDL *)arg;
+    void *timer_id = pvTimerGetTimerID(xTimer);
+	LIS3MDL *dev = (LIS3MDL *)timer_id;
 	dev->cycle();
 }
 

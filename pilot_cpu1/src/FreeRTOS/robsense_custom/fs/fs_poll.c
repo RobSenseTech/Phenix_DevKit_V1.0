@@ -242,9 +242,10 @@ static inline int poll_teardown(FAR struct pollfd *fds, nfds_t nfds, int *count)
  *   The wdog expired before any other events were received.
  *
  ****************************************************************************/
-static void poll_timeout(xTimerHandle xTimer, void *pvArg)
+static void poll_timeout(xTimerHandle xTimer)
 {
-    sem_t *sem = (sem_t *)pvArg;
+    void *timer_id = pvTimerGetTimerID(xTimer);
+    sem_t *sem = (sem_t *)timer_id;
 
  //   Print_Info("Times up, unlock\n");
     poll_semgive(sem);
@@ -312,7 +313,7 @@ int poll(FAR struct pollfd *fds, nfds_t nfds, int timeout)
            * ticks for wd_start
            */
 
-          timout_timer = xTimerCreate("poll timer", timeout/portTICK_RATE_MS, pdFALSE, NULL, poll_timeout, (void *)&sem);
+          timout_timer = xTimerCreate("poll timer", timeout/portTICK_RATE_MS, pdFALSE, (void *)&sem, poll_timeout);
           //      Print_Info("Create timer over\n");
           xTimerStart(timout_timer, portMAX_DELAY);
 

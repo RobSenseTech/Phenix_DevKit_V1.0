@@ -122,7 +122,7 @@ private:
 	void			set_mode(rgbled_mode_t mode);
 	void			set_pattern(rgbled_pattern_t *pattern);
 
-	static void		led_trampoline(void* xTimer, void *arg);
+	static void		led_trampoline(void* xTimer);
 	void			led();
 
 	int			send_led_enable(bool enable);
@@ -283,9 +283,10 @@ RGBLED::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 
 void
-RGBLED::led_trampoline(void* xTimer, void *arg)
+RGBLED::led_trampoline(void* xTimer)
 {
-	RGBLED *rgbl = reinterpret_cast<RGBLED *>(arg);
+    void *timer_id = pvTimerGetTimerID(xTimer);
+	RGBLED *rgbl = reinterpret_cast<RGBLED *>(timer_id);
 
 	rgbl->led();
 }
@@ -369,7 +370,7 @@ RGBLED::led()
 	_counter++;
 
     xTimerDelete(_work, portMAX_DELAY);
-    _work = xTimerCreate("RGBLED_Timer", USEC2TICK(_led_interval * 1000), pdFALSE, NULL, &RGBLED::led_trampoline, this);
+    _work = xTimerCreate("RGBLED_Timer", USEC2TICK(_led_interval * 1000), pdFALSE, this, &RGBLED::led_trampoline);
 	xTimerStart(_work, portMAX_DELAY);
 	/* re-queue ourselves to run again later */
 //	work_queue(LPWORK, &_work, (worker_t)&RGBLED::led_trampoline, this, _led_interval);
@@ -546,7 +547,7 @@ RGBLED::set_mode(rgbled_mode_t mode)
 		if (_should_run && !_running) {
             Print_Info("start led thread\n");
 			_running = true;
-        	_work = xTimerCreate("RGBLED_Timer", USEC2TICK(1 * 1000), pdFALSE, NULL, &RGBLED::led_trampoline, this);
+        	_work = xTimerCreate("RGBLED_Timer", USEC2TICK(1 * 1000), pdFALSE, this, &RGBLED::led_trampoline);
 	        xTimerStart(_work, portMAX_DELAY);
 
 //			work_queue(LPWORK, &_work, (worker_t)&RGBLED::led_trampoline, this, 1);
