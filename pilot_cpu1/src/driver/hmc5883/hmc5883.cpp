@@ -287,7 +287,7 @@ private:
 	 *
 	 * @param arg		Instance pointer for the driver that is polling.
 	 */
-	static void		cycle_trampoline(xTimerHandle xTimer, void *arg);
+	static void		cycle_trampoline(xTimerHandle xTimer);
 
 	/**
 	 * Write a register.
@@ -828,7 +828,7 @@ HMC5883::start()
 	_collect_phase = false;
 	vRingBufferFlush(_reports);
 	
-	_work = xTimerCreate("poll_hmc5883", _measure_ticks, pdTRUE, NULL, &HMC5883::cycle_trampoline, this);
+	_work = xTimerCreate("poll_hmc5883", _measure_ticks, pdTRUE, this, &HMC5883::cycle_trampoline);
 
 	xTimerStart(_work, portMAX_DELAY);
 }
@@ -924,9 +924,10 @@ HMC5883::reset()
 }
 
 void
-HMC5883::cycle_trampoline(xTimerHandle xTimer, void *arg)
+HMC5883::cycle_trampoline(xTimerHandle xTimer)
 {
-	HMC5883 *dev = (HMC5883 *)arg;
+    void *timer_id = pvTimerGetTimerID(xTimer);
+	HMC5883 *dev = (HMC5883 *)timer_id;
 //	Print_Info("hmc5883-cycle_trampoline\r\n");		
 	dev->cycle();
 }

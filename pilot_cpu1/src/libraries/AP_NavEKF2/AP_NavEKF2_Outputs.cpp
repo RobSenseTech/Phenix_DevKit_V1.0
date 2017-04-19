@@ -17,7 +17,7 @@ extern const AP_HAL::HAL& hal;
 // Check basic filter health metrics and return a consolidated health status
 bool NavEKF2_core::healthy(void) const
 {
-    uint8_t faultInt;
+    uint8_t faultInt = 0;
     getFilterFaults(faultInt);
     if (faultInt > 0) {
         return false;

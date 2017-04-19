@@ -231,7 +231,7 @@ private:
 	static void		measure_trampoline(void *arg);
 #else
 
-	static void		measure_trampoline(xTimerHandle xTimer, void *arg);
+	static void		measure_trampoline(xTimerHandle xTimer);
 #endif
 
 	/**
@@ -787,7 +787,7 @@ IIS328DQ::start()
     if(ticks == 0)
         ticks = 1;//定时器时间间隔不可为0
 	/* reset the report ring and state machine */
-	_call = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, NULL, &IIS328DQ::measure_trampoline, this);
+	_call = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, this, &IIS328DQ::measure_trampoline);
 	xTimerStart(_call, portMAX_DELAY);
 #endif
 }
@@ -845,10 +845,11 @@ IIS328DQ::reset()
 #ifdef USE_HRT
 void IIS328DQ::measure_trampoline(void *arg)
 #else
-void IIS328DQ::measure_trampoline(xTimerHandle xTimer, void *arg)
+void IIS328DQ::measure_trampoline(xTimerHandle xTimer)
 #endif
 {
-	IIS328DQ *dev = (IIS328DQ *)arg;
+    void *timer_id = pvTimerGetTimerID(xTimer);
+	IIS328DQ *dev = (IIS328DQ *)timer_id;
 
 	/* make another measurement */
 	dev->measure();

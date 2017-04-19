@@ -197,7 +197,7 @@ protected:
 	 *
 	 * @param arg		Instance pointer for the driver that is polling.
 	 */
-	static void		cycle_trampoline(xTimerHandle xTimer, void *arg);
+	static void		cycle_trampoline(xTimerHandle xTimer);
 
 	/**
 	 * Issue a measurement command for the current state.
@@ -708,7 +708,7 @@ MS5611::start_cycle(unsigned delay_ticks)
 	_collect_phase = false;
 	_measure_phase = 0;
 	vRingBufferFlush(_reports);	
-	_work = xTimerCreate("poll_ms5611", USEC2TICK(_measure_ticks * 1000), pdTRUE, NULL, &MS5611::cycle_trampoline, this);
+	_work = xTimerCreate("poll_ms5611", USEC2TICK(_measure_ticks * 1000), pdTRUE, this, &MS5611::cycle_trampoline);
 	xTimerStart(_work, portMAX_DELAY);
 	
 	/* schedule a cycle to start things */
@@ -721,9 +721,10 @@ MS5611::stop_cycle()
 }
 
 void
-MS5611::cycle_trampoline(xTimerHandle xTimer, void *arg)
+MS5611::cycle_trampoline(xTimerHandle xTimer)
 {
-	MS5611 *dev = reinterpret_cast<MS5611 *>(arg);
+    void *timer_id = pvTimerGetTimerID(xTimer);
+	MS5611 *dev = reinterpret_cast<MS5611 *>(timer_id);
 	dev->cycle();
 }
 

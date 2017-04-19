@@ -296,7 +296,7 @@ private:
 	static void		measure_trampoline(void *arg);
 #else
 
-	static void		measure_trampoline(xTimerHandle xTimer, void *arg);
+	static void		measure_trampoline(xTimerHandle xTimer);
 #endif
 	/**
 	 * check key registers for correct values
@@ -874,7 +874,7 @@ I3G4250D::start()
     if(ticks == 0)
         ticks = 1;//定时器时间间隔不可为0
 	/* reset the report ring and state machine */
-	_call = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, NULL, &I3G4250D::measure_trampoline, this);
+	_call = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, this, &I3G4250D::measure_trampoline);
 	xTimerStart(_call, portMAX_DELAY);
 #endif
 	
@@ -939,10 +939,11 @@ I3G4250D::reset()
 #if USE_HRT 
 void I3G4250D::measure_trampoline(void *arg)
 #else
-void I3G4250D::measure_trampoline(xTimerHandle xTimer, void *arg)
+void I3G4250D::measure_trampoline(xTimerHandle xTimer)
 #endif
 {
-	I3G4250D *dev = (I3G4250D *)arg;
+    void *timer_id = pvTimerGetTimerID(xTimer);
+	I3G4250D *dev = (I3G4250D *)timer_id;
 
 	/* make another measurement */
 	dev->measure();

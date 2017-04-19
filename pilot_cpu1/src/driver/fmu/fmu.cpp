@@ -162,7 +162,7 @@ private:
 
 	static bool	arm_nothrottle() { return (_armed.prearmed && !_armed.armed); }
 
-	static void	cycle_trampoline(void* xTimer,void *arg);
+	static void	cycle_trampoline(void* xTimer);
 
 	void		cycle();
 	void		work_start();
@@ -256,9 +256,8 @@ PX4FMU::PX4FMU() :
 	_work = xTimerCreate("FMU_Timer",
 						USEC2TICK(CONTROL_INPUT_DROP_LIMIT_MS * 1000),
 						pdTRUE,
-						(void*)51,
-						PX4FMU::cycle_trampoline,
-						this);
+						(void*)this,
+						PX4FMU::cycle_trampoline);
 }
 
 PX4FMU::~PX4FMU()
@@ -552,9 +551,10 @@ PX4FMU::work_start()
 }
 
 void
-PX4FMU::cycle_trampoline(void* xTimer, void *arg)
+PX4FMU::cycle_trampoline(void* xTimer)
 {
-	PX4FMU *dev = reinterpret_cast<PX4FMU *>(arg);
+    void *timer_id = pvTimerGetTimerID(xTimer);
+	PX4FMU *dev = reinterpret_cast<PX4FMU *>(timer_id);
 
 	dev->cycle();
 }

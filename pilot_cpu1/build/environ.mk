@@ -28,8 +28,9 @@ LIBS := -Wl,--start-group,-lxil,-lgcc,-lm,-lc,-lstdc++,--end-group
 #LIBPATH := -Lpath1 -Lpath2 -Lpath3
 LIBPATH := -L../libs
 INCLUDEPATH := -I../src/FreeRTOS \
-			   -I../src/FreeRTOS/FreeRTOS_Source/include/ \
-			   -I../src/FreeRTOS/FreeRTOS_Source/portable/GCC/ARM_CA9 \
+			   -I../src/FreeRTOS/Source/include/ \
+			   -I../src/FreeRTOS/Source/portable/GCC/ARM_CA9 \
+			   -I../src/FreeRTOS/Demo/CORTEX_A9_Zynq_ZC702/RTOSDemo/src\
 			   -I../src/FreeRTOS/robsense_custom/ \
 			   -I../src/FreeRTOS/robsense_custom/include/ \
 			   -I../src/FreeRTOS/robsense_custom/fs \
