@@ -107,10 +107,10 @@ void PX4RCInput::_timer_tick(void)
 	if (orb_check(_rc_sub, &rc_updated) == 0 && rc_updated) {
 			xSemaphoreTake(rcin_mutex,portMAX_DELAY);		//用xSemaphoreTake替换掉pthread_mutex_lock
 			orb_copy(ORB_ID(input_rc), _rc_sub, &_rcin);
-   //         Print_Info("values[0]=%d\n", _rcin.values[0]);
+   //         pilot_info("values[0]=%d\n", _rcin.values[0]);
 			xSemaphoreGive(rcin_mutex);                               //用xSemaphoreGive替换掉pthread_mutex_unlock
 	}
-//    Print_Info("rc_updated=%d\n", rc_updated);
+//    pilot_info("rc_updated=%d\n", rc_updated);
         // note, we rely on the vehicle code checking new_input() 
         // and a timeout for the last valid input to handle failsafe
 }

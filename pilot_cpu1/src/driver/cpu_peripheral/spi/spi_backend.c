@@ -15,7 +15,7 @@
 #include "xil_exception.h"
 #include "board_config.h"
 #include "sleep.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 
 /************************** Constant Definitions *****************************/
 #define SPI_0_DEVICE_ID                 0
@@ -82,10 +82,10 @@ static int spi_init_under_interrupt_mode(struct SSpiDevice *InstancePtr, u16 Spi
 ******************************************************************************/
 int spi_init(struct SSpiDevice *InstancePtr, u16 SpiDeviceId, u16 IntcDeviceId, u16 SpiIntrId, u16 GpioDeviceId)  {
 	if (InstancePtr->Interrupt == NULL) {
-		Print_Info("spi init from poll mode\r\n");
+		pilot_info("spi init from poll mode\r\n");
 		return spi_init_under_poll_mode(InstancePtr, SpiDeviceId, GpioDeviceId);
 	} else {
-		Print_Info("spi init from interrupt mode\r\n");
+		pilot_info("spi init from interrupt mode\r\n");
 		return spi_init_under_interrupt_mode(InstancePtr, SpiDeviceId, IntcDeviceId, SpiIntrId, GpioDeviceId);
 	}
 }
@@ -100,14 +100,14 @@ int DeviceViaSpiCfgInitialize(struct SDeviceViaSpi *instanceptr,
 		instanceptr->device.Spi = &Spi0Instance;
 		instanceptr->device.busname = "SPI 0";
 		instanceptr->device.spi_mutex = spi_sem[0];
-        Print_Info("sem[0]=%x\n", spi_sem[0]);
+        pilot_info("sem[0]=%x\n", spi_sem[0]);
 	} else if (instanceptr->spi_id == 1) {
 		instanceptr->device.Spi = &Spi1Instance;
 		instanceptr->device.busname = "SPI 1";
 		instanceptr->device.spi_mutex = spi_sem[1];
-        Print_Info("sem[1]=%x\n", spi_sem[1]);
+        pilot_info("sem[1]=%x\n", spi_sem[1]);
 	} else {
-		Print_Err(" SPI %d Unsupport.\r\n", instanceptr->spi_id);
+		pilot_err(" SPI %d Unsupport.\r\n", instanceptr->spi_id);
 		return XST_FAILURE;
 	}
 
@@ -132,20 +132,20 @@ int spi_init_under_interrupt_mode(struct SSpiDevice *InstancePtr, u16 SpiDeviceI
 	/* SPI bus device init */
 	Status = spi_driver_init(InstancePtr->Spi, SpiDeviceId);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" SPI device initialization failed.\r\n");
+		pilot_err(" SPI device initialization failed.\r\n");
 		return XST_FAILURE;
 	}
 
 	/* SPI interrupt init */
 	Status = spi_interrupt_init(InstancePtr->Interrupt, InstancePtr->Spi, IntcDeviceId, SpiIntrId);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" SPI interrupt initialization failed.\r\n");
+		pilot_err(" SPI interrupt initialization failed.\r\n");
 		return XST_FAILURE;
 	}
 
 	Status = spi_gpio_init(InstancePtr->Gpio, GpioDeviceId);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" SPI gpio initialization failed.\r\n");
+		pilot_err(" SPI gpio initialization failed.\r\n");
 		return XST_FAILURE;
 	}
 
@@ -165,20 +165,20 @@ int spi_init_under_poll_mode(struct SSpiDevice *InstancePtr, u16 SpiDeviceId, u1
 	int Status;
 
 	if (InstancePtr->Interrupt != NULL) {
-		Print_Err(" SPI interrupt pointer should be NULL under poll mode.\r\n");
+		pilot_err(" SPI interrupt pointer should be NULL under poll mode.\r\n");
 		return XST_FAILURE;
 	}
 
 	/* SPI bus device init */
 	Status = spi_driver_init(InstancePtr->Spi, SpiDeviceId);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" SPI device initialization failed.\r\n");
+		pilot_err(" SPI device initialization failed.\r\n");
 		return XST_FAILURE;
 	}
 
 	Status = spi_gpio_init(InstancePtr->Gpio, GpioDeviceId);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" SPI gpio initialization failed.\r\n");
+		pilot_err(" SPI gpio initialization failed.\r\n");
 		return XST_FAILURE;
 	}
 
@@ -194,7 +194,7 @@ static int spi_driver_init(XSpiPs *SpiInstancePtr, u16 SpiDeviceId) {
 	 */
 	Status = spi_clock_init((u32)SpiDeviceId, CLOCK_SOURCE_IO_PLL, SPI_CLOCK_SOURCE_DIVISOR);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" SPI clock initialization failed.\r\n");
+		pilot_err(" SPI clock initialization failed.\r\n");
 		return XST_FAILURE;
 	}
 
@@ -203,14 +203,14 @@ static int spi_driver_init(XSpiPs *SpiInstancePtr, u16 SpiDeviceId) {
 	 */
 	SpiConfig = XSpiPs_LookupConfig(SpiDeviceId);
 	if (NULL == SpiConfig) {
-		Print_Err(" SPI lookup configuration failed.\r\n");
+		pilot_err(" SPI lookup configuration failed.\r\n");
 		return XST_FAILURE;
 	}
 
 	Status = XSpiPs_CfgInitialize(SpiInstancePtr, SpiConfig,
 					SpiConfig->BaseAddress);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" SPI configuration initialization failed.\r\n");
+		pilot_err(" SPI configuration initialization failed.\r\n");
 		return XST_FAILURE;
 	}
 
@@ -219,7 +219,7 @@ static int spi_driver_init(XSpiPs *SpiInstancePtr, u16 SpiDeviceId) {
 	 */
 	Status = XSpiPs_SelfTest(SpiInstancePtr);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" SPI self test failed.\r\n");
+		pilot_err(" SPI self test failed.\r\n");
 		return XST_FAILURE;
 	}
 
@@ -237,14 +237,14 @@ static int spi_interrupt_init(XScuGic *IntcInstancePtr,
 	 */
 	IntcConfig = XScuGic_LookupConfig(IntcDeviceId);
 	if (NULL == IntcConfig) {
-		Print_Err(" Interrupt lookup configuration failed.\r\n");
+		pilot_err(" Interrupt lookup configuration failed.\r\n");
 		return XST_FAILURE;
 	}
 
 	Status = XScuGic_CfgInitialize(IntcInstancePtr, IntcConfig,
 					IntcConfig->CpuBaseAddress);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" Interrupt configuration initialization failed.\r\n");
+		pilot_err(" Interrupt configuration initialization failed.\r\n");
 		return XST_FAILURE;
 	}
 
@@ -277,7 +277,7 @@ static int spi_interrupt_init(XScuGic *IntcInstancePtr,
 				(Xil_ExceptionHandler)XSpiPs_InterruptHandler,
 				(void *)SpiInstancePtr);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" Interrupt connect failed.\r\n");
+		pilot_err(" Interrupt connect failed.\r\n");
 		return Status;
 	}
 
@@ -300,7 +300,7 @@ static int spi_gpio_init(XGpioPs *Gpio, u16 DeviceId) {
 
 	Status = gpio_clock_active_enable();
 	if (Status != XST_SUCCESS) {
-		Print_Err("GPIO Interrupt clock enable failed \r\n");
+		pilot_err("GPIO Interrupt clock enable failed \r\n");
 		return XST_FAILURE;
 	}
 
@@ -311,7 +311,7 @@ static int spi_gpio_init(XGpioPs *Gpio, u16 DeviceId) {
 	Status = XGpioPs_CfgInitialize(Gpio, ConfigPtr,
 					ConfigPtr->BaseAddr);
 	if (Status != XST_SUCCESS) {
-		Print_Err("XGpioPs_CfgInitialize failed %d\r\n", Status);
+		pilot_err("XGpioPs_CfgInitialize failed %d\r\n", Status);
 		return XST_FAILURE;
 	}
 
@@ -371,7 +371,7 @@ int spi_transfer(struct SSpiDevice *InstancePtr, u8 *SendBufPtr,
 
 	Status = spi_slave_select(InstancePtr, 0x1);
 	if (Status != XST_SUCCESS) {
-		Print_Err("SPI set slave select Failed %d\r\n", Status);
+		pilot_err("SPI set slave select Failed %d\r\n", Status);
 		return XST_FAILURE;
 	}
 
@@ -429,10 +429,10 @@ void SpiPsHandler(void *CallBackRef, u32 StatusEvent, unsigned int ByteCount)
 	 */
 	if (StatusEvent != XST_SPI_TRANSFER_DONE) {
 		Error++;
-		Print_Err(" Error number %d.\r\n", Error);
+		pilot_err(" Error number %d.\r\n", Error);
 	}
 	else {
-		Print_Info(" tranfer done.\r\n");
+		pilot_info(" tranfer done.\r\n");
 	}
 }
 
@@ -442,7 +442,7 @@ int spi_slave_select(struct SSpiDevice *InstancePtr, u8 isSelected){
 
 	if (InstancePtr->device == ESPI_DEVICE_TYPE_NONE)
 	{
-		Print_Err(" No Device mount on this instance. \r\n");
+		pilot_err(" No Device mount on this instance. \r\n");
 		return XST_FAILURE;
 	}
 
@@ -451,7 +451,7 @@ int spi_slave_select(struct SSpiDevice *InstancePtr, u8 isSelected){
 	} else if (InstancePtr->Spi->Config.DeviceId == 1) {
 		Status = spi_1_slave_slected(InstancePtr, isSelected);
 	} else {
-		Print_Err(" Unsupport SPI device id %d. \r\n", InstancePtr->Spi->Config.DeviceId);
+		pilot_err(" Unsupport SPI device id %d. \r\n", InstancePtr->Spi->Config.DeviceId);
 		Status = XST_FAILURE;
 	}
 	return Status;
@@ -463,7 +463,7 @@ static int spi_0_slave_slected(struct SSpiDevice *InstancePtr, u8 isSelected) {
 
 	if ((InstancePtr->device >= ESPI_DEVICE_TYPE_INTERNAL_CS_0)
 			&& (InstancePtr->device < ESPI_DEVICE_TYPE_END)) {
-		Print_Info(" Device use SPI 0 internal CS %d selected. \r\n", (InstancePtr->device % 100));
+		pilot_info(" Device use SPI 0 internal CS %d selected. \r\n", (InstancePtr->device % 100));
 
 		XGpioPs_WritePin(InstancePtr->Gpio, GPIO_SPI_CS_GYRO, 0x1);
 		XGpioPs_WritePin(InstancePtr->Gpio, GPIO_SPI_CS_ACCEL, 0x1);
@@ -515,7 +515,7 @@ static int spi_0_slave_slected(struct SSpiDevice *InstancePtr, u8 isSelected) {
 				break;
 
 			default:
-				Print_Err(" Unknown slave, CS %d selected. \r\n", InstancePtr->device);
+				pilot_err(" Unknown slave, CS %d selected. \r\n", InstancePtr->device);
 				Status = XST_FAILURE;
 				break;
 		}
@@ -533,7 +533,7 @@ static int spi_1_slave_slected(struct SSpiDevice *InstancePtr, u8 isSelected) {
 
 	if ((InstancePtr->device >= ESPI_DEVICE_TYPE_INTERNAL_CS_0)
 			&& (InstancePtr->device < ESPI_DEVICE_TYPE_END)) {
-		Print_Info(" Device use SPI 0 internal CS %d selected. \r\n", (InstancePtr->device % 100));
+		pilot_info(" Device use SPI 0 internal CS %d selected. \r\n", (InstancePtr->device % 100));
 
 		XGpioPs_WritePin(InstancePtr->Gpio, GPIO_SPI_CS_GYRO, 0x1);
 		XGpioPs_WritePin(InstancePtr->Gpio, GPIO_SPI_CS_ACCEL, 0x1);
@@ -585,7 +585,7 @@ static int spi_1_slave_slected(struct SSpiDevice *InstancePtr, u8 isSelected) {
 				break;
 
 			default:
-				Print_Err(" Unknown slave, CS %d selected. \r\n", InstancePtr->device);
+				pilot_err(" Unknown slave, CS %d selected. \r\n", InstancePtr->device);
 				Status = XST_FAILURE;
 				break;
 		}
@@ -599,14 +599,14 @@ static int spi_1_slave_slected(struct SSpiDevice *InstancePtr, u8 isSelected) {
 
 void spi_set_frequency(struct SSpiDevice *InstancePtr, u32 frequency) {
 	InstancePtr->frequency = frequency;
-	Print_Info(" %s slave frequency set to %d Hz.\r\n", InstancePtr->devname, InstancePtr->frequency);
+	pilot_info(" %s slave frequency set to %d Hz.\r\n", InstancePtr->devname, InstancePtr->frequency);
 }
 
 int spi_set_clock_prescaler(struct SSpiDevice *InstancePtr) {
 	// SPI reference clock have been set (u32)((1000*1000*1000)/13) 76MHz.
 	int Status = XST_SUCCESS;
 	if (InstancePtr->frequency > SPI_REFERENCE_CLOCK_DIVIDED_BY_4) {
-		Print_Err(" Unsupport frequency %d Hz, %s frequency should less than %d Hz.\r\n", InstancePtr->frequency, InstancePtr->busname, SPI_REFERENCE_CLOCK_DIVIDED_BY_4);
+		pilot_err(" Unsupport frequency %d Hz, %s frequency should less than %d Hz.\r\n", InstancePtr->frequency, InstancePtr->busname, SPI_REFERENCE_CLOCK_DIVIDED_BY_4);
 		Status = XST_FAILURE;
 	} else if (InstancePtr->frequency > SPI_REFERENCE_CLOCK_DIVIDED_BY_8) {
 		Status = XSpiPs_SetClkPrescaler(InstancePtr->Spi, XSPIPS_CLK_PRESCALE_4);
@@ -639,7 +639,7 @@ int spi_disable_slave_via_gpio(XSpiPs *InstancePtr) {
 	} else if (InstancePtr->Config.DeviceId == 1) {
 		Status = spi_1_disable_slave_select_via_gpio();
 	} else {
-		Print_Err(" Unsupport SPI device id %d. \r\n", InstancePtr->Config.DeviceId);
+		pilot_err(" Unsupport SPI device id %d. \r\n", InstancePtr->Config.DeviceId);
 		Status = XST_FAILURE;
 	}
 	return Status;
@@ -698,7 +698,7 @@ int SpiPsInit(u16 Spi_Id, u8 isIntcOn) {
 	} else if (Spi_Id == 1) {
 		SpiInstancePtr = &Spi1Instance;
 	} else {
-		Print_Err(" %d SPI unsupport.\r\n", Spi_Id);
+		pilot_err(" %d SPI unsupport.\r\n", Spi_Id);
 		return XST_FAILURE;
 	}
 
@@ -706,7 +706,7 @@ int SpiPsInit(u16 Spi_Id, u8 isIntcOn) {
 
 	Status = spi_driver_init(SpiInstancePtr, Spi_Id);
 	if (Status != XST_SUCCESS) {
-		Print_Err(" SPI device initialization failed.\r\n");
+		pilot_err(" SPI device initialization failed.\r\n");
 		return XST_FAILURE;
 	}
 
@@ -729,7 +729,7 @@ int SpiPsInit(u16 Spi_Id, u8 isIntcOn) {
 					(Xil_ExceptionHandler)XSpiPs_InterruptHandler,
 					(void *)SpiInstancePtr);
 		if (Status != XST_SUCCESS) {
-			Print_Err(" Interrupt connect failed.\r\n");
+			pilot_err(" Interrupt connect failed.\r\n");
 			return Status;
 		}
 		/*
@@ -761,7 +761,7 @@ int SpiPsInit(u16 Spi_Id, u8 isIntcOn) {
 		gpio_port_output_config(spi_gpio, GPIO_SPI_CS_BARO);
 		gpio_port_output_config(spi_gpio, GPIO_SPI_CS_MAG);
 	} else {
-		Print_Err("Sensor GPIO didn't config %d\r\n", Status);
+		pilot_err("Sensor GPIO didn't config %d\r\n", Status);
 	}
 	spi_disable_slave_via_gpio(SpiInstancePtr);
 
@@ -778,7 +778,7 @@ int SpiTransfer(struct SDeviceViaSpi *instanceptr, u8 *send, u8 *recv, u32 len) 
     xSemaphoreTake(instanceptr->device.spi_mutex, portMAX_DELAY);
 	Status = spi_set_clock_prescaler(&(instanceptr->device));
 	if (Status != XST_SUCCESS) {
-		Print_Err("SPI set clock prescaler Failed %d\r\n", Status);
+		pilot_err("SPI set clock prescaler Failed %d\r\n", Status);
         xSemaphoreGive(instanceptr->device.spi_mutex);
 		return XST_FAILURE;
 	}

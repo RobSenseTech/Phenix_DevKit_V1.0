@@ -1,4 +1,4 @@
-#include "FreeRTOS_Print.h" 
+#include "pilot_print.h" 
 #include "ringbuffer.h"
 
 #include "FreeRTOS.h"
@@ -27,7 +27,7 @@ static void prvRingBufferReadTask( void *pvParameters )
 	{
 		if(xRingBufferGet(&xRingBuf, &j, sizeof(int)) == 0)
 		{
-			Print_Info("read from ringbuffer:%d filled:%d empty:%d\n", j, iRingBufferGetAvailable(&xRingBuf), iRingBufferGetSpace(&xRingBuf));
+			pilot_info("read from ringbuffer:%d filled:%d empty:%d\n", j, iRingBufferGetAvailable(&xRingBuf), iRingBufferGetSpace(&xRingBuf));
 		}
 		vTaskDelay( 2000 / portTICK_RATE_MS );
 	}
@@ -36,11 +36,11 @@ static void prvRingBufferReadTask( void *pvParameters )
 
 int iRingBufferTest()
 {
-	Print_Info("Start ring buffer test\n");
+	pilot_info("Start ring buffer test\n");
 	iRingBufferInit(&xRingBuf, 10, sizeof(int));
 
-	Print_Info("create write task:%d\n", xTaskCreate(prvRingBufferWriteTask, "write-ringbuffer", configMINIMAL_STACK_SIZE, NULL, 1, NULL));
-	Print_Info("create read task:%d\n", xTaskCreate(prvRingBufferReadTask, "read-ringbuffer", configMINIMAL_STACK_SIZE, NULL, 1, NULL));
+	pilot_info("create write task:%d\n", xTaskCreate(prvRingBufferWriteTask, "write-ringbuffer", configMINIMAL_STACK_SIZE, NULL, 1, NULL));
+	pilot_info("create read task:%d\n", xTaskCreate(prvRingBufferReadTask, "read-ringbuffer", configMINIMAL_STACK_SIZE, NULL, 1, NULL));
 //	xTaskCreate(prvRingBufferReadTask, "read-ringbuffer", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
 	return 0;

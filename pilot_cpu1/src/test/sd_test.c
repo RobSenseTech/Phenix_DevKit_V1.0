@@ -9,7 +9,7 @@
 #include "semphr.h"
 
 /*Custom includes*/
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #if 1
 #include "drv_accel.h"
 #include "drv_gyro.h"
@@ -28,11 +28,11 @@ void sd_test()
     memset(a, 'h', sizeof(a));
     fd = open("/fs/microsd/pilot_param", O_CREAT|O_RDWR|O_SYNC, S_IRWXU|S_IRWXG|S_IRWXO); 
     if(fd < 0)
-        Print_Err("open file failed:%d\n", (int)fd);
+        pilot_err("open file failed:%d\n", (int)fd);
     else
     {
         ret = write(fd, a, sizeof(a));
-        Print_Info("write bytes %d\n", ret);
+        pilot_info("write bytes %d\n", ret);
     }
 
     lseek(fd, 0, SEEK_SET);

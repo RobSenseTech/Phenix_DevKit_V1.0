@@ -1,4 +1,4 @@
-#include "FreeRTOS_Print.h" 
+#include "pilot_print.h" 
 #include "ringbuffer.h"
 #include "xuartps.h"
 
@@ -164,7 +164,7 @@ static void prvSpiTask( void *pvParameters )
 
 
 	_gyro_range_scale = new_range_scale_dps_digit / 180.0f * 3.14159265358979323846f;
-    Print_Err("reg4=%x\n", read_reg(ADDR_CTRL_REG4));
+    pilot_err("reg4=%x\n", read_reg(ADDR_CTRL_REG4));
     while(1)
     {
         v = read_reg(ADDR_WHO_AM_I);
@@ -186,8 +186,8 @@ static void prvSpiTask( void *pvParameters )
 	yf= (((float)yf* _gyro_range_scale)) * 1.0f;
 	zf= (((float)zf* _gyro_range_scale)) * 1.0f;
 
-        Print_Info("v=%x x=%f y=%f z=%f\n", v, xf, yf, zf);
-    //    Print_Info("v=%x x=%d y=%d z=%d\n", v, x, y, z);
+        pilot_info("v=%x x=%f y=%f z=%f\n", v, xf, yf, zf);
+    //    pilot_info("v=%x x=%d y=%d z=%d\n", v, x, y, z);
 		vTaskDelay( 500 / portTICK_RATE_MS );
     }
 }
@@ -228,8 +228,8 @@ static void prvSpiTask( void *pvParameters )
         yf= ((y * _gyro_range_scale)) * 1.0f;
         zf= ((z * _gyro_range_scale)) * 1.0f;
 
-        Print_Info("len=%d x=%x y=%x z=%x xf=%f yf=%f zf=%f\n", sizeof(raw_report), x, y, z ,xf, yf, zf);
-    //    Print_Info("v=%x x=%d y=%d z=%d\n", v, x, y, z);
+        pilot_info("len=%d x=%x y=%x z=%x xf=%f yf=%f zf=%f\n", sizeof(raw_report), x, y, z ,xf, yf, zf);
+    //    pilot_info("v=%x x=%d y=%d z=%d\n", v, x, y, z);
         
         xl=read_reg(ADDR_OUT_X_L); 
         xh=read_reg(ADDR_OUT_X_H); 
@@ -245,11 +245,11 @@ static void prvSpiTask( void *pvParameters )
         yf= ((y * _gyro_range_scale)) * 1.0f;
         zf= ((z * _gyro_range_scale)) * 1.0f;
 
-        Print_Err("x=%x y=%x z=%x xf=%f yf=%f zf=%f\n", x, y, z, xf, yf, zf);
+        pilot_err("x=%x y=%x z=%x xf=%f yf=%f zf=%f\n", x, y, z, xf, yf, zf);
 
        // uint8_t a[9] = {0x01,0x23,0x45,0x67,0x89,0xab,0xcd, 0xef, 0x01};
       //  memcpy(&raw_report, a, sizeof(a));
-      //  Print_Warn("len=%d cmd =%x,tmp=%d, status=%x, x=%x y=%x z=%x\n",sizeof(raw_report), raw_report.cmd, raw_report.temp, raw_report.status,raw_report.x,raw_report.y,raw_report.z);
+      //  pilot_warn("len=%d cmd =%x,tmp=%d, status=%x, x=%x y=%x z=%x\n",sizeof(raw_report), raw_report.cmd, raw_report.temp, raw_report.status,raw_report.x,raw_report.y,raw_report.z);
 
 		vTaskDelay( 500 / portTICK_RATE_MS );
     }
@@ -264,5 +264,5 @@ void SpiTest()
 							ESPI_CLOCK_MODE_2,
 							(11*1000*1000));
     reset();
-	Print_Info("create spi task:%d\n", xTaskCreate(prvSpiTask, "spi read", configMINIMAL_STACK_SIZE*2, NULL, 1, NULL));
+	pilot_info("create spi task:%d\n", xTaskCreate(prvSpiTask, "spi read", configMINIMAL_STACK_SIZE*2, NULL, 1, NULL));
 }

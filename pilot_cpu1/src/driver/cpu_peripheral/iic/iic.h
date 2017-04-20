@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "xil_exception.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "xstatus.h"
 #include "xparameters_ps.h"
 #include "xparameters.h"
@@ -30,9 +30,9 @@ typedef struct{
 extern "C" {
 #endif
 /************************** Function Prototypes ******************************/
-int Iic_Init(u8 iIicId, u32 FsclHz);
-iic_priv_s * Iic_GetPriv(u8 iIicId, u8 DevAddr, u32 FsclHz);
-int Iic_transfer(iic_priv_s *iic_priv, const uint8_t *send, unsigned send_len, uint8_t *recv, unsigned recv_len, unsigned regaddrflag);
+int iic_init(u8 iIicId, u32 FsclHz);
+iic_priv_s *iic_get_priv(u8 iIicId, u8 DevAddr, u32 FsclHz);
+int iic_transfer(iic_priv_s *iic_priv, const uint8_t *send, unsigned send_len, uint8_t *recv, unsigned recv_len, unsigned regaddrflag);
 void Iic_set_address(iic_priv_s *iic_priv, u8 reg_addr);
 
 #ifdef __cplusplus

@@ -165,12 +165,12 @@ void NavEKF2_core::checkAttitudeAlignmentStatus()
     // Check for tilt convergence - used during initial alignment
     float alpha = 1.0f*imuDataDelayed.delAngDT;
     float temp=tiltErrVec.length();
-//    Print_Info("tiltErrFilt=%f alpha=%f tmp=%f\n", tiltErrFilt, alpha, temp);
+//    pilot_info("tiltErrFilt=%f alpha=%f tmp=%f\n", tiltErrFilt, alpha, temp);
     tiltErrFilt = alpha*temp + (1.0f-alpha)*tiltErrFilt;
     if (tiltErrFilt < 0.005f && !tiltAlignComplete) {
         tiltAlignComplete = true;
         hal.console->printf("EKF2 IMU%u tilt alignment complete\n",(unsigned)imu_index);
-        Print_Info("EKF2 IMU%u tilt alignment complete\n",(unsigned)imu_index);
+        pilot_info("EKF2 IMU%u tilt alignment complete\n",(unsigned)imu_index);
     }
 
     // Once tilt has converged, align yaw using magnetic field measurements
@@ -181,7 +181,7 @@ void NavEKF2_core::checkAttitudeAlignmentStatus()
         StoreQuatReset();
         yawAlignComplete = true;
         hal.console->printf("EKF2 IMU%u yaw alignment complete\n",(unsigned)imu_index);
-        Print_Info("EKF2 IMU%u yaw alignment complete\n",(unsigned)imu_index);
+        pilot_info("EKF2 IMU%u yaw alignment complete\n",(unsigned)imu_index);
     }
 }
 

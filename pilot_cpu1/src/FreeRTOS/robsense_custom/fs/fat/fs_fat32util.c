@@ -651,22 +651,22 @@ int fat_mount(struct fat_mountpt_s *fs, bool writeable)
 
   /* We did it! */
 
-  Print_Info("FAT%d:\n", fs->fs_type == 0 ? 12 : fs->fs_type == 1  ? 16 : 32);
-  Print_Info("\tHW  sector size:     %d\n", fs->fs_hwsectorsize);
-  Print_Info("\t    sectors:         %d\n", fs->fs_hwnsectors);
-  Print_Info("\tFAT reserved:        %d\n", fs->fs_fatresvdseccount);
-  Print_Info("\t    sectors:         %d\n", fs->fs_fattotsec);
-  Print_Info("\t    start sector:    %d\n", fs->fs_fatbase);
-  Print_Info("\t    root sector:     %d\n", fs->fs_rootbase);
-  Print_Info("\t    root entries:    %d\n", fs->fs_rootentcnt);
-  Print_Info("\t    data sector:     %d\n", fs->fs_database);
-  Print_Info("\t    FSINFO sector:   %d\n", fs->fs_fsinfo);
-  Print_Info("\t    Num FATs:        %d\n", fs->fs_fatnumfats);
-  Print_Info("\t    FAT sectors:     %d\n", fs->fs_nfatsects);
-  Print_Info("\t    sectors/cluster: %d\n", fs->fs_fatsecperclus);
-  Print_Info("\t    max clusters:    %d\n", fs->fs_nclusters);
-  Print_Info("\tFSI free count       %d\n", fs->fs_fsifreecount);
-  Print_Info("\t    next free        %d\n", fs->fs_fsinextfree);
+  pilot_info("FAT%d:\n", fs->fs_type == 0 ? 12 : fs->fs_type == 1  ? 16 : 32);
+  pilot_info("\tHW  sector size:     %d\n", fs->fs_hwsectorsize);
+  pilot_info("\t    sectors:         %d\n", fs->fs_hwnsectors);
+  pilot_info("\tFAT reserved:        %d\n", fs->fs_fatresvdseccount);
+  pilot_info("\t    sectors:         %d\n", fs->fs_fattotsec);
+  pilot_info("\t    start sector:    %d\n", fs->fs_fatbase);
+  pilot_info("\t    root sector:     %d\n", fs->fs_rootbase);
+  pilot_info("\t    root entries:    %d\n", fs->fs_rootentcnt);
+  pilot_info("\t    data sector:     %d\n", fs->fs_database);
+  pilot_info("\t    FSINFO sector:   %d\n", fs->fs_fsinfo);
+  pilot_info("\t    Num FATs:        %d\n", fs->fs_fatnumfats);
+  pilot_info("\t    FAT sectors:     %d\n", fs->fs_nfatsects);
+  pilot_info("\t    sectors/cluster: %d\n", fs->fs_fatsecperclus);
+  pilot_info("\t    max clusters:    %d\n", fs->fs_nclusters);
+  pilot_info("\tFSI free count       %d\n", fs->fs_fsifreecount);
+  pilot_info("\t    next free        %d\n", fs->fs_fsinextfree);
 
   return OK;
 

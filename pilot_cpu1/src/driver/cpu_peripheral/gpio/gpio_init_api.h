@@ -40,7 +40,7 @@ extern "C" {
  
  void gpio_port_input_config(XGpioPs *InstancePtr, u32 port_id);
  
- int GpioPsInit();
+ int gpiops_init();
 
 
 #ifdef __cplusplus

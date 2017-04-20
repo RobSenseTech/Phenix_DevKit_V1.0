@@ -37,7 +37,7 @@ static void top_task(void *pvParameters)
 int top_main()
 {
 
-    Print_Info("create top test task:%d\n", xTaskCreate(top_task, "top test", 4000, NULL, 1, NULL));
+    pilot_info("create top test task:%d\n", xTaskCreate(top_task, "top test", 4000, NULL, 1, NULL));
     return 0;
 }
 

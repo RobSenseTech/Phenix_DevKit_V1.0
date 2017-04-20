@@ -9,7 +9,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include "FreeRTOS.h"
 #include <stdlib.h>
-#include <FreeRTOS_Print.h>
+#include <pilot_print.h>
 
 /*
   globally override new and delete to ensure that we always start with

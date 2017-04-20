@@ -94,7 +94,7 @@ static bool sbus_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_
 {
 	/* check frame boundary markers to avoid out-of-sync cases */
 	if ((frame[0] != 0x0f)) {
-//        Print_Err("frame[0]=%x\n", frame[0]);
+//        pilot_err("frame[0]=%x\n", frame[0]);
 		sbus_frame_drops++;
 		return false;
 	}

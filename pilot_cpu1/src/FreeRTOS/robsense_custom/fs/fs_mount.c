@@ -216,7 +216,7 @@ int mount(FAR const char *source, FAR const char *target,
       ret = find_blockdriver(source, mountflags, &blkdrvr_inode);
       if (ret < 0)
       {
-        Print_Err("Failed to find block driver %s\n", source);
+        pilot_err("Failed to find block driver %s\n", source);
         errcode = -ret;
         goto errout;
       }

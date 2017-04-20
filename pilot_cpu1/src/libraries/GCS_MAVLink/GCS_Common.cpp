@@ -1248,7 +1248,7 @@ void GCS_MAVLINK::send_parameter_value_all(const char *param_name, ap_var_type p
 void GCS_MAVLINK::send_battery2(const AP_BattMonitor &battery)
 {
     if (battery.num_instances() > 1) {
-//        Print_Info("voltage=%d\n", battery.voltage2()*1000);
+//        pilot_info("voltage=%d\n", battery.voltage2()*1000);
         mavlink_msg_battery2_send(chan, battery.voltage2()*1000, -1);
     }
 }

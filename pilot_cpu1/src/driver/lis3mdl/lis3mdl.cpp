@@ -40,7 +40,7 @@
 #include "device/cdev.h"
 #include "ringbuffer.h"
 #include "drv_mag.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include <uORB/uORB.h>
 #include "conversion/rotation.h"
 #include "math.h"
@@ -529,10 +529,10 @@ LIS3MDL::probe()
 	ret = read_reg(ADDR_ID,v);
 	if (v == ID_WHO_AM_I) {
 		success = true;
-		Print_Info("LIS3MDL_I2C::probe: ID byte match (%02x)\r\n", v);
+		pilot_info("LIS3MDL_I2C::probe: ID byte match (%02x)\r\n", v);
 		return OK;
 	}
-	Print_Info("LIS3MDL_I2C:: ID byte mismatch (%02x)\r\n", v);
+	pilot_info("LIS3MDL_I2C:: ID byte mismatch (%02x)\r\n", v);
 	return -EIO;
 }
 
@@ -1159,7 +1159,7 @@ LIS3MDL::collect()
 	new_report.z = ((zraw_f * _range_scale) - _scale.z_offset) * _scale.z_scale;
 
 	
-	//Print_Info("report.x  = %f, report.y = %f, report.z = %f\r\n",new_report.x, new_report.y, new_report.z) ;
+	//pilot_info("report.x  = %f, report.y = %f, report.z = %f\r\n",new_report.x, new_report.y, new_report.z) ;
 	
 	if (!(_pub_blocked)) {
 
@@ -1426,7 +1426,7 @@ start(bool external_bus, enum Rotation rotation)
 	return ;
 	
 fail:
-	Print_Info("start :go fail \r\n");
+	pilot_info("start :go fail \r\n");
 	if (g_dev[external_bus] != NULL) {
 		delete g_dev[external_bus];
 		g_dev[external_bus] = NULL;
@@ -1451,7 +1451,7 @@ test(bool external_bus)
 	int ret;
 	int fd;
 	unsigned i = 0;	
-		Print_Info("LIS3MDL test ------------1\r\n");	
+		pilot_info("LIS3MDL test ------------1\r\n");	
 //		vTaskStartScheduler();
 	/* get the driver */
 	if(external_bus)
@@ -1472,16 +1472,16 @@ test(bool external_bus)
 			return ;
 		}
 	}	
-		Print_Info("LIS3MDL test ------------read\r\n");	
+		pilot_info("LIS3MDL test ------------read\r\n");	
 	/* do a simple demand read */
 	sz = read(fd, (char*)&report, sizeof(report));
-		Print_Info("LIS3MDL test ------------2\r\n");	
+		pilot_info("LIS3MDL test ------------2\r\n");	
 	if (sz != sizeof(report)) {
 		err(1, "immediate read failed");
 			return ;
 	}
 
-	Print_Info("LIS3MDL test ------------3\r\n");	
+	pilot_info("LIS3MDL test ------------3\r\n");	
 	
 	warnx("single read\r\n");
 	warnx("measurement: %.6f  %.6f  %.6f\r\n", (double)report.x, (double)report.y, (double)report.z);
@@ -1493,7 +1493,7 @@ test(bool external_bus)
 			return ;
 	}
 
-	Print_Info("ret = %x/r/n",ret);	
+	pilot_info("ret = %x/r/n",ret);	
 	
 	warnx("device active: %s", ret ? "external" : "onboard\r\n");
 
@@ -1502,7 +1502,7 @@ test(bool external_bus)
 		errx(1, "failed to set queue depth");
 			return ;
 	}
-	Print_Info("LIS3MDL test ------------6\r\n");	
+	pilot_info("LIS3MDL test ------------6\r\n");	
 	/* start the sensor polling at 2Hz */
 	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2)) {
 		errx(1, "failed to set 2Hz poll rate");
@@ -1510,24 +1510,24 @@ test(bool external_bus)
 	}
 
 	
-	Print_Info("LIS3MDL test ------------7\r\n");	
+	pilot_info("LIS3MDL test ------------7\r\n");	
 
 	/* read the sensor 5x and report each value */
 	for(i = 0; i < 5; i++) {
 		/* wait for data to be ready */
 		fds.fd = fd;
 		fds.events = POLLIN;
-		Print_Info("LIS3MDL test ------------9\r\n");	
+		pilot_info("LIS3MDL test ------------9\r\n");	
 		ret = poll(&fds, 1, 2000);
-		Print_Info("LIS3MDL test ------------10\r\n");	
+		pilot_info("LIS3MDL test ------------10\r\n");	
 		if (ret != 1) {
 			errx(1, "timed out waiting for sensor data");
 			return ;
 		}
-	Print_Info("LIS3MDL test ------------11\r\n");	
+	pilot_info("LIS3MDL test ------------11\r\n");	
 		/* now go get it */
 		sz = read(fd, (char*)&report, sizeof(report));
-	Print_Info("LIS3MDL test ------------12\r\n");	
+	pilot_info("LIS3MDL test ------------12\r\n");	
 		if (sz != sizeof(report)) {
 			err(1, "periodic read failed");
 			return ;

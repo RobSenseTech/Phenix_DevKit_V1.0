@@ -10,6 +10,7 @@
 /***************************** Include Files *********************************/
 #include "gpio_init_api.h"
 #include "xstatus.h"
+#include "pilot_print.h"
 
 
 /************************** Constant Definitions *****************************/
@@ -51,7 +52,7 @@ s32 gpio_clock_active_enable() {
 
 	Return = Xil_In32(XSLCR_APER_CLK_CTRL_ADDR);
 	if (Register != Return) {
-		xil_printf("gpio_clock_active_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+		pilot_err("gpio_clock_active_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 		Status = XST_FAILURE;
 	}
 
@@ -75,13 +76,13 @@ void gpio_port_input_config(XGpioPs *InstancePtr, u32 port_id) {
 	XGpioPs_SetDirectionPin(InstancePtr, port_id, 0x0);
 }
 
-int GpioPsInit() {
+int gpiops_init() {
 	int Status;
 	XGpioPs_Config *ConfigPtr;
 
 	Status = gpio_clock_active_enable();
 	if (Status != XST_SUCCESS) {
-		xil_printf("GPIO Interrupt clock enable failed \r\n");
+		pilot_err("GPIO Interrupt clock enable failed \r\n");
 		return XST_FAILURE;
 	}
 
@@ -92,7 +93,7 @@ int GpioPsInit() {
 	Status = XGpioPs_CfgInitialize(&GpioInstance, ConfigPtr,
 					ConfigPtr->BaseAddr);
 	if (Status != XST_SUCCESS) {
-		xil_printf("XGpioPs_CfgInitialize failed %d\r\n", Status);
+		pilot_err("XGpioPs_CfgInitialize failed %d\r\n", Status);
 		return XST_FAILURE;
 	}
 

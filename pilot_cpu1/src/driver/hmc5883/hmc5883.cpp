@@ -40,7 +40,7 @@
 #include "device/cdev.h"
 #include "ringbuffer.h"
 #include "drv_mag.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include <uORB/uORB.h>
 #include "conversion/rotation.h"
 #include "math.h"
@@ -178,7 +178,7 @@ private:
 	//perf_counter_t		_buffer_overflows;
 	//perf_counter_t		_range_errors;
 	//perf_counter_t		_conf_errors;
-	iic_priv_s    *hmc5883;
+	iic_priv_s    *hmc5883_iic;
 	/* status reporting */
 	bool			_sensor_ok;		/**< sensor was found and reports ok */
 	bool			_calibrated;		/**< the calibration is valid */
@@ -430,7 +430,7 @@ HMC5883::init()
 {
 	int ret = DEV_FAILURE;
 
-	hmc5883 = Iic_GetPriv(_bus, _address, _frequency);
+	hmc5883_iic = iic_get_priv(_bus, _address, _frequency);
 
 	ret = CDev::init();
 
@@ -596,14 +596,14 @@ HMC5883::hmc5883_iic_write(uint8_t address, uint8_t *data, unsigned count)
 	buf[0] = address;
 	memcpy(&buf[1], data, count);
 
-	return Iic_transfer(hmc5883, &buf[0], count + 1, NULL, 0,0);
+	return iic_transfer(hmc5883_iic, &buf[0], count + 1, NULL, 0,0);
 }
 
 
 int
 HMC5883::hmc5883_iic_read(uint8_t address, uint8_t *data, unsigned count)
 {
-	return Iic_transfer(hmc5883, &address, 1, data, count,0);
+	return iic_transfer(hmc5883_iic, &address, 1, data, count,0);
 }
 
 
@@ -849,20 +849,20 @@ HMC5883::probe()
 
 	
 	data[0] = 0x0a;
-	Iic_transfer(hmc5883, &data[0], 1, &data[0], 1, 0);
-	Print_Info("WHO AM I 0 = %c\r\n",data[0]);	
+	iic_transfer(hmc5883_iic, &data[0], 1, &data[0], 1, 0);
+	pilot_info("WHO AM I 0 = %c\r\n",data[0]);	
 
 	data[1] = 0x0b;
-	Iic_transfer(hmc5883, &data[1], 1, &data[1], 1, 0);
-	Print_Info("WHO AM I 1 = %c\r\n",data[1]);		
+	iic_transfer(hmc5883_iic, &data[1], 1, &data[1], 1, 0);
+	pilot_info("WHO AM I 1 = %c\r\n",data[1]);		
 
 	data[2] = 0x0c;
-	Iic_transfer(hmc5883, &data[2], 1, &data[2], 1, 0);
-	Print_Info("WHO AM I 2 = %c\r\n",data[2]);	
+	iic_transfer(hmc5883_iic, &data[2], 1, &data[2], 1, 0);
+	pilot_info("WHO AM I 2 = %c\r\n",data[2]);	
 	
 
-	Print_Info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
-	Print_Info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
+	pilot_info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
+	pilot_info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
 	
 	
 	
@@ -873,8 +873,8 @@ HMC5883::probe()
 	usleep(100);
 	hmc5883_iic_read(ADDR_ID_C, &data[2], 1);	
 
-	Print_Info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
-	Print_Info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);	
+	pilot_info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
+	pilot_info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);	
 	
 	
 	
@@ -882,7 +882,7 @@ HMC5883::probe()
 	hmc5883_iic_read(ADDR_ID_A, &data[0], 3);
 		
 		
-	//Print_Info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
+	//pilot_info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
 //	data[0] = 0x0a;
 //	read_reg(ADDR_ID_A, data[0]);
 ////	usleep(10);
@@ -890,8 +890,8 @@ HMC5883::probe()
 ////	usleep(10);
 //	read_reg(ADDR_ID_C, data[2]);	
 
-	Print_Info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
-	Print_Info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
+	pilot_info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
+	pilot_info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
 	
 	
 	//if (hmc5883_iic_read(ADDR_ID_A, &data[0], 1) ||
@@ -928,7 +928,7 @@ HMC5883::cycle_trampoline(xTimerHandle xTimer)
 {
     void *timer_id = pvTimerGetTimerID(xTimer);
 	HMC5883 *dev = (HMC5883 *)timer_id;
-//	Print_Info("hmc5883-cycle_trampoline\r\n");		
+//	pilot_info("hmc5883-cycle_trampoline\r\n");		
 	dev->cycle();
 }
 
@@ -1132,7 +1132,7 @@ HMC5883::collect()
 	/* z remains z */
 	new_report.z = ((zraw_f * _range_scale) - _scale.z_offset) * _scale.z_scale;
 	
-	Print_Info("report.x  = %f, report.y = %f, report.z = %f\r\n",new_report.x, new_report.y, new_report.z) ;
+	pilot_info("report.x  = %f, report.y = %f, report.z = %f\r\n",new_report.x, new_report.y, new_report.z) ;
 	if (!(_pub_blocked)) {
 
 		if (_mag_topic != NULL) {
@@ -1602,13 +1602,10 @@ start(bool external_bus, enum Rotation rotation)
 		} else {
 			g_dev[external_bus] = new HMC5883(PX4_I2C_BUS_ONBOARD, hmc5883_addr, 400000, HMC5883_DEVICE_PATH, rotation);
 		}
-		Print_Info("hmc5883-----start -----------1\r\n");
 		if (g_dev[external_bus] == NULL)
 			goto fail;
-		Print_Info("hmc5883-----start -----------2\r\n");		
 		if (OK != g_dev[external_bus]->init())
 			goto fail;
-		Print_Info("hmc5883-----start -----------3\r\n");		
 		
 		if (OK != g_dev[external_bus]->probe())
 			goto fail;
@@ -1625,7 +1622,7 @@ start(bool external_bus, enum Rotation rotation)
 		if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0)
 			goto fail;
 			
-		Print_Info("HMC5883 start   ------------end   \r\n");
+		pilot_info("HMC5883 start   ------------end   \r\n");
 		
 		close(fd);
 		return ;
@@ -1921,7 +1918,7 @@ hmc5883_main(int argc, char *argv[])
 			// compensation as non-fatal
 			hmc5883::temp_enable(external_bus, true);
 		}
-		Print_Info("HMC5883 start ------------out\r\n");
+		pilot_info("HMC5883 start ------------out\r\n");
 		return 0;
 	}
 

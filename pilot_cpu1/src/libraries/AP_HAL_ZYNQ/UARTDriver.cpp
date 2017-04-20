@@ -105,7 +105,7 @@ void PX4UARTDriver::begin(uint32_t baudrate, uint16_t rxS, uint16_t txS)
 	if (_fd == -1) {
         _fd = open(_devpath, O_RDWR);
 		if (_fd == -1) {
-            Print_Err("open:%s err\n", _devpath);
+            pilot_err("open:%s err\n", _devpath);
 			return;
 		}
 	}
@@ -118,7 +118,7 @@ void PX4UARTDriver::begin(uint32_t baudrate, uint16_t rxS, uint16_t txS)
 		ret = ioctl(_fd, UART_IOC_SET_DATA_FORMAT, (unsigned long)&data_format);
         if(ret != 0)
         {
-            Print_Err("set %s baudrate failed!!\n", _devpath);
+            pilot_err("set %s baudrate failed!!\n", _devpath);
         }
     }
 
@@ -261,7 +261,7 @@ int16_t PX4UARTDriver::read()
 { 
 	uint8_t c;
     if (_uart_owner_task != xTaskGetCurrentTaskHandle()){
-        Print_Err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
+        pilot_err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
         return -1;
     }
     if (!_initialised) {
@@ -285,7 +285,7 @@ int16_t PX4UARTDriver::read()
 size_t PX4UARTDriver::write(uint8_t c) 
 { 
     if (_uart_owner_task != xTaskGetCurrentTaskHandle()){
-        Print_Err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
+        pilot_err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
         return 0;
     }
     if (!_initialised) {
@@ -295,7 +295,7 @@ size_t PX4UARTDriver::write(uint8_t c)
     uint16_t _head;
 
     while (BUF_SPACE(_writebuf) == 0) {
-        Print_Warn("buffer full wait _nonblocking_writes=%d\n", _nonblocking_writes);
+        pilot_warn("buffer full wait _nonblocking_writes=%d\n", _nonblocking_writes);
         if (_nonblocking_writes) {
             return 0;
         }
@@ -313,7 +313,7 @@ size_t PX4UARTDriver::write(const uint8_t *buffer, size_t size)
 {
     //main loop中调用
     if (_uart_owner_task != xTaskGetCurrentTaskHandle()){
-        Print_Err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
+        pilot_err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
         return 0;
     }
 	if (!_initialised) {

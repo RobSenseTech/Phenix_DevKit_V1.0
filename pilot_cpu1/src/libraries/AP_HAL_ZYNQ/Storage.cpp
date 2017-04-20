@@ -71,7 +71,7 @@ void PX4Storage::_mtd_write_signature(void)
     uint32_t v = MTD_SIGNATURE;
     ret = lseek(mtd_fd, MTD_SIGNATURE_OFFSET, SEEK_SET);
     if (ret != MTD_SIGNATURE_OFFSET) {
-        Print_Err("Failed to seek in %s ret=%d\n", MTD_PARAMS_FILE, ret);
+        pilot_err("Failed to seek in %s ret=%d\n", MTD_PARAMS_FILE, ret);
     }
     bus_lock(true);
     if (write(mtd_fd, (char *)&v, sizeof(v)) != sizeof(v)) {
@@ -90,7 +90,7 @@ void PX4Storage::_upgrade_to_mtd(void)
     // copy from OLD_STORAGE_FILE
     int old_fd = open(OLD_STORAGE_FILE, O_RDONLY);
     if (old_fd == -1) {
-        Print_Err("Failed to open %s\n", OLD_STORAGE_FILE);
+        pilot_err("Failed to open %s\n", OLD_STORAGE_FILE);
         return;
     }
 
@@ -102,7 +102,7 @@ void PX4Storage::_upgrade_to_mtd(void)
     if (read(old_fd, (char *)_buffer, sizeof(_buffer)) != sizeof(_buffer)) {
         close(old_fd);
         close(mtd_fd);
-        Print_Err("Failed to read %s\n", OLD_STORAGE_FILE);
+        pilot_err("Failed to read %s\n", OLD_STORAGE_FILE);
         return;        
     }
     close(old_fd);
@@ -117,7 +117,7 @@ void PX4Storage::_upgrade_to_mtd(void)
 #if STORAGE_RENAME_OLD_FILE
     rename(OLD_STORAGE_FILE, OLD_STORAGE_FILE_BAK);
 #endif
-    Print_Info("Upgraded MTD from %s\n", OLD_STORAGE_FILE);
+    pilot_info("Upgraded MTD from %s\n", OLD_STORAGE_FILE);
 }
             
 
@@ -139,7 +139,7 @@ void PX4Storage::_storage_open(void)
                 write(fd, v, sizeof(v));
             }
             close(fd);
-            Print_Info("Failed to find %s, create it\n", MTD_PARAMS_FILE);
+            pilot_info("Failed to find %s, create it\n", MTD_PARAMS_FILE);
         }
 
         /*
@@ -174,7 +174,7 @@ void PX4Storage::_storage_open(void)
             ssize_t ret = read(fd, (char *)&_buffer[ofs], chunk_size);
             bus_lock(false);
             if (ret != chunk_size) {
-                Print_Err("storage read of %u bytes at %u to %p failed - got %d ret=%d\n",
+                pilot_err("storage read of %u bytes at %u to %p failed - got %d ret=%d\n",
                          (unsigned)sizeof(_buffer), (unsigned)ofs, &_buffer[ofs], (int)ret, (int)ret);
                 AP_HAL::panic("Failed to read " MTD_PARAMS_FILE);
             }

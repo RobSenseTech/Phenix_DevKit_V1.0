@@ -303,7 +303,7 @@ uORB::DeviceNode::publish
 
 	/* this is a bit risky, since we are trusting the handle in order to deref it */
 	if (DeviceNode->_meta != meta) {
-        Print_Err("Invalid Param:DeviceNode=%x [%x, %x]\n", (int)DeviceNode, (int)DeviceNode->_meta, (int)meta);
+        pilot_err("Invalid Param:DeviceNode=%x [%x, %x]\n", (int)DeviceNode, (int)DeviceNode->_meta, (int)meta);
 		errno = EINVAL;
 		return ERROR;
 	}
@@ -312,12 +312,12 @@ uORB::DeviceNode::publish
 	ret = DeviceNode->write(NULL, (const char *)data, meta->o_size);
 
 	if (ret < 0) {
-        Print_Err("DeviceNode write error\n");
+        pilot_err("DeviceNode write error\n");
 		return ERROR;
 	}
 
 	if (ret != (int)meta->o_size) {
-        Print_Err("write size error:%d o_size=%d\n", ret, (int)meta->o_size);
+        pilot_err("write size error:%d o_size=%d\n", ret, (int)meta->o_size);
 		errno = EIO;
 		return ERROR;
 	}
@@ -329,7 +329,7 @@ uORB::DeviceNode::publish
 
 	if (ch != NULL) {
 		if (ch->send_message(meta->o_name, meta->o_size, (uint8_t *)data) != 0) {
-			Print_Warn("[uORB::DeviceNode::publish(%d)]: Error Sending [%s] topic data over comm_channel",
+			pilot_warn("[uORB::DeviceNode::publish(%d)]: Error Sending [%s] topic data over comm_channel",
 			      __LINE__, meta->o_name);
 			return ERROR;
 		}
@@ -529,7 +529,7 @@ int16_t uORB::DeviceNode::process_received_message(int32_t length, uint8_t *data
 	int16_t ret = -1;
 
 	if (length != (int32_t)(_meta->o_size)) {
-		Print_Warn("[uORB::DeviceNode::process_received_message(%d)]Error:[%s] Received DataLength[%d] != ExpectedLen[%d]",
+		pilot_warn("[uORB::DeviceNode::process_received_message(%d)]Error:[%s] Received DataLength[%d] != ExpectedLen[%d]",
 		      __LINE__, _meta->o_name, (int)length, (int)_meta->o_size);
 		return ERROR;
 	}
@@ -623,13 +623,13 @@ uORB::DeviceMaster::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 				/* if we didn't get a device, that's bad */
 				if (node == NULL) {
-                    Print_Err("create DeviceNode failed\n");
+                    pilot_err("create DeviceNode failed\n");
 					unlock();
 					return -ENOMEM;
 				}
                 else
                 {
-                    //Print_Warn("Create DeviceNode ok:%s\n", devpath);
+                    //pilot_warn("Create DeviceNode ok:%s\n", devpath);
                 }
 
 				/* initialise the node - this may fail if e.g. a node with this name already exists */

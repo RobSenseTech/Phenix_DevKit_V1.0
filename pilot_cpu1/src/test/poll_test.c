@@ -1,7 +1,7 @@
 #include "driver.h"
 #include "drv_accel.h"
 #include "FreeRTOSConfig.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "task.h"
 #include <poll.h>
 
@@ -19,11 +19,11 @@ static void prvPollTask( void *pvParameters )
 
         iRet = poll(_poll_fds, sizeof(_poll_fds)/sizeof(struct pollfd), 1000);
         if(iRet < 0)
-            Print_Err("poll error:%d\n", iRet);
+            pilot_err("poll error:%d\n", iRet);
         else if(iRet == 0)
-            Print_Warn("poll timout\n");
+            pilot_warn("poll timout\n");
         else
-            Print_Info("poll success\n");
+            pilot_info("poll success\n");
     }
 }
 
@@ -33,5 +33,5 @@ void PollTest()
 
     pvFd = open(ACCEL0_DEVICE_PATH, 0);
 
-	Print_Info("create poll task:%d\n", xTaskCreate(prvPollTask, "poll task", configMINIMAL_STACK_SIZE, pvFd, 1, NULL));
+	pilot_info("create poll task:%d\n", xTaskCreate(prvPollTask, "poll task", configMINIMAL_STACK_SIZE, pvFd, 1, NULL));
 }

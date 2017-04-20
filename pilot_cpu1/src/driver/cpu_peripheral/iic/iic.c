@@ -15,16 +15,16 @@
 #define IIC_ID_1       1
 
 /************************* Variable Definitions *****************************/
-XIicPs Iic0Instance;
-XIicPs Iic1Instance;
-SemaphoreHandle_t IicSem[2];
+XIicPs xil_iic0;
+XIicPs xil_iic1;
+SemaphoreHandle_t iic_sem[2];
 //iic_priv_s iic_priv;
 
 /***************** Macros (Inline Functions) Definitions *********************/
 static void  set_bit(volatile unsigned long *addr , u32 bits);
 static void  reset_bit(volatile unsigned long *addr , u32 bits);
-static int IicPsClkEnable(u16 iIicId);
-static int Iic_Reset_Software(u16 iIicId);
+static int iicps_clk_enable(u16 iic_id);
+static int iicps_soft_reset(u16 iic_id);
 
 /*****************************************************************************/
 /**
@@ -55,13 +55,13 @@ static void  reset_bit(volatile unsigned long *addr , u32 bits)
 }
 
 
-static int IicPsClkEnable(u16 iIicId)
+static int iicps_clk_enable(u16 iic_id)
 {
-	if(iIicId == 0)
+	if(iic_id == 0)
 	{
 		set_bit(APER_CLK_CTRL , IIC0_CPU_1XCLKACT);
 	}
-	else if(iIicId == 1)
+	else if(iic_id == 1)
 	{		
 		set_bit(APER_CLK_CTRL , IIC1_CPU_1XCLKACT);
 	}
@@ -69,57 +69,57 @@ static int IicPsClkEnable(u16 iIicId)
 	return XST_SUCCESS;
 }	
 
-static int Iic_Reset_Software(u16 iIicId)
+static int iicps_soft_reset(u16 iic_id)
 {
-	if(iIicId == 0)
+	if(iic_id == 0)
 	{
 		set_bit(IIC_RST_CTRL,IIC0_CPU1x_RST);	
 	}
-	else if(iIicId == 1)
+	else if(iic_id == 1)
 	{	
 		set_bit(IIC_RST_CTRL,IIC1_CPU1x_RST);
 	}
 
 
-	if(iIicId == 0)
+	if(iic_id == 0)
 	{
 		reset_bit(IIC_RST_CTRL,IIC0_CPU1x_RST);	
 	}
-	else if(iIicId == 1)
+	else if(iic_id == 1)
 	{	
 		reset_bit(IIC_RST_CTRL,IIC1_CPU1x_RST);
 	}
 	return XST_SUCCESS;
 }
 
-iic_priv_s * Iic_GetPriv(u8 iIicId, u8 DevAddr, u32 FsclHz)
+iic_priv_s * iic_get_priv(u8 iic_id, u8 DevAddr, u32 FsclHz)
 {
-	XIicPs *IicInstancePtr = NULL;
+	XIicPs *inst_ptr = NULL;
     iic_priv_s *iic_priv = NULL;
 
     iic_priv = (iic_priv_s *)pvPortMalloc(sizeof(iic_priv_s));
     if(iic_priv == NULL)
     {
-        Print_Err("malloc failed!!\n");
+        pilot_err("malloc failed!!\n");
         return NULL;
     }
 
-	if(iIicId == IIC_ID_0) 
+	if(iic_id == IIC_ID_0) 
     {
-		IicInstancePtr = &Iic0Instance;
+		inst_ptr = &xil_iic0;
     }
-	else if(iIicId == IIC_ID_1)
+	else if(iic_id == IIC_ID_1)
     {
-		IicInstancePtr = &Iic1Instance;		
+		inst_ptr = &xil_iic1;		
     }
     else
     {
-        Print_Err("No such iic id:%d, init failed\n", iIicId);
+        pilot_err("No such iic id:%d, init failed\n", iic_id);
         return NULL;
     }
 	
-    iic_priv->iic_mutex = IicSem[iIicId];
-	iic_priv -> iicbus    = IicInstancePtr;
+    iic_priv->iic_mutex = iic_sem[iic_id];
+	iic_priv -> iicbus    = inst_ptr;
 	iic_priv -> devaddr   = DevAddr;
 	iic_priv -> frequency = FsclHz;
 	iic_priv -> regaddr = 0;	
@@ -138,61 +138,61 @@ iic_priv_s * Iic_GetPriv(u8 iIicId, u8 DevAddr, u32 FsclHz)
 * @note     None.
 *
 ******************************************************************************/
-int Iic_Init(u8 iIicId, u32 FsclHz)
+int iic_init(u8 iic_id, u32 FsclHz)
 {
-	int Status;
-	XIicPs_Config *IicConfig = NULL;
-	XIicPs *IicInstancePtr = NULL;
+	int status;
+	XIicPs_Config *xil_config = NULL;
+	XIicPs *inst_ptr = NULL;
 	
-	if(iIicId == IIC_ID_0) 
-		IicInstancePtr = &Iic0Instance;
-	else if(iIicId == IIC_ID_1)
-		IicInstancePtr = &Iic1Instance;		
+	if(iic_id == IIC_ID_0) 
+		inst_ptr = &xil_iic0;
+	else if(iic_id == IIC_ID_1)
+		inst_ptr = &xil_iic1;		
     else
     {
-        Print_Err("No such iic id:%d, init failed\n", iIicId);
+        pilot_err("No such iic id:%d, init failed\n", iic_id);
         return -1;
     }
 
-    IicSem[iIicId] = xSemaphoreCreateMutex();
+    iic_sem[iic_id] = xSemaphoreCreateMutex();
 	/*
 	* Initialize the IIC driver so that it's ready to use
 	*/
-	IicConfig = XIicPs_LookupConfig(iIicId);
-	if (NULL == IicConfig) {
-		Print_Err(" IIC lookup configuration failed.\n");
+	xil_config = XIicPs_LookupConfig(iic_id);
+	if (NULL == xil_config) {
+		pilot_err(" IIC lookup configuration failed.\n");
 		return XST_FAILURE;
 	}
 		
-	Status = XIicPs_CfgInitialize(IicInstancePtr, IicConfig,
-								  IicConfig->BaseAddress);
-	if (Status != XST_SUCCESS) {
-		Print_Err(" IIC configuration initialization failed.\n");
+	status = XIicPs_CfgInitialize(inst_ptr, xil_config,
+								  xil_config->BaseAddress);
+	if (status != XST_SUCCESS) {
+		pilot_err(" IIC configuration initialization failed.\n");
 		return XST_FAILURE;
 	}
 		
-	Iic_Reset_Software(iIicId);
-	IicPsClkEnable(iIicId);	
+	iicps_soft_reset(iic_id);
+	iicps_clk_enable(iic_id);	
 	
 	/*
 	* Perform a self-test to check hardware build
 	*/
-	Status = XIicPs_SelfTest(IicInstancePtr);
-	if (Status != XST_SUCCESS) {
-//		xil_printf(" IIC[%d] self test failed.\r\n",IicConfig->DeviceId);
+	status = XIicPs_SelfTest(inst_ptr);
+	if (status != XST_SUCCESS) {
+//		pilot_err(" IIC[%d] self test failed.\r\n",xil_config->DeviceId);
 		return XST_FAILURE;
 	}
 		
-	Status = XIicPs_SetSClk(IicInstancePtr, FsclHz);     //configure clocks
-	if (Status != XST_SUCCESS) {
-		Print_Err(" IIC set clk failed.\n");
+	status = XIicPs_SetSClk(inst_ptr, FsclHz);     //configure clocks
+	if (status != XST_SUCCESS) {
+		pilot_err(" IIC set clk failed.\n");
 		return XST_FAILURE;
 	}
 	return XST_SUCCESS;
 }
 
 
-int Iic_transfer(iic_priv_s *iic_priv, const uint8_t *send, unsigned send_len, uint8_t *recv, unsigned recv_len, unsigned regaddrflag)
+int iic_transfer(iic_priv_s *iic_priv, const uint8_t *send, unsigned send_len, uint8_t *recv, unsigned recv_len, unsigned regaddrflag)
 {
 	XIicPs *InstancePtr = iic_priv -> iicbus;
 	u8 dev = iic_priv -> devaddr;
@@ -202,24 +202,24 @@ int Iic_transfer(iic_priv_s *iic_priv, const uint8_t *send, unsigned send_len, u
 	u32 actclk = XIicPs_GetSClk(InstancePtr);
     portBASE_TYPE xHigherPriorityTaskWoken;
     xHigherPriorityTaskWoken = pdFALSE;
-	int Status = -1;	
+	int status = -1;	
 
     if((sizeof(buf) < send_len + 1) && (regaddrflag == 1))
     {
-        Print_Err("iic send buf too long:%d\n", send_len);
+        pilot_err("iic send buf too long:%d\n", send_len);
         return XST_FAILURE;
     }
-//	Print_Info("actclk is %dKHz\r\n",actclk/1000);
+//	pilot_info("actclk is %dKHz\r\n",actclk/1000);
     xSemaphoreTake(iic_priv->iic_mutex, portMAX_DELAY);
 
 	if(clk == 100000)
 	{
 		if(actclk > 300000)
         {
-            Status = XIicPs_SetSClk(InstancePtr, clk);
-            if (Status == XST_SUCCESS)
+            status = XIicPs_SetSClk(InstancePtr, clk);
+            if (status == XST_SUCCESS)
             {
-    //		Print_Info("clock is different, set to %dKHz\r\n",clk/1000);
+    //		pilot_info("clock is different, set to %dKHz\r\n",clk/1000);
                 xSemaphoreGive(iic_priv->iic_mutex);
                 return XST_FAILURE;
             }
@@ -230,10 +230,10 @@ int Iic_transfer(iic_priv_s *iic_priv, const uint8_t *send, unsigned send_len, u
 	{
 		if(actclk < 100000)
         {
-    		Status = XIicPs_SetSClk(InstancePtr, clk);
-            if (Status == XST_SUCCESS)
+    		status = XIicPs_SetSClk(InstancePtr, clk);
+            if (status == XST_SUCCESS)
             {
-    //			Print_Info("clock is different, set to %dKHz\r\n",clk/1000);
+    //			pilot_info("clock is different, set to %dKHz\r\n",clk/1000);
                 xSemaphoreGive(iic_priv->iic_mutex);
                 return XST_FAILURE;
             }    
@@ -283,8 +283,8 @@ void Iic_set_address(iic_priv_s *iic_priv, u8 reg_addr)
 
 void debug_print(iic_priv_s *iic_priv)
 {
-    Print_Info("iic_priv.frequency = %dKHz\r\n",(int)iic_priv -> frequency/1000);
-	Print_Info("iic_priv.devaddr = %x\r\n",(int)iic_priv -> devaddr);	
+    pilot_info("iic_priv.frequency = %dKHz\r\n",(int)iic_priv -> frequency/1000);
+	pilot_info("iic_priv.devaddr = %x\r\n",(int)iic_priv -> devaddr);	
 }
 
 

@@ -181,7 +181,7 @@ static ssize_t mmcsd_read(struct inode *inode, unsigned char *buffer, size_t sta
 		loc_sector *= (size_t)XSDPS_BLK_SIZE_512_MASK;
 	}
 
-    //Print_Info("loc_sector=%x instance=%x hcs=%x\n", (int)loc_sector, (int)priv->p_instance, (int)priv->p_instance->HCS);
+    //pilot_info("loc_sector=%x instance=%x hcs=%x\n", (int)loc_sector, (int)priv->p_instance, (int)priv->p_instance->HCS);
 	status = XSdPs_ReadPolled(priv->p_instance, (uint32_t)loc_sector, nsectors, buffer);
     if(status != XST_SUCCESS)
     {
@@ -220,7 +220,7 @@ static ssize_t mmcsd_write(FAR struct inode *inode, FAR const unsigned char *buf
 		loc_sector *= (size_t)XSDPS_BLK_SIZE_512_MASK;
 	}
 
-    //Print_Info("loc_sector=%x instance=%x hcs=%x\n", (int)loc_sector, (int)priv->p_instance, (int)priv->p_instance->HCS);
+    //pilot_info("loc_sector=%x instance=%x hcs=%x\n", (int)loc_sector, (int)priv->p_instance, (int)priv->p_instance->HCS);
 	status = XSdPs_WritePolled(priv->p_instance, (uint32_t)loc_sector, nsectors, buffer);
     if(status != XST_SUCCESS)
     {
@@ -266,7 +266,7 @@ static int mmcsd_geometry(FAR struct inode *inode, struct geometry *geometry)
         status = mmcsd_status(priv);
         if(status & SDIO_STATUS_NOINIT != 0)
         {
-            Print_Err("no sd card\n");
+            pilot_err("no sd card\n");
             ret = -ENODEV;
         }
         else
@@ -296,7 +296,7 @@ static uint32_t sdio_ps_clk_init(int32_t slotno)
 #define SDI0_CPU_1XCLKACT  (1 << 10)
 #define SDI1_CPU_1XCLKACT  (1 << 11)
 
-    Print_Info("1:SDIO%d SDIO_CLK_CTRL=%x APER_CLK_CTRL=%x\n", slotno, SDIO_CLK_CTRL, APER_CLK_CTRL);
+    pilot_info("1:SDIO%d SDIO_CLK_CTRL=%x APER_CLK_CTRL=%x\n", slotno, SDIO_CLK_CTRL, APER_CLK_CTRL);
     if(slotno == 0) 
     {
         //SDIO clock
@@ -314,7 +314,7 @@ static uint32_t sdio_ps_clk_init(int32_t slotno)
         APER_CLK_CTRL |= SDI1_CPU_1XCLKACT;
     }
 
-    Print_Info("SDIO%d SDIO_CLK_CTRL=%x APER_CLK_CTRL=%x\n", slotno, SDIO_CLK_CTRL, APER_CLK_CTRL);
+    pilot_info("SDIO%d SDIO_CLK_CTRL=%x APER_CLK_CTRL=%x\n", slotno, SDIO_CLK_CTRL, APER_CLK_CTRL);
 
     return 0;
 }
@@ -347,7 +347,7 @@ int mmcsd_initialize(int slotno)
 	private = (sd_private_t*)pvPortMalloc(sizeof(sd_private_t));
 	if(private == NULL)
 	{
-		Print_Err("malloc failed!!\n");
+		pilot_err("malloc failed!!\n");
 		return XST_FAILURE;
 	}
 	else
@@ -382,7 +382,7 @@ int mmcsd_initialize(int slotno)
     ret = register_blockdriver(devname, &g_bops, 0, private);
     if (ret < 0)
     {
-        Print_Err("ERROR: register_blockdriver failed: %d\n", ret);
+        pilot_err("ERROR: register_blockdriver failed: %d\n", ret);
         return -1;
     }
 

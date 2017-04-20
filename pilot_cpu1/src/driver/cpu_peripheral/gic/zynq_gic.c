@@ -1,7 +1,7 @@
 #include "xparameters.h"
 #include "xstatus.h"
 #include "xttcps.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "driver.h"
 
 //根据中断号算出中断在GIC_SPI_TARGET寄存器中的位偏移
@@ -10,63 +10,63 @@
 /* The interrupt controller is initialised in this file, and made available to
 other modules. */
 XScuGic xInterruptController;
-XScuGic *xIntcInstPtr = &xInterruptController;
+XScuGic *gic_inst_ptr = &xInterruptController;
 
-void GicBindInterruptToCpu(int32_t iIntrId, int32_t iCpuId)
+void gic_bind_interrupt_to_cpu(int32_t intr_id, int32_t cpu_id)
 {
-	uint32_t RegVal = 0;
+	uint32_t reg_val = 0;
 
-	RegVal = XScuGic_DistReadReg(xIntcInstPtr, XSCUGIC_SPI_TARGET_OFFSET_CALC(iIntrId));
-	RegVal &= ~(3 << SPI_TARGET_BIT_CALC(iIntrId));
-	RegVal |= (iCpuId << SPI_TARGET_BIT_CALC(iIntrId));
-	XScuGic_DistWriteReg(xIntcInstPtr, XSCUGIC_SPI_TARGET_OFFSET_CALC(iIntrId), RegVal);
+	reg_val = XScuGic_DistReadReg(gic_inst_ptr, XSCUGIC_SPI_TARGET_OFFSET_CALC(intr_id));
+	reg_val &= ~(3 << SPI_TARGET_BIT_CALC(intr_id));
+	reg_val |= (cpu_id << SPI_TARGET_BIT_CALC(intr_id));
+	XScuGic_DistWriteReg(gic_inst_ptr, XSCUGIC_SPI_TARGET_OFFSET_CALC(intr_id), reg_val);
 }
 
-int32_t GicIsrHandlerRegister(int32_t iIntrId, Xil_InterruptHandler Handler, void *CallBackRef)
+int32_t gic_isr_register(int32_t intr_id, Xil_InterruptHandler Handler, void *CallBackRef)
 {
-	int iStatus = 0;
+	int status = 0;
 
-	iStatus = XScuGic_Connect(xIntcInstPtr, iIntrId,(Xil_ExceptionHandler) Handler,CallBackRef);
-	if (iStatus != XST_SUCCESS) {
+	status = XScuGic_Connect(gic_inst_ptr, intr_id,(Xil_ExceptionHandler) Handler,CallBackRef);
+	if (status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
 
 	return XST_SUCCESS;
 }
 
-void GicInterruptEnable(int32_t iIntrId)
+void gic_interrupt_enable(int32_t intr_id)
 {
-	 XScuGic_Enable(xIntcInstPtr, iIntrId);
+	 XScuGic_Enable(gic_inst_ptr, intr_id);
 }
 
-void GicSetTriggerType(uint32_t iIntrId, uint8_t Trigger)
+void gic_set_trigger_type(uint32_t intr_id, uint8_t Trigger)
 {
-	uint32_t RegValue;
+	uint32_t reg_val;
 	/*
-	 * Determine the register to write to using the iIntrId.
+	 * Determine the register to write to using the intr_id.
 	 */
-	RegValue = XScuGic_DistReadReg(xIntcInstPtr, XSCUGIC_INT_CFG_OFFSET_CALC (iIntrId));
+	reg_val = XScuGic_DistReadReg(gic_inst_ptr, XSCUGIC_INT_CFG_OFFSET_CALC (intr_id));
 
 	/*
 	 * Shift and Mask the correct bits for the priority and trigger in the
 	 * register
 	 */
-	RegValue &= ~(XSCUGIC_INT_CFG_MASK << ((iIntrId%16)*2));
-	RegValue |= Trigger << ((iIntrId%16)*2);
+	reg_val &= ~(XSCUGIC_INT_CFG_MASK << ((intr_id%16)*2));
+	reg_val |= Trigger << ((intr_id%16)*2);
 
 	/*
 	 * Write the value back to the register.
 	 */
-	XScuGic_DistWriteReg(xIntcInstPtr, XSCUGIC_INT_CFG_OFFSET_CALC(iIntrId),
-				RegValue);
+	XScuGic_DistWriteReg(gic_inst_ptr, XSCUGIC_INT_CFG_OFFSET_CALC(intr_id),
+				reg_val);
 
 
 }
 
-void GicInit()
+void gic_init()
 {
-	BaseType_t xStatus;
-	XScuGic_Config *pxGICConfig;
+	BaseType_t status;
+	XScuGic_Config *config;
 
 	/* Ensure no interrupts execute while the scheduler is in an inconsistent
 	state.  Interrupts are automatically enabled when the scheduler is
@@ -74,23 +74,23 @@ void GicInit()
 	portDISABLE_INTERRUPTS();
 
 	/* Obtain the configuration of the GIC. */
-	pxGICConfig = XScuGic_LookupConfig( XPAR_SCUGIC_SINGLE_DEVICE_ID );
+	config = XScuGic_LookupConfig( XPAR_SCUGIC_SINGLE_DEVICE_ID );
 
 	/* Sanity check the FreeRTOSConfig.h settings are correct for the
 	hardware. */
-	configASSERT( pxGICConfig );
-	configASSERT( pxGICConfig->CpuBaseAddress == ( configINTERRUPT_CONTROLLER_BASE_ADDRESS + configINTERRUPT_CONTROLLER_CPU_INTERFACE_OFFSET ) );
-	configASSERT( pxGICConfig->DistBaseAddress == configINTERRUPT_CONTROLLER_BASE_ADDRESS );
+	configASSERT( config );
+	configASSERT( config->CpuBaseAddress == ( configINTERRUPT_CONTROLLER_BASE_ADDRESS + configINTERRUPT_CONTROLLER_CPU_INTERFACE_OFFSET ) );
+	configASSERT( config->DistBaseAddress == configINTERRUPT_CONTROLLER_BASE_ADDRESS );
 
 	/* Install a default handler for each GIC interrupt. */
 	//注意，整个系统必须用同一个xInterruptController！！！！！
-	xStatus = XScuGic_CfgInitialize(xIntcInstPtr, pxGICConfig, pxGICConfig->CpuBaseAddress );
-	if(xStatus != XST_SUCCESS)
+	status = XScuGic_CfgInitialize(gic_inst_ptr, config, config->CpuBaseAddress );
+	if(status != XST_SUCCESS)
 	{
-		Print_Err("Gic cfg init failed:%d! Assert now\n", xStatus);
+		pilot_err("Gic cfg init failed:%d! Assert now\n", status);
 	}
-	configASSERT( xStatus == XST_SUCCESS );
-	( void ) xStatus; /* Remove compiler warning if configASSERT() is not defined. */
+	configASSERT( status == XST_SUCCESS );
+	( void ) status; /* Remove compiler warning if configASSERT() is not defined. */
 
 	/* The Xilinx projects use a BSP that do not allow the start up code to be
 	altered easily.  Therefore the vector table used by FreeRTOS is defined in

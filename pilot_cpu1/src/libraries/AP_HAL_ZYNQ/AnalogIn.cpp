@@ -469,7 +469,7 @@ AP_HAL::AnalogSource* PX4AnalogIn::channel(int16_t pin)
         }
     }
 
-    Print_Warn("Out of analog channels\n");
+    pilot_warn("Out of analog channels\n");
 
     return NULL;
 }

@@ -4,7 +4,7 @@
 #include "drv_accel.h"
 #include <uORB/uORB.h>
 #include "conversion/rotation.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "math.h"
 #include "driver_define.h"
 #include "drv_unistd/drv_unistd.h"
@@ -982,7 +982,7 @@ IIS328DQ::measure()
 	accel_report.scaling = _accel_range_scale;
 	accel_report.range_m_s2 = _accel_range_m_s2;
 
-    //Print_Warn("accel data:rawxyz[%04x,%04x,%04x] size=%d\n", accel_report.x_raw, accel_report.y_raw, accel_report.z_raw, sizeof(raw_accel_report));
+    //pilot_warn("accel data:rawxyz[%04x,%04x,%04x] size=%d\n", accel_report.x_raw, accel_report.y_raw, accel_report.z_raw, sizeof(raw_accel_report));
 	xRingBufferForce(_reports, &accel_report, sizeof(accel_report));
 
 	/* notify anyone waiting for data */

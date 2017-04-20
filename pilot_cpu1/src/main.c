@@ -107,7 +107,7 @@
 #include "xil_exception.h"
 
 /*Custom includes*/
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 
 /* mainSELECTED_APPLICATION is used to select between three demo applications,
  * as described at the top of this file.
@@ -156,7 +156,7 @@ int main( void )
 
 	vTaskStartScheduler();
 
-	Print_Err("Something wrong, task scheduler quit!!\n");
+	pilot_err("Something wrong, task scheduler quit!!\n");
 	/* Don't expect to reach here. */
 	return 0;
 }
@@ -184,7 +184,7 @@ void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
 	( void ) pcTaskName;
 	( void ) pxTask;
 
-    Print_Err("pcTaskName=%s\n", pcTaskName);
+    pilot_err("pcTaskName=%s\n", pcTaskName);
 	/* Run time stack overflow checking is performed if
 	configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
 	function is called if a stack overflow is detected. */
@@ -213,7 +213,7 @@ volatile size_t xFreeHeapSpace;
 
 void vAssertCalled( const char * pcFile, unsigned long ulLine )
 {
-    Print_Err("assert called from:%s %d\n", pcFile, (int)ulLine);
+    pilot_err("assert called from:%s %d\n", pcFile, (int)ulLine);
     volatile unsigned long ul = 0;
 
 	( void ) pcFile;

@@ -9,7 +9,7 @@ extern "C"{
 #include <stdbool.h>
 #include <stdlib.h>
 #include "stdint.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "FreeRTOS.h"
 
 typedef struct xRingBuffer
@@ -82,7 +82,7 @@ static inline bool xRingBufferGet(RingBuffer_t *pxRingBuf,void *vBuf, size_t xGe
 
 				//GCC提供的原子操作
 		}while(!__sync_bool_compare_and_swap(&pxRingBuf->_Tail, xCandidate, xNext));
-		//Print_Warn("tail=%d\n", pxRingBuf->_Tail);
+		//pilot_warn("tail=%d\n", pxRingBuf->_Tail);
 		return 0;
 	}
 	else
@@ -104,7 +104,7 @@ static inline bool xRingBufferPut(RingBuffer_t *pxRingBuf,const void *vBuf, size
 
 		memcpy(&pxRingBuf->_ucBuf[pxRingBuf->_Head * pxRingBuf->_ItemSize], vBuf, xPutLen);
 		pxRingBuf->_Head = xNext;
-		//Print_Warn("head=%d\n", pxRingBuf->_Head);
+		//pilot_warn("head=%d\n", pxRingBuf->_Head);
 		return 0;
 	}
 	else
@@ -214,7 +214,7 @@ static inline bool xRingBufferResize(RingBuffer_t *pxRingBuf, int iNewSize)
 
 static inline void vRingBufferPrintInfo(RingBuffer_t *pxRingBuf, const char *pcName)
 {
-	Print_Info("%s	%u/%lu (%u/%u @ %p)\n",
+	pilot_info("%s	%u/%lu (%u/%u @ %p)\n",
 	       pcName,
 	       pxRingBuf->_NumItems,
 	       (unsigned long)pxRingBuf->_NumItems*pxRingBuf->_ItemSize,

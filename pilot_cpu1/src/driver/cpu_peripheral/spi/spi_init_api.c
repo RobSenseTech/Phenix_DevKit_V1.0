@@ -10,7 +10,7 @@
 /***************************** Include Files *********************************/
 #include "spi_init_api.h"
 #include "xstatus.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 
 /************************** Constant Definitions *****************************/
 
@@ -58,7 +58,7 @@ s32 spi_clock_active_enable(u32 spi_id) {
 
 		Return = Xil_In32(XSLCR_APER_CLK_CTRL_ADDR);
 		if (Register != Return) {
-			Print_Err("spi_clock_active_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+			pilot_err("spi_clock_active_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 			Status = XST_FAILURE;
 		}
 	}
@@ -86,7 +86,7 @@ s32 spi_clock_active_disable(u32 spi_id) {
 
 		Return = Xil_In32(XSLCR_APER_CLK_CTRL_ADDR);
 		if (Register != Return) {
-			Print_Err("spi_clock_active_disable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+			pilot_err("spi_clock_active_disable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 			Status = XST_FAILURE;
 		}
 	}
@@ -114,7 +114,7 @@ s32 spi_reference_clock_enable(u32 spi_id) {
 
 		Return = Xil_In32(XSLCR_SPI_CLK_CTRL_ADDR);
 		if (Register != Return) {
-			Print_Err("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+			pilot_err("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 			Status = XST_FAILURE;
 		}
 	}
@@ -134,7 +134,7 @@ s32 spi_clock_source_select(enum clock_source clock) {
 
 	Return = Xil_In32(XSLCR_SPI_CLK_CTRL_ADDR);
 	if (Register != Return) {
-		Print_Err("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+		pilot_err("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 		Status = XST_FAILURE;
 	}
 
@@ -154,11 +154,11 @@ s32 spi_clock_source_divisor(u32 divisor) {
 
 		Return = Xil_In32(XSLCR_SPI_CLK_CTRL_ADDR);
 		if (Register != Return) {
-			Print_Err("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
+			pilot_err("spi_reference_clock_enable failed, return value is 0x%08x  (wanted: 0x%08x)\r\n", Return, Register);
 			Status = XST_FAILURE;
 		}
 	} else {
-		Print_Err("spi_clock_source_divisor failed, illegal value %d  (wanted: 0 <= divisor <= 63)\r\n",divisor);
+		pilot_err("spi_clock_source_divisor failed, illegal value %d  (wanted: 0 <= divisor <= 63)\r\n",divisor);
 		Status = XST_FAILURE;
 	}
 	return Status;
@@ -169,19 +169,19 @@ s32 spi_clock_source_divisor(u32 divisor) {
 	s32 Status = XST_SUCCESS;
 
 	if (spi_clock_active_enable(spi_id) != XST_SUCCESS) {
-		Print_Err("spi_clock_active_enable failed\r\n");
+		pilot_err("spi_clock_active_enable failed\r\n");
 		Status = XST_FAILURE;
 	} else if (spi_clock_source_select(clock) != XST_SUCCESS) {
-		Print_Err("spi_clock_source_select failed\r\n");
+		pilot_err("spi_clock_source_select failed\r\n");
 		Status = XST_FAILURE;
 	} else if (spi_clock_source_divisor(clock_divisor) != XST_SUCCESS) {
-		Print_Err("spi_clock_source_divisor failed\r\n");
+		pilot_err("spi_clock_source_divisor failed\r\n");
 		Status = XST_FAILURE;
 	} else if (spi_reference_clock_enable(spi_id) != XST_SUCCESS) {
-		Print_Err("spi_reference_clock_enable failed\r\n");
+		pilot_err("spi_reference_clock_enable failed\r\n");
 		Status = XST_FAILURE;
 	} else {
-		Print_Info("SPI clock enable successful\r\n");
+		pilot_info("SPI clock enable successful\r\n");
 	}
 	spi_SCLK_init(spi_id);
 	spi_MOSI_init(spi_id);
@@ -208,7 +208,7 @@ s32 spi_clock_source_divisor(u32 divisor) {
  	}
  else
  	{
-	 Print_Err("spi_id error!\r\n");
+	 pilot_err("spi_id error!\r\n");
 	 return XST_FAILURE;
  	}
 }
@@ -231,7 +231,7 @@ s32 spi_clock_source_divisor(u32 divisor) {
 		}
 		else
 	    {
-            Print_Err("spi_id error!\r\n");
+            pilot_err("spi_id error!\r\n");
             return XST_FAILURE;
 	    }
  }
@@ -254,7 +254,7 @@ s32 spi_clock_source_divisor(u32 divisor) {
 		}
 		else
 		{
-	 	 Print_Err("spi_id error!\r\n");
+	 	 pilot_err("spi_id error!\r\n");
 	 	 return XST_FAILURE;
 	  }
 	}

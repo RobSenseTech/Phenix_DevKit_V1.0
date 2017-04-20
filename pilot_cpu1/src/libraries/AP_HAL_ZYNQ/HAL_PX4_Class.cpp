@@ -117,7 +117,7 @@ static void main_loop(void *pvParameters)
 //    hal.analogin->init();
  //   hal.gpio->init();
 
-    Print_Info("in main loop\n");
+    pilot_info("in main loop\n");
 
     /*
       run setup() at low priority to ensure CLI doesn't hang the
@@ -142,7 +142,7 @@ static void main_loop(void *pvParameters)
 
 //    loop_overtime_call = xTimerCreate("loop overtime", 100/portTICK_RATE_MS, pdTRUE, NULL, loop_overtime, NULL);
  //   xTimerStart(loop_overtime_call, portMAX_DELAY);
-    Print_Info("main loop start thread\n");
+    pilot_info("main loop start thread\n");
     while (!_px4_thread_should_exit) {
         
         /*
@@ -177,13 +177,13 @@ static void main_loop(void *pvParameters)
 
 static void usage(void)
 {
-    Print_Info("Usage: %s [options] {start,stop,status}\n", SKETCHNAME);
-    Print_Info("Options:\n");
-    Print_Info("\t-d  DEVICE         set terminal device (default %s)\n", UARTA_DEFAULT_DEVICE);
-    Print_Info("\t-d2 DEVICE         set second terminal device (default %s)\n", UARTC_DEFAULT_DEVICE);
-    Print_Info("\t-d3 DEVICE         set 3rd terminal device (default %s)\n", UARTD_DEFAULT_DEVICE);
-    Print_Info("\t-d4 DEVICE         set 2nd GPS device (default %s)\n", UARTE_DEFAULT_DEVICE);
-    Print_Info("\n");
+    pilot_info("Usage: %s [options] {start,stop,status}\n", SKETCHNAME);
+    pilot_info("Options:\n");
+    pilot_info("\t-d  DEVICE         set terminal device (default %s)\n", UARTA_DEFAULT_DEVICE);
+    pilot_info("\t-d2 DEVICE         set second terminal device (default %s)\n", UARTC_DEFAULT_DEVICE);
+    pilot_info("\t-d3 DEVICE         set 3rd terminal device (default %s)\n", UARTD_DEFAULT_DEVICE);
+    pilot_info("\t-d4 DEVICE         set 2nd GPS device (default %s)\n", UARTE_DEFAULT_DEVICE);
+    pilot_info("\n");
 }
 
 
@@ -196,7 +196,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
     const char *deviceE = UARTE_DEFAULT_DEVICE;
 
     if (argc < 1) {
-        Print_Info("%s: missing command (try '%s start')", 
+        pilot_info("%s: missing command (try '%s start')", 
                SKETCHNAME, SKETCHNAME);
         usage();
         return;
@@ -208,7 +208,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
     for (i=0; i<argc; i++) {
         if (strcmp(argv[i], "start") == 0) {
             if (thread_running) {
-                Print_Info("%s already running\n", SKETCHNAME);
+                pilot_info("%s already running\n", SKETCHNAME);
                 /* this is not an error */
                 return;
             }
@@ -217,7 +217,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
             uartCDriver.set_device_path(deviceC);
             uartDDriver.set_device_path(deviceD);
             uartEDriver.set_device_path(deviceE);
-            Print_Info("Starting %s uartA=%s uartC=%s uartD=%s uartE=%s\n", 
+            pilot_info("Starting %s uartA=%s uartC=%s uartD=%s uartE=%s\n", 
                    SKETCHNAME, deviceA, deviceC, deviceD, deviceE);
 
             _px4_thread_should_exit = false;
@@ -234,11 +234,11 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
  
         if (strcmp(argv[i], "status") == 0) {
             if (_px4_thread_should_exit && thread_running) {
-                Print_Info("\t%s is exiting\n", SKETCHNAME);
+                pilot_info("\t%s is exiting\n", SKETCHNAME);
             } else if (thread_running) {
-                Print_Info("\t%s is running\n", SKETCHNAME);
+                pilot_info("\t%s is running\n", SKETCHNAME);
             } else {
-                Print_Info("\t%s is not started\n", SKETCHNAME);
+                pilot_info("\t%s is not started\n", SKETCHNAME);
             }
             return;
         }
@@ -248,7 +248,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
             if (argc > i + 1) {
                 deviceA = strdup(argv[i+1]);
             } else {
-                Print_Info("missing parameter to -d DEVICE\n");
+                pilot_info("missing parameter to -d DEVICE\n");
                 usage();
                 return;
             }
@@ -259,7 +259,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
             if (argc > i + 1) {
                 deviceC = strdup(argv[i+1]);
             } else {
-                Print_Warn("missing parameter to -d2 DEVICE\n");
+                pilot_warn("missing parameter to -d2 DEVICE\n");
                 usage();
                 return;
             }
@@ -270,7 +270,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
             if (argc > i + 1) {
                 deviceD = strdup(argv[i+1]);
             } else {
-                Print_Warn("missing parameter to -d3 DEVICE\n");
+                pilot_warn("missing parameter to -d3 DEVICE\n");
                 usage();
                 return;
             }
@@ -281,7 +281,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
             if (argc > i + 1) {
                 deviceE = strdup(argv[i+1]);
             } else {
-                Print_Warn("missing parameter to -d4 DEVICE\n");
+                pilot_warn("missing parameter to -d4 DEVICE\n");
                 usage();
                 return;
             }

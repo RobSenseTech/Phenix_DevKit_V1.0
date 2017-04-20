@@ -4,7 +4,7 @@
 #include "uORB/topics/actuator_outputs.h"
 #include "uORB/topics/actuator_armed.h"
 
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 
 #define PX4_NUM_OUTPUT_CHANNELS 16
 

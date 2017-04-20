@@ -9,7 +9,7 @@
 #include "semphr.h"
 
 /*Custom includes*/
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "drv_accel.h"
 #include "drv_gyro.h"
 #include "driver.h"
@@ -72,12 +72,12 @@ static void cmd_task(void *pvParameters)
                 }
             }
             else
-                Print_Err("invalid argc:%d\n", argc);
+                pilot_err("invalid argc:%d\n", argc);
             
 
             int i;
          /*   for(i = 0; i < argc; i++)
-                Print_Info("%s\n", argv[i]);
+                pilot_info("%s\n", argv[i]);
 */
             snprintf(func_name, sizeof(func_name), "%s%s", argv[0], "_main");
             argv[0] = func_name;
@@ -92,7 +92,7 @@ static void cmd_task(void *pvParameters)
                     }
                     else
                     {
-                        Print_Err("main_func == null func_name=%s\n", func_name);
+                        pilot_err("main_func == null func_name=%s\n", func_name);
                     }
                 }
             }
@@ -110,59 +110,59 @@ static void start_main_list()
 	int num = sizeof(main_list)/sizeof(main_t);
 	int i;
 
-    Print_Info("start everything\n");
+    pilot_info("start everything\n");
 
 	for(i = 0; i < num; i++)
 	{
 		if(main_list[i].main_func(main_list[i].argc, main_list[i].argv) != 0)
 		{
-			Print_Err("Sensor:%d detect error!!\n", i);
+			pilot_err("Sensor:%d detect error!!\n", i);
 		}
 	}
 
-    Print_Info("start drivers over\n");
-    Print_Info("create cmd receive task:%d\n", (int)xTaskCreate(cmd_task, "command line test", 4000, NULL, 1, NULL));
+    pilot_info("start drivers over\n");
+    pilot_info("create cmd receive task:%d\n", (int)xTaskCreate(cmd_task, "command line test", 4000, NULL, 1, NULL));
 }
 
 static int cpu_peripheral_init()
 {
     int i;
-	int iRet = -1;
+	int ret = -1;
 
 	//init usrt in arm core
-	iRet = UartPsInit(0);
-	if(iRet != 0)
+	ret = uartps_init(0);
+	if(ret != 0)
 	{
-		Print_Err("Uart init failed:%d !!\n", iRet);
+		pilot_err("Uart init failed:%d !!\n", ret);
 	}
 
 	//init iic in arm core
-    iRet = Iic_Init(0, 400000);
-	if(iRet != 0)
+    ret = iic_init(0, 400000);
+	if(ret != 0)
 	{
-		Print_Err("IIC0 init failed:%d !!\n", iRet);
+		pilot_err("IIC0 init failed:%d !!\n", ret);
 	}
 
-    iRet = Iic_Init(1, 400000);
-	if(iRet != 0)
+    ret = iic_init(1, 400000);
+	if(ret != 0)
 	{
-		Print_Err("IIC1 init failed:%d !!\n", iRet);
+		pilot_err("IIC1 init failed:%d !!\n", ret);
 	}
 
 	//init gpio in arm core
-	iRet = GpioPsInit();
-	if(iRet != 0)
+	ret = gpiops_init();
+	if(ret != 0)
 	{
-		Print_Err("Gpio init failed:%d !!\n", iRet);
+		pilot_err("Gpio init failed:%d !!\n", ret);
 	}
 
 	//init spi in arm core
 	 for(i=0; i<XPAR_XSPIPS_NUM_INSTANCES; i++)
 	 {
-	   iRet = SpiPsInit(i, 0x0);
-	   if(iRet != 0)
+	   ret = SpiPsInit(i, 0x0);
+	   if(ret != 0)
 	   {
-	      Print_Err("Spi_bus %d init failed:%d !!\n", i,iRet);
+	      pilot_err("Spi_bus %d init failed:%d !!\n", i,ret);
 	   }
 	 }
 
@@ -170,10 +170,10 @@ static int cpu_peripheral_init()
 	//init fpga uart16550 ip core
     for(i = 0; i < XPAR_XUARTNS550_NUM_INSTANCES; i++)
     {
-    	iRet = uartns_init(i);
-        if(iRet != 0)
+    	ret = uartns_init(i);
+        if(ret != 0)
         {
-            Print_Err("UartLite init failed:%d !!\n", iRet);
+            pilot_err("UartLite init failed:%d !!\n", ret);
         }
     }
 #endif
@@ -203,9 +203,9 @@ static void pilot_first_task(void *param)
 
 	ret = mount("/dev/mmcsd0", "/fs/microsd", "vfat", 0, NULL);
     if(ret != 0)
-        Print_Err("Failed to mount sd card:%d!!\n", (int)ret);
+        pilot_err("Failed to mount sd card:%d!!\n", (int)ret);
     else
-        Print_Info("mount sd card success!!\n");
+        pilot_info("mount sd card success!!\n");
 
     //Create APM directory
     ret = mkdir("/fs/microsd/APM", 0777);
@@ -228,9 +228,9 @@ static void pilot_first_task(void *param)
 int pilot_bringup()
 {
     /*init generic interrupt controller*/
-	GicInit();
+	gic_init();
 
-	Print_Info("freeRTOS start: is little endian:%d\n", check_cpu());
+	pilot_info("freeRTOS start: is little endian:%d\n", check_cpu());
 
     fs_initialize();
 
@@ -238,6 +238,6 @@ int pilot_bringup()
 
     //SD_Init(0);
 
-    Print_Info("bringup pilot\n");
+    pilot_info("bringup pilot\n");
     xTaskCreate(pilot_first_task, "first task", 4000, NULL, 0, NULL);
 }

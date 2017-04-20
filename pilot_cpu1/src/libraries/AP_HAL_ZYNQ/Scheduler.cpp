@@ -103,7 +103,7 @@ void PX4Scheduler::delay_microseconds_boost(uint16_t usec)
 void PX4Scheduler::delay(uint16_t ms)
 {
     if (in_timerprocess()) {
-        Print_Err("ERROR: delay() from timer process\n");
+        pilot_err("ERROR: delay() from timer process\n");
         return;
     }
 	uint64_t start = AP_HAL::micros64();
@@ -143,7 +143,7 @@ void PX4Scheduler::register_timer_process(AP_HAL::MemberProc proc)
         _num_timer_procs++;
     } else {
       //  hal.console->printf("Out of timer processes\n");
-      Print_Info("Out of timer processes\n");
+      pilot_info("Out of timer processes\n");
     }
 }
 
@@ -184,7 +184,7 @@ void PX4Scheduler::resume_timer_procs()
 
 void PX4Scheduler::reboot(bool hold_in_bootloader) 
 {
-    Print_Warn("Called system reset");
+    pilot_warn("Called system reset");
 //	px4_systemreset(hold_in_bootloader);
 }
 

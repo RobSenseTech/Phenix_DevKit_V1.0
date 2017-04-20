@@ -1,4 +1,4 @@
-#include "FreeRTOS_Print.h" 
+#include "pilot_print.h" 
 #include "ringbuffer.h"
 #include "xuartps.h"
 
@@ -30,7 +30,7 @@ static void prvUartSendTask( void *pvParameters )
         if(iNum >= sizeof(TestString))      
     		write(iFd, TestString, sizeof(TestString));
         else
-            Print_Err("send full\n");
+            pilot_err("send full\n");
 
 		vTaskDelay( 100 / portTICK_RATE_MS );
 	}
@@ -50,11 +50,11 @@ static void prvUartRecvTask( void *pvParameters )
 		iRet = ioctl(iFd, FIONREAD, (unsigned long)&iNum);
 		if(iRet != XST_SUCCESS)
 		{
-			Print_Err("ioctl failed\n");
+			pilot_err("ioctl failed\n");
 		}
 		else
 		{
-			Print_Warn("iNum=%d\n", iNum);
+			pilot_warn("iNum=%d\n", iNum);
 			if(iNum != 0)
 			{
 				int i;
@@ -66,10 +66,10 @@ static void prvUartRecvTask( void *pvParameters )
                 {
             //        if((RecvBuffer[i] - last == 1) || (last == 9 && RecvBuffer[i] == 1))
                     {
-					    Print_Info("recv: %d\n", RecvBuffer[i]);
+					    pilot_info("recv: %d\n", RecvBuffer[i]);
                     }
              //     else
-             //         Print_Err("recv err:last=%d now=%d\n", last, RecvBuffer[i]);
+             //         pilot_err("recv err:last=%d now=%d\n", last, RecvBuffer[i]);
 
                     last = RecvBuffer[i];
                 }
@@ -89,7 +89,7 @@ void UartTest()
 	iFd = open("/dev/uartns3", O_RDWR);
 	if(iFd < 0)
 	{
-		Print_Err("open uart driver failed:%d\n", iFd);
+		pilot_err("open uart driver failed:%d\n", iFd);
 		return;
 	}
 
@@ -98,7 +98,7 @@ void UartTest()
     ioctl(iFd, UART_IOC_SET_DATA_FORMAT, (unsigned long)&data_format);
 	ioctl(iFd, UART_IOC_SET_MODE, &iMode);
 
-	Print_Info("create uart send task:%d\n", xTaskCreate(prvUartSendTask, "uart-send", configMINIMAL_STACK_SIZE*2, (void *)iFd, 1, NULL));
-	Print_Info("create uart recv task:%d\n", xTaskCreate(prvUartRecvTask, "uart-recv", configMINIMAL_STACK_SIZE*2, (void *)iFd, 1, NULL));
+	pilot_info("create uart send task:%d\n", xTaskCreate(prvUartSendTask, "uart-send", configMINIMAL_STACK_SIZE*2, (void *)iFd, 1, NULL));
+	pilot_info("create uart recv task:%d\n", xTaskCreate(prvUartRecvTask, "uart-recv", configMINIMAL_STACK_SIZE*2, (void *)iFd, 1, NULL));
 }
 

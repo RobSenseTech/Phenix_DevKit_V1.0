@@ -5,7 +5,7 @@
 #include "xparameters.h"
 #include "xuartps.h"
 #include "xil_exception.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "ringbuffer.h"
 #include "gic/zynq_gic.h"
 #include <fs/fs.h>
@@ -31,238 +31,237 @@
 #define UART1_CPU_1XCLKACT	(1 << 21)
 
 //硬件中断号，来自xparameters_ps.h
-static uint32_t UartHwIntID[XPAR_XUARTPS_NUM_INSTANCES] = {
+static uint32_t uart_intr[XPAR_XUARTPS_NUM_INSTANCES] = {
 	XPAR_XUARTPS_0_INTR,//59
 	XPAR_XUARTPS_1_INTR,//82
 };
 
 typedef struct{
-	int32_t iUartID;	//uart编号
-	XUartPs *pxUartInstPtr;
-	int32_t iUartOperMode;
-	RingBuffer_t xUartRxRingBuf;
-	RingBuffer_t xUartTxRingBuf;
-    SemaphoreHandle_t UartRxMutex;
-    SemaphoreHandle_t UartTxMutex;
-}UartDrvPrivate_t;
+	int32_t uartps_id;	//uart编号
+	XUartPs *uartps_inst_ptr;
+	int32_t uartps_mode;
+	RingBuffer_t rx_ringbuf;
+	RingBuffer_t tx_ringbuf;
+    SemaphoreHandle_t rx_mutex;
+    SemaphoreHandle_t tx_mutex;
+}uartps_private_t;
 
 /************************** Function Prototypes *****************************/
-void vUartPs_InterruptHandler(void *pvArg);
+static void uartps_isr(void *arg);
 
-int Uart_Open(struct file *filp);
-	
-ssize_t Uart_Read(struct file *filp, char *buffer, size_t buflen);
+static int uartps_open(struct file *filp);
 
-ssize_t Uart_Write(struct file *filp, const char *buffer, size_t buflen);
+static ssize_t uartps_read(struct file *filp, char *buffer, size_t buflen);
 
-int Uart_Ioctl(file_t *filp, int iCmd, unsigned long ulArg);
+static ssize_t uartps_write(struct file *filp, const char *buffer, size_t buflen);
+
+static int uartps_ioctl(file_t *filp, int cmd, unsigned long arg);
 
 /************************** Variable Definitions ***************************/
 
-static XUartPs UartPs[XPAR_XUARTPS_NUM_INSTANCES];		/* Instance of the UART Device */
+static XUartPs uartps[XPAR_XUARTPS_NUM_INSTANCES];		/* Instance of the UART Device */
 
-const struct file_operations xUart_ops = {
-	.read = Uart_Read,
-	.write = Uart_Write,
-	.ioctl = Uart_Ioctl,
+const struct file_operations uartps_ops = {
+	.read = uartps_read,
+	.write = uartps_write,
+	.ioctl = uartps_ioctl,
 };
 
 //串口时钟初始化，虽然fsbl阶段会配置，但是liunx内核启动后会还原这些寄存器，所以在cpu1再配一次
-uint32_t UartPsClkInit(int32_t iUartId)
+uint32_t uartps_clk_init(int32_t uartps_id)
 {
-	u32 uiVal;
+	uint32_t val;
 
-	if(iUartId == 0)
+	if(uartps_id == 0)
 	{
 		//串口时钟
-		uiVal = UART_CLK_CTRL;
-		uiVal |= UART0_CLK_ENABLE;
-		UART_CLK_CTRL = uiVal;
+		val = UART_CLK_CTRL;
+		val |= UART0_CLK_ENABLE;
+		UART_CLK_CTRL = val;
 
 		//外设时钟
-		uiVal = APER_CLK_CTRL;
-		uiVal |= UART0_CPU_1XCLKACT;
-		APER_CLK_CTRL = uiVal;
+		val = APER_CLK_CTRL;
+		val |= UART0_CPU_1XCLKACT;
+		APER_CLK_CTRL = val;
 	}
-	else if(iUartId == 1)
+	else if(uartps_id == 1)
 	{
 		//串口时钟
-		uiVal = UART_CLK_CTRL;
-		uiVal |= UART1_CLK_ENABLE;
-		UART_CLK_CTRL = uiVal;
+		val = UART_CLK_CTRL;
+		val |= UART1_CLK_ENABLE;
+		UART_CLK_CTRL = val;
 
 		//外设时钟
-		uiVal = APER_CLK_CTRL;
-		uiVal |= UART1_CPU_1XCLKACT;
-		APER_CLK_CTRL = uiVal;
+		val = APER_CLK_CTRL;
+		val |= UART1_CPU_1XCLKACT;
+		APER_CLK_CTRL = val;
 	}
 
-//	Print_Info("Uart%d UART_CLK_CTRL=%x APER_CLK_CTRL=%x\n", iUartId, UART_CLK_CTRL, APER_CLK_CTRL);
+//	pilot_info("Uart%d UART_CLK_CTRL=%x APER_CLK_CTRL=%x\n", uartps_id, UART_CLK_CTRL, APER_CLK_CTRL);
 
 	return 0;
 }
 
 //arm核有两个uart，uart1用于console，uart0用于gps，这里只初始化usrt0，uart1由linux初始化
-uint32_t UartPsInit(int32_t iUartId)
+uint32_t uartps_init(int32_t uartps_id)
 {
-	uint32_t Status;
-	XUartPs_Config *Config;
-	u32 IntrMask;
-	XUartPs *UartInstPtr = &UartPs[iUartId];
-	UartDrvPrivate_t *pxUartDrvPrivate = NULL;
-	int UartIntrId = UartHwIntID[iUartId];
-    char DevName[64] = {0};
+	uint32_t status;
+	XUartPs_Config *config;
+	uint32_t intr_mask;
+	XUartPs *inst_ptr = &uartps[uartps_id];
+	uartps_private_t *priv = NULL;
+	int intr_id = uart_intr[uartps_id];
+    char dev_name[64] = {0};
 
-	if(iUartId >= XPAR_XUARTPS_NUM_INSTANCES)
+	if(uartps_id >= XPAR_XUARTPS_NUM_INSTANCES)
 	{
-		Print_Err("No such uart:%d, check vivado config\n", iUartId);
+		pilot_err("No such uart:%d, check vivado config\n", uartps_id);
 		return XST_FAILURE;
 	}
 
 	/*
 	 * step1: 初始化私有数据，其中包括收发数据缓冲区
 	 */
-	pxUartDrvPrivate = (UartDrvPrivate_t *)pvPortMalloc(sizeof(UartDrvPrivate_t));
-	if(pxUartDrvPrivate == NULL)
+	priv = (uartps_private_t *)pvPortMalloc(sizeof(uartps_private_t));
+	if(priv == NULL)
 	{
-		Print_Err("malloc failed!!\n");
+		pilot_err("malloc failed!!\n");
 		return XST_FAILURE;
 	}
 	else
 	{
-		memset(pxUartDrvPrivate, 0, sizeof(UartDrvPrivate_t));
+		memset(priv, 0, sizeof(uartps_private_t));
 	}
-	pxUartDrvPrivate->iUartID = iUartId;
-	pxUartDrvPrivate->pxUartInstPtr = UartInstPtr;
-	iRingBufferInit(&pxUartDrvPrivate->xUartRxRingBuf, 512, sizeof(char));
-	iRingBufferInit(&pxUartDrvPrivate->xUartTxRingBuf, 512, sizeof(char));
-    pxUartDrvPrivate->UartRxMutex = xSemaphoreCreateMutex();
-    pxUartDrvPrivate->UartTxMutex = xSemaphoreCreateMutex();
+	priv->uartps_id = uartps_id;
+	priv->uartps_inst_ptr = inst_ptr;
+	iRingBufferInit(&priv->rx_ringbuf, 512, sizeof(char));
+	iRingBufferInit(&priv->tx_ringbuf, 512, sizeof(char));
+    priv->rx_mutex = xSemaphoreCreateMutex();
+    priv->tx_mutex = xSemaphoreCreateMutex();
 
 	/*
 	 * step2: 使能串口时钟
 	 */
-	UartPsClkInit(iUartId);
+	uartps_clk_init(uartps_id);
 
 	/*
 	 * step3: 初始化SDK中的串口配置
 	 */
-	Config = XUartPs_LookupConfig(iUartId);
-	if (NULL == Config) {
-		Print_Err("There is no config\n");
+	config = XUartPs_LookupConfig(uartps_id);
+	if (NULL == config) {
+		pilot_err("There is no config\n");
 		return XST_FAILURE;
 	}
 
-	Status = XUartPs_CfgInitialize(UartInstPtr, Config, Config->BaseAddress);
-	if (Status != XST_SUCCESS) {
-		Print_Err("Uart cfg init failed:%d\n", Status);
+	status = XUartPs_CfgInitialize(inst_ptr, config, config->BaseAddress);
+	if (status != XST_SUCCESS) {
+		pilot_err("Uart cfg init failed:%d\n", status);
 		return XST_FAILURE;
 	}
 #if 0
-	Status = XUartPs_SelfTest(UartInstPtr);
-	if (Status != XST_SUCCESS) {
-		Print_Err("Uart self test failed:%d\n", Status);
+	status = XUartPs_SelfTest(inst_ptr);
+	if (status != XST_SUCCESS) {
+		pilot_err("Uart self test failed:%d\n", status);
 		return XST_FAILURE;
 	} 
 	else
-		Print_Info("self test success\n");
+		pilot_info("self test success\n");
 #endif
 
 	/*
 	 * step4: 指定uart中断指向哪个CPU
 	 */
-	GicBindInterruptToCpu(UartIntrId, CPU_1_TARGETED);
+	gic_bind_interrupt_to_cpu(intr_id, CPU_1_TARGETED);
 	
 	/*
 	 * step5: 注册串口中断处理函数，SDK的代码不通用，这里自己实现
 	 */
-	GicIsrHandlerRegister(UartIntrId,(Xil_ExceptionHandler) vUartPs_InterruptHandler,(void *) pxUartDrvPrivate);
-	if(Status != XST_SUCCESS)
+	gic_isr_register(intr_id,(Xil_ExceptionHandler) uartps_isr,(void *) priv);
+	if(status != XST_SUCCESS)
 	{
-		Print_Err("Set Uart%d interrupt handler failed:%d\n", iUartId, Status);
+		pilot_err("Set Uart%d interrupt handler failed:%d\n", uartps_id, status);
 		return XST_FAILURE;
 	}
 	/*
 	 * step6: 配置串口中断掩码
 	 */
-	IntrMask =
+	intr_mask =
 		XUARTPS_IXR_TOUT | XUARTPS_IXR_PARITY | XUARTPS_IXR_FRAMING |
 		XUARTPS_IXR_OVER | XUARTPS_IXR_TXEMPTY | XUARTPS_IXR_RXFULL |
 		XUARTPS_IXR_RXOVR;
-	XUartPs_SetInterruptMask(UartInstPtr, IntrMask);
+	XUartPs_SetInterruptMask(inst_ptr, intr_mask);
 
 	/*
 	 * setp7: 配置串口模式为普通模式
 	 */
-	pxUartDrvPrivate->iUartOperMode = XUARTPS_OPER_MODE_NORMAL;
-	XUartPs_SetOperMode(UartInstPtr, XUARTPS_OPER_MODE_NORMAL);
+	priv->uartps_mode = XUARTPS_OPER_MODE_NORMAL;
+	XUartPs_SetOperMode(inst_ptr, XUARTPS_OPER_MODE_NORMAL);
 
 	/*
 	 * step8: 注册串口驱动
 	 */
-    snprintf(DevName, sizeof(DevName), "%s%d", "/dev/uart", (int)iUartId);
-//	DriverRegister(DevName, &xUart_ops, pxUartDrvPrivate);
-    register_driver(DevName, &xUart_ops, 0666, pxUartDrvPrivate);
+    snprintf(dev_name, sizeof(dev_name), "%s%d", "/dev/uart", (int)uartps_id);
+    register_driver(dev_name, &uartps_ops, 0666, priv);
 
 	/*
 	 * step9: 使能串口中断
 	 */
-	GicInterruptEnable(UartIntrId);
+	gic_interrupt_enable(intr_id);
 	
 	return XST_SUCCESS;
 }
 
-ssize_t Uart_Read(struct file *filp, char *buffer, size_t buflen)
+ssize_t uartps_read(struct file *filp, char *buffer, size_t buflen)
 {
-	size_t xLen = 0;
-	UartDrvPrivate_t *pxUartDrvPrivate = (UartDrvPrivate_t *)filp->f_inode->i_private;
+	size_t len = 0;
+	uartps_private_t *priv = (uartps_private_t *)filp->f_inode->i_private;
 
     irqstate_t state = irqsave();
-	while(xLen < buflen)
+	while(len < buflen)
 	{
-//        Print_Info("head=%x tail=%x\n", pxUartDrvPrivate->xUartRxRingBuf._Head, pxUartDrvPrivate->xUartRxRingBuf._Tail); 
-		if(xRingBufferGet(&pxUartDrvPrivate->xUartRxRingBuf, &buffer[xLen], pxUartDrvPrivate->xUartRxRingBuf._ItemSize) == 0)
+//        pilot_info("head=%x tail=%x\n", priv->rx_ringbuf._Head, priv->rx_ringbuf._Tail); 
+		if(xRingBufferGet(&priv->rx_ringbuf, &buffer[len], priv->rx_ringbuf._ItemSize) == 0)
         {
-			xLen++;
+			len++;
         }
         else
             break;
 	}
     irqrestore(state);
 	
-	return xLen;
+	return len;
 }
 
-ssize_t Uart_Write(struct file *filp, const char *buffer, size_t buflen)
+ssize_t uartps_write(struct file *filp, const char *buffer, size_t buflen)
 {
-	size_t xLen = 0;
-	UartDrvPrivate_t *pxUartDrvPrivate = (UartDrvPrivate_t *)filp->f_inode->i_private;
-	XUartPs *InstancePtr = pxUartDrvPrivate->pxUartInstPtr;
-    uint8_t ucVal;
+	size_t len = 0;
+	uartps_private_t *priv = (uartps_private_t *)filp->f_inode->i_private;
+	XUartPs *inst_ptr = priv->uartps_inst_ptr;
+    uint8_t val;
 
     /*
      * Mutex with interrupt
      */
     irqstate_t state = irqsave();
-//    xSemaphoreTake(pxUartDrvPrivate->UartTxMutex, portMAX_DELAY);
-	while (xLen < buflen) 
+//    xSemaphoreTake(priv->tx_mutex, portMAX_DELAY);
+	while (len < buflen) 
 	{
 		
-        if(xRingBufferPut(&pxUartDrvPrivate->xUartTxRingBuf, &buffer[xLen], sizeof(uint8_t)) == 0)
-            xLen++;
+        if(xRingBufferPut(&priv->tx_ringbuf, &buffer[len], sizeof(uint8_t)) == 0)
+            len++;
         else
             break;
 #if 0
-		if(!XUartPs_IsTransmitFull(InstancePtr->Config.BaseAddress))
+		if(!XUartPs_IsTransmitFull(inst_ptr->Config.BaseAddress))
 		{
 			/*
 			 * Fill the FIFO from the buffer
 			 */
-			XUartPs_WriteReg(InstancePtr->Config.BaseAddress,
+			XUartPs_WriteReg(inst_ptr->Config.BaseAddress,
 					   XUARTPS_FIFO_OFFSET,
-					   pcBuf[xLen]);
+					   pcBuf[len]);
 
-			xLen++;
+			len++;
 		}
 #endif
 	}
@@ -271,147 +270,146 @@ ssize_t Uart_Write(struct file *filp, const char *buffer, size_t buflen)
      * If fifo is empty, we need to write one byte to tx fifo, to trigger tx fifo empty interrupt
      * so that interrupt can send the rest data to fifo
      */
-    if(XUartPs_IsTransmitEmpty(InstancePtr))
+    if(XUartPs_IsTransmitEmpty(inst_ptr))
     {
-        if(xRingBufferGet(&pxUartDrvPrivate->xUartTxRingBuf, &ucVal, sizeof(uint8_t)) == 0)
+        if(xRingBufferGet(&priv->tx_ringbuf, &val, sizeof(uint8_t)) == 0)
         {
             /*
              * Fill the FIFO from the buffer
              */
-            XUartPs_WriteReg(InstancePtr->Config.BaseAddress,
+            XUartPs_WriteReg(inst_ptr->Config.BaseAddress,
                        XUARTPS_FIFO_OFFSET,
-                       ucVal);
+                       val);
         }
         
     }
- //   xSemaphoreGive(pxUartDrvPrivate->UartTxMutex);
+ //   xSemaphoreGive(priv->tx_mutex);
     irqrestore(state);
 
-	return xLen;
+	return len;
 }
 
-int Uart_Ioctl(file_t *filp, int iCmd, unsigned long ulArg)
+int uartps_ioctl(file_t *filp, int cmd, unsigned long arg)
 {
-	int32_t iRet = 0;
-	UartDrvPrivate_t *pxUartDrvPrivate = (UartDrvPrivate_t *)filp->f_inode->i_private;
-	switch(iCmd)
+	int32_t ret = 0;
+	uartps_private_t *priv = (uartps_private_t *)filp->f_inode->i_private;
+	switch(cmd)
 	{
 		case FIONREAD:
 		{
-			int iFilledCount = 0;
+			int available= 0;
 
             irqstate_t state = irqsave();
-			iFilledCount = iRingBufferGetAvailable(&pxUartDrvPrivate->xUartRxRingBuf);
-			*(int *)ulArg = iFilledCount;
+			available= iRingBufferGetAvailable(&priv->rx_ringbuf);
+			*(int *)arg = available;
             irqrestore(state);
 			break;
 		}
 		case FIONWRITE:
 		{
-			int iEmptyCount = 0;
+			int space= 0;
 
             irqstate_t state = irqsave();
-			iEmptyCount = iRingBufferGetSpace(&pxUartDrvPrivate->xUartTxRingBuf);
-			*(int *)ulArg = iEmptyCount;
+			space = iRingBufferGetSpace(&priv->tx_ringbuf);
+			*(int *)arg = space;
             irqrestore(state);
 			break;
 		}
 		case UART_IOC_SET_MODE:
 		{
-            if((uint32_t *)ulArg == NULL)
+            if((uint32_t *)arg == NULL)
             {
-                Print_Err("Invald Param!!\n");
+                pilot_err("Invald Param!!\n");
                 return -1;
             }
 		
-            uint32_t uiUartOperMode = *(uint32_t *)(ulArg);
+            uint32_t uartps_mode = *(uint32_t *)(arg);
 
-            if(uiUartOperMode == UART_MODE_LOOP)
+            if(uartps_mode == UART_MODE_LOOP)
             {
-                uiUartOperMode = XUARTPS_OPER_MODE_LOCAL_LOOP; 
+                uartps_mode = XUARTPS_OPER_MODE_LOCAL_LOOP; 
             }
             else
             {
-                uiUartOperMode = XUARTPS_OPER_MODE_NORMAL; 
+                uartps_mode = XUARTPS_OPER_MODE_NORMAL; 
             }
 
-			pxUartDrvPrivate->iUartOperMode = uiUartOperMode;
-			XUartPs_SetOperMode(pxUartDrvPrivate->pxUartInstPtr, uiUartOperMode);
+			priv->uartps_mode = uartps_mode;
+			XUartPs_SetOperMode(priv->uartps_inst_ptr, uartps_mode);
 			break;
 		}	
         case UART_IOC_GET_DATA_FORMAT:
         {
-            if((UartDataFormat_t *)ulArg == NULL)
+            if((UartDataFormat_t *)arg == NULL)
             {
-                Print_Err("Invald Param!!\n");
+                pilot_err("Invald Param!!\n");
                 return -1;
             }
         
-            XUartPsFormat *usr_format = (XUartPsFormat *)ulArg;
+            XUartPsFormat *usr_format = (XUartPsFormat *)arg;
 
             //For ps uart, XUartPsFormat is equal to UartDataFormat_t
-            XUartPs_SetDataFormat(pxUartDrvPrivate->pxUartInstPtr, usr_format);
+            XUartPs_SetDataFormat(priv->uartps_inst_ptr, usr_format);
 
             break;
         }
         case UART_IOC_SET_DATA_FORMAT:
         {
-            if((XUartPsFormat *)ulArg == NULL)
+            if((XUartPsFormat *)arg == NULL)
             {
-                Print_Err("Invald Param!!\n");
+                pilot_err("Invald Param!!\n");
                 return -1;
             }
 
-            XUartPsFormat *drv_format = (XUartPsFormat *)ulArg;
+            XUartPsFormat *drv_format = (XUartPsFormat *)arg;
 
             //For ps uart, XUartPsFormat is equal to UartDataFormat_t
-            XUartPs_SetDataFormat(pxUartDrvPrivate->pxUartInstPtr, drv_format);
+            XUartPs_SetDataFormat(priv->uartps_inst_ptr, drv_format);
             break;
         }
 		default:
-			Print_Err("Unknow Command\n");
+			pilot_err("Unknow Command\n");
             return -1;
 	}
 	return 0;
 }
 
-
-void vUartPs_InterruptHandler(void *pvArg)
+static void uartps_isr(void *arg)
 {
-	u32 IsrStatus;
-	uint8_t  ucVal = 0;
-	int32_t  iRet = 0;
-	UartDrvPrivate_t *pxUartDrvPrivate = (UartDrvPrivate_t *)pvArg;
-	XUartPs *InstancePtr = pxUartDrvPrivate->pxUartInstPtr;
+	u32 isr;
+	uint8_t  val = 0;
+	int32_t  ret = 0;
+	uartps_private_t *priv = (uartps_private_t *)arg;
+	XUartPs *inst_ptr = priv->uartps_inst_ptr;
 
-	Xil_AssertVoid(InstancePtr != NULL);
-	Xil_AssertVoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
+	Xil_AssertVoid(inst_ptr != NULL);
+	Xil_AssertVoid(inst_ptr->IsReady == XIL_COMPONENT_IS_READY);
 
     irqstate_t state = irqsave();
 	/*
 	 * Read the interrupt ID register to determine which
 	 * interrupt is active
 	 */
-	IsrStatus = XUartPs_ReadReg(InstancePtr->Config.BaseAddress,
+	isr = XUartPs_ReadReg(inst_ptr->Config.BaseAddress,
 				   XUARTPS_IMR_OFFSET);
 
-	IsrStatus &= XUartPs_ReadReg(InstancePtr->Config.BaseAddress,
+	isr &= XUartPs_ReadReg(inst_ptr->Config.BaseAddress,
 				   XUARTPS_ISR_OFFSET);
 
 	/*
 	 * Handle interrupt 
 	 */
-	if(0 != (IsrStatus & (XUARTPS_IXR_RXOVR | XUARTPS_IXR_RXEMPTY |
+	if(0 != (isr & (XUARTPS_IXR_RXOVR | XUARTPS_IXR_RXEMPTY |
 				 XUARTPS_IXR_RXFULL))) 
 	{
 		/* Recieved data interrupt */
-		while(XUartPs_IsReceiveData(InstancePtr->Config.BaseAddress))
+		while(XUartPs_IsReceiveData(inst_ptr->Config.BaseAddress))
 		{
-            if(iRingBufferGetSpace(&pxUartDrvPrivate->xUartRxRingBuf) > 0) 
+            if(iRingBufferGetSpace(&priv->rx_ringbuf) > 0) 
             {
-            	ucVal = XUartPs_ReadReg(InstancePtr->Config.BaseAddress, XUARTPS_FIFO_OFFSET);
-//            Print_Warn("IsrStatus=%x val=%d\n", IsrStatus, ucVal);
-			    iRet = xRingBufferPut(&pxUartDrvPrivate->xUartRxRingBuf, &ucVal, sizeof(uint8_t));
+            	val = XUartPs_ReadReg(inst_ptr->Config.BaseAddress, XUARTPS_FIFO_OFFSET);
+//            pilot_warn("isr=%x val=%d\n", isr, val);
+			    ret = xRingBufferPut(&priv->rx_ringbuf, &val, sizeof(uint8_t));
 
             }
             else
@@ -419,10 +417,10 @@ void vUartPs_InterruptHandler(void *pvArg)
                 /*
                  * 如果rx fifo和ringbuffer都满了，则强行写一个数据到ringbuffer，防止rx中断再也进不来
                  */
-                if(IsrStatus & (XUARTPS_IXR_RXFULL)) 
+                if(isr & (XUARTPS_IXR_RXFULL)) 
                 {
-                    ucVal = XUartPs_ReadReg(InstancePtr->Config.BaseAddress, XUARTPS_FIFO_OFFSET);
-                    iRet = xRingBufferForce(&pxUartDrvPrivate->xUartRxRingBuf, &ucVal, sizeof(uint8_t));
+                    val = XUartPs_ReadReg(inst_ptr->Config.BaseAddress, XUARTPS_FIFO_OFFSET);
+                    ret = xRingBufferForce(&priv->rx_ringbuf, &val, sizeof(uint8_t));
                 }
                 break;
             }
@@ -431,51 +429,50 @@ void vUartPs_InterruptHandler(void *pvArg)
 	}
 
 
-	if(0 != (IsrStatus & (XUARTPS_IXR_TXEMPTY | XUARTPS_IXR_TXFULL))) 
+	if(0 != (isr & (XUARTPS_IXR_TXEMPTY | XUARTPS_IXR_TXFULL))) 
 	{
         portBASE_TYPE xHigherPriorityTaskWoken;
         xHigherPriorityTaskWoken = pdFALSE;
         
-//        xSemaphoreTakeFromISR(pxUartDrvPrivate->UartTxMutex, &xHigherPriorityTaskWoken);
+//        xSemaphoreTakeFromISR(priv->tx_mutex, &xHigherPriorityTaskWoken);
         /* Transmit data interrupt */
-		while ((!XUartPs_IsTransmitFull(InstancePtr->Config.BaseAddress))) 
+		while ((!XUartPs_IsTransmitFull(inst_ptr->Config.BaseAddress))) 
 		{
-			iRet = xRingBufferGet(&pxUartDrvPrivate->xUartTxRingBuf, &ucVal, sizeof(uint8_t));
+			ret = xRingBufferGet(&priv->tx_ringbuf, &val, sizeof(uint8_t));
 			
-			if(iRet == 0)
+			if(ret == 0)
 			{
 				/*
 				 * Fill the FIFO from the buffer
 				 */
-				XUartPs_WriteReg(InstancePtr->Config.BaseAddress,
+				XUartPs_WriteReg(inst_ptr->Config.BaseAddress,
 						   XUARTPS_FIFO_OFFSET,
-						   ucVal);
+						   val);
 			}
 			else
 				break;
 			
 		}
- //       xSemaphoreGiveFromISR(pxUartDrvPrivate->UartTxMutex, &xHigherPriorityTaskWoken);
+ //       xSemaphoreGiveFromISR(priv->tx_mutex, &xHigherPriorityTaskWoken);
 	}
 
-	if(0 != (IsrStatus & (XUARTPS_IXR_OVER | XUARTPS_IXR_FRAMING |
+	if(0 != (isr & (XUARTPS_IXR_OVER | XUARTPS_IXR_FRAMING |
 				XUARTPS_IXR_PARITY))) {
-		/* Recieved Error Status interrupt */
+		/* Recieved Error status interrupt */
 	}
 
-	if(0 != (IsrStatus & XUARTPS_IXR_TOUT )) {
+	if(0 != (isr & XUARTPS_IXR_TOUT )) {
 		/* Recieved Timeout interrupt */
 	}
 
-	if(0 != (IsrStatus & XUARTPS_IXR_DMS)) {
+	if(0 != (isr & XUARTPS_IXR_DMS)) {
 		/* Modem status interrupt */
 	}
 
 	/*
 	 * Clear the interrupt status.
 	 */
-	XUartPs_WriteReg(InstancePtr->Config.BaseAddress, XUARTPS_ISR_OFFSET,
-		IsrStatus);
+	XUartPs_WriteReg(inst_ptr->Config.BaseAddress, XUARTPS_ISR_OFFSET, isr);
 
     irqrestore(state);
 }

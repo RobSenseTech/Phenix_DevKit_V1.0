@@ -1,5 +1,5 @@
 #include "common_list.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 
 static struct list_head xTestListHead;//链表头
 
@@ -40,7 +40,7 @@ void List_test()
 
 	list_for_each_entry(xIndex, &xTestListHead, xListNode)
 	{
-		Print_Warn("Current node:%d\n", xIndex->iNum);
+		pilot_warn("Current node:%d\n", xIndex->iNum);
 	}
 
 	xNewListNode = (struct xListTest_t *)pvPortMalloc(sizeof(struct xListTest_t));
@@ -60,6 +60,6 @@ void List_test()
 
 	list_for_each_entry(xIndex, &xTestListHead, xListNode)
 	{
-		Print_Warn("Current node:%d\n", xIndex->iNum);
+		pilot_warn("Current node:%d\n", xIndex->iNum);
 	}
 }

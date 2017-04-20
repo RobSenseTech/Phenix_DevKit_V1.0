@@ -80,7 +80,7 @@ SubscriptionBase::SubscriptionBase(const struct orb_metadata *meta,
 		_handle =  orb_subscribe(getMeta());
 	}
 
-	if (_handle < 0) { Print_Warn("sub failed"); }
+	if (_handle < 0) { pilot_warn("sub failed"); }
 
 	orb_set_interval(getHandle(), interval);
 }
@@ -90,7 +90,7 @@ bool SubscriptionBase::updated()
 	bool isUpdated = false;
 	int ret = orb_check(_handle, &isUpdated);
 
-	if (ret != 0) { Print_Warn("orb check failed"); }
+	if (ret != 0) { pilot_warn("orb check failed"); }
 
 	return isUpdated;
 }
@@ -100,7 +100,7 @@ void SubscriptionBase::update(void *data)
 	if (updated()) {
 		int ret = orb_copy(_meta, _handle, data);
 
-		if (ret != 0) { Print_Warn("orb copy failed"); }
+		if (ret != 0) { pilot_warn("orb copy failed"); }
 	}
 }
 
@@ -108,7 +108,7 @@ SubscriptionBase::~SubscriptionBase()
 {
 	int ret = orb_unsubscribe(_handle);
 
-	if (ret != 0) { Print_Warn("orb unsubscribe failed"); }
+	if (ret != 0) { pilot_warn("orb unsubscribe failed"); }
 }
 
 template <class T>

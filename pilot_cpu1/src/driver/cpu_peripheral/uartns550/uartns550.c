@@ -5,7 +5,7 @@
 #include "xparameters.h"
 #include "xuartns550.h"
 #include "xil_exception.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "ringbuffer.h"
 #include "gic/zynq_gic.h"
 #include <fs/fs.h>
@@ -90,7 +90,7 @@ uint32_t uartns_init(int32_t uartns_id)
 
 	if(uartns_id >= XPAR_XUARTNS550_NUM_INSTANCES)
 	{
-		Print_Err("No such uart lite:%d, check vivado config\n", uartns_id);
+		pilot_err("No such uart lite:%d, check vivado config\n", uartns_id);
 		return XST_FAILURE;
 	}
 
@@ -100,7 +100,7 @@ uint32_t uartns_init(int32_t uartns_id)
 	private = (uartns_private_t*)pvPortMalloc(sizeof(uartns_private_t));
 	if(private == NULL)
 	{
-		Print_Err("malloc failed!!\n");
+		pilot_err("malloc failed!!\n");
 		return XST_FAILURE;
 	}
 	else
@@ -134,20 +134,20 @@ uint32_t uartns_init(int32_t uartns_id)
 	/*
 	 * step3: bind uartns interrupt to CPU1
 	 */
-	GicBindInterruptToCpu(intr_id, CPU_1_TARGETED);
+	gic_bind_interrupt_to_cpu(intr_id, CPU_1_TARGETED);
 
 	/*
 	 * step4: set interrupt as rising edge triggered
 	 */
-	GicSetTriggerType(intr_id, INTR_TRIGGER_RAISING_EDGE);
+	gic_set_trigger_type(intr_id, INTR_TRIGGER_RAISING_EDGE);
 
     /*
 	 * step5: register interrupt handler
 	 */
-	GicIsrHandlerRegister(intr_id,(Xil_ExceptionHandler) uartns_isr,(void *)private);
+	gic_isr_register(intr_id,(Xil_ExceptionHandler) uartns_isr,(void *)private);
 	if(status != XST_SUCCESS)
 	{
-		Print_Err("Set Uart%d interrupt handler failed:%d\n", uartns_id, status);
+		pilot_err("Set Uart%d interrupt handler failed:%d\n", uartns_id, status);
 		return XST_FAILURE;
 	}
 
@@ -167,7 +167,7 @@ uint32_t uartns_init(int32_t uartns_id)
 	/*
 	 * step8: Enable interrupt
 	 */
-	GicInterruptEnable(intr_id);
+	gic_interrupt_enable(intr_id);
 
 	return XST_SUCCESS;
 }
@@ -354,7 +354,7 @@ static ssize_t uartns_read(struct file *filp, char *buffer, size_t buflen)
 
 	while(read_len < buflen)
 	{
-//        Print_Info("head=%x tail=%x\n", pxUartDrvPrivate->xUartRxRingBuf._Head, pxUartDrvPrivate->xUartRxRingBuf._Tail); 
+//        pilot_info("head=%x tail=%x\n", pxUartDrvPrivate->xUartRxRingBuf._Head, pxUartDrvPrivate->xUartRxRingBuf._Tail); 
 		if(xRingBufferGet(&private->rx_ringbuf, &buffer[read_len], sizeof(uint8_t)) == 0)
         {
 			read_len++;
@@ -546,7 +546,7 @@ static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
 
             if((uint32_t *)arg == NULL)
             {
-                Print_Err("Invald Param!!\n");
+                pilot_err("Invald Param!!\n");
                 goto ERR_OUT;
             }
 		
@@ -569,7 +569,7 @@ static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
         {
             if((UartDataFormat_t *)arg == NULL)
             {
-                Print_Err("Invald Param!!\n");
+                pilot_err("Invald Param!!\n");
                 goto ERR_OUT;
             }
 
@@ -586,7 +586,7 @@ static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
         {
             if((UartDataFormat_t *)arg == NULL)
             {
-                Print_Err("Invald Param!!\n");
+                pilot_err("Invald Param!!\n");
                 goto ERR_OUT;
             }
 
@@ -594,13 +594,13 @@ static int uartns_ioctl(file_t *filp, int cmd, unsigned long arg)
             XUartNs550Format xil_format = {0};
 
             structure_trans_to_drv(data_format, &xil_format);
-            //Print_Info("baud=%d databits=%d parity=%d stop=%d\n", xil_format.BaudRate, xil_format.DataBits, xil_format.Parity, xil_format.StopBits);
+            //pilot_info("baud=%d databits=%d parity=%d stop=%d\n", xil_format.BaudRate, xil_format.DataBits, xil_format.Parity, xil_format.StopBits);
 
             XUartNs550_SetDataFormat(inst_ptr, &xil_format);
             break;
         }
         default:
-            Print_Err("No such ioctl command:%x!!\n", cmd);
+            pilot_err("No such ioctl command:%x!!\n", cmd);
             goto ERR_OUT;
     }
 

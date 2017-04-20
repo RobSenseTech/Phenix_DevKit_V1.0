@@ -414,7 +414,7 @@ bool NavEKF2::InitialiseFilter(void)
         if (hal.util->available_memory() < sizeof(NavEKF2_core)*num_cores + 4096) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "NavEKF2: not enough memory");
             _enable.set(0);
-            Print_Err("NavEKF2: not enough memory\n");
+            pilot_err("NavEKF2: not enough memory\n");
             return false;
         }
         
@@ -422,7 +422,7 @@ bool NavEKF2::InitialiseFilter(void)
         if (core == nullptr) {
             _enable.set(0);
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "NavEKF2: allocation failed");
-            Print_Err("NavEKF2: allocation failed\n");
+            pilot_err("NavEKF2: allocation failed\n");
             return false;
         }
 

@@ -39,7 +39,7 @@
 #include "device/cdev.h"
 #include "ringbuffer.h"
 #include "drv_baro.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include <uORB/uORB.h>
 #include "conversion/rotation.h"
 #include "math.h"
@@ -337,12 +337,12 @@ MS5611::_read_prom()
             all_zero = false;
         }
         memcpy(&_prom.s, temp, sizeof(temp));
-	    Print_Info("temp[%d] = %u\n", i, temp[i]);
+	    pilot_info("temp[%d] = %u\n", i, temp[i]);
     }
 	//for (int i = 0; i < 8; i++) {
 	//	uint8_t cmd = (ADDR_PROM_SETUP + (i * 2));
 	//	_prom.c[i] = _reg16(cmd);
-	//	Print_Info("_prom.c[%d] = %d\r\n",i,_prom.c[i]);
+	//	pilot_info("_prom.c[%d] = %d\r\n",i,_prom.c[i]);
 	//	if (_prom.c[i] != 0) {
 	//		all_zero = false;
 	//	}
@@ -354,11 +354,11 @@ MS5611::_read_prom()
 	int ret = ms5611::crc4(&_prom.c[0]) ? OK : -EIO;
 
 	if (ret != OK) {
-		Print_Err("crc failed");
+		pilot_err("crc failed");
 	}
 
 	if (all_zero) {
-		Print_Err("prom all zero");
+		pilot_err("prom all zero");
 		ret = -EIO;
 	}
 
@@ -372,7 +372,7 @@ MS5611::reset_sensor()
 	u8 cmd = ADDR_RESET_CMD | DIR_WRITE;
 
 	  SpiTransfer(&_devInstance, &cmd, &cmd, 1);
-	  Print_Info("cmd = %d\r\n",cmd);
+	  pilot_info("cmd = %d\r\n",cmd);
 	return OK;
 //	return	write_reg(cmd,0);
 	
@@ -385,20 +385,20 @@ MS5611::init()
 
 	ret = reset_sensor();
 	if (ret != OK) {
-		Print_Err("reset sensor failed\n");
+		pilot_err("reset sensor failed\n");
 		goto out;
 	}
 	
 	ret = _read_prom();
 	if (ret != OK) {
-		Print_Err("read prom failed\n");
+		pilot_err("read prom failed\n");
 		goto out;
 	}
 	
 	ret = CDev::init();
 
 	if (ret != OK) {
-		Print_Err("CDev init failed\n");
+		pilot_err("CDev init failed\n");
 		goto out;
 	}
 
@@ -414,7 +414,7 @@ MS5611::init()
 
 
 	if (_reports == NULL) {
-		Print_Err("can't get memory for reports\n");
+		pilot_err("can't get memory for reports\n");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -432,7 +432,7 @@ MS5611::init()
 	do {
 		/* do temperature first */
 		if (OK != measure()) {
-            Print_Err("measure temperature failed\n");
+            pilot_err("measure temperature failed\n");
 			ret = -EIO;
 			break;
 		}
@@ -446,7 +446,7 @@ MS5611::init()
 
 		/* now do a pressure measurement */
 		if (OK != measure()) {
-            Print_Err("measure pressure failed\n");
+            pilot_err("measure pressure failed\n");
 			ret = -EIO;
 			break;
 		}
@@ -454,7 +454,7 @@ MS5611::init()
 		usleep(MS5611_CONVERSION_INTERVAL);
 
 		if (OK != collect()) {
-            Print_Err("collect failed\n");
+            pilot_err("collect failed\n");
 			ret = -EIO;
 			break;
 		}
@@ -1042,7 +1042,7 @@ start(bool external_bus)
 {
 	int fd;
 //	prom_u prom_buf;
-	Print_Info("MS5611 -------------------------Into start ");
+	pilot_info("MS5611 -------------------------Into start ");
 	
 	if (g_dev[external_bus] != NULL)
 	{
@@ -1112,14 +1112,14 @@ test(bool external_bus)
 	{
 		fd = open(MS5611_BARO_DEVICE_PATH_EXT, O_RDONLY);
 		if (fd < 0)
-			Print_Err("%s open failed\n", MS5611_BARO_DEVICE_PATH_EXT);
+			pilot_err("%s open failed\n", MS5611_BARO_DEVICE_PATH_EXT);
 			return;
 	}
 	else
 	{
 		fd = open(MS5611_BARO_DEVICE_PATH_INT, O_RDONLY);
 		if (fd < 0)
-			Print_Err("%s open failed\n", MS5611_BARO_DEVICE_PATH_INT);
+			pilot_err("%s open failed\n", MS5611_BARO_DEVICE_PATH_INT);
 			return;
 	}
 	
@@ -1128,25 +1128,25 @@ test(bool external_bus)
 	sz = read(fd, (char*)&report, sizeof(report));
 
 	if (sz != sizeof(report)) {
-		Print_Err("immediate read failed\n");
+		pilot_err("immediate read failed\n");
 		return ;
 	}
 
-	Print_Info("single read\n");
-	Print_Info("pressure:    %10.4f\n", (double)report.pressure);
-	Print_Info("altitude:    %11.4f\n", (double)report.altitude);
-	Print_Info("temperature: %8.4f\n", (double)report.temperature);
-	Print_Info("time:        %lld\n", report.timestamp);
+	pilot_info("single read\n");
+	pilot_info("pressure:    %10.4f\n", (double)report.pressure);
+	pilot_info("altitude:    %11.4f\n", (double)report.altitude);
+	pilot_info("temperature: %8.4f\n", (double)report.temperature);
+	pilot_info("time:        %lld\n", report.timestamp);
 
 	/* set the queue depth to 10 */
 	if (OK != ioctl(fd, SENSORIOCSQUEUEDEPTH,10)) {
-		Print_Err("failed to set queue depth\n");
+		pilot_err("failed to set queue depth\n");
 		return ;
 	}
 
 	/* start the sensor polling at 2Hz */
 	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2)) {
-		Print_Err("failed to set 2Hz poll rate\n");
+		pilot_err("failed to set 2Hz poll rate\n");
 		return ;
 	}
 
@@ -1160,7 +1160,7 @@ test(bool external_bus)
 		ret = poll(&fds, 1, 2000);
 
 		if (ret != 1) {
-			Print_Err("timed out waiting for sensor data\n");
+			pilot_err("timed out waiting for sensor data\n");
 			return;
 		}
 
@@ -1168,15 +1168,15 @@ test(bool external_bus)
 		sz = read(fd, (char*)&report, sizeof(report));
 
 		if (sz != sizeof(report)) {
-			Print_Err("periodic read failed\n");
+			pilot_err("periodic read failed\n");
 			return ;
 		}
 
-		Print_Info("periodic read %u\n", i);
-		Print_Info("pressure:    %10.4f\n", (double)report.pressure);
-		Print_Info("altitude:    %11.4f\n", (double)report.altitude);
-		Print_Info("temperature: %8.4f\n", (double)report.temperature);
-		Print_Info("time:        %lld\n", report.timestamp);
+		pilot_info("periodic read %u\n", i);
+		pilot_info("pressure:    %10.4f\n", (double)report.pressure);
+		pilot_info("altitude:    %11.4f\n", (double)report.altitude);
+		pilot_info("temperature: %8.4f\n", (double)report.temperature);
+		pilot_info("time:        %lld\n", report.timestamp);
 	}
 
 	close(fd);
@@ -1353,7 +1353,7 @@ int ms5611_main(int argc, char *argv[])
 	/*
 	 * Start/load the driver.
 	 */
-	Print_Info("verb=%s external_bus = %d\r\n",verb, external_bus);
+	pilot_info("verb=%s external_bus = %d\r\n",verb, external_bus);
 	if (!strcmp(verb, "start")) {
 		ms5611::start(external_bus);
 			return 0;

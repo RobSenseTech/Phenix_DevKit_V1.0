@@ -50,7 +50,7 @@
 #include <ctype.h>
 
 #include "mixer.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 
 SimpleMixer::SimpleMixer(ControlCallback control_cb,
 			 uintptr_t cb_handle,

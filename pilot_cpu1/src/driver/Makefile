@@ -4,14 +4,11 @@
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/ocm
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uart
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uartns550
-#DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uartlite
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/hrt
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/gic
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/sd
-#DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/sd_test
 DRIVER_PATH += $(DRV_ROOT_PATH)/device
 DRIVER_PATH += $(DRV_ROOT_PATH)/rc
-#DRIVER_PATH += $(DRV_ROOT_PATH)/storage
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/spi
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/gpio
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/iic

@@ -7,7 +7,7 @@
 #include "drv_pwm_output.h"
 #include <uORB/topics/actuator_direct.h>
 #include "hrt/drv_hrt.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "device/cdev.h"
 
 extern const AP_HAL::HAL& hal;
@@ -22,15 +22,15 @@ void PX4RCOutput::init()
     }
     if (ioctl(_pwm_fd, PWM_SERVO_ARM, 0) != 0) {
         //hal.console->printf("RCOutput: Unable to setup IO arming\n");
-        Print_Err("RCOutput: Unable to setup IO arming\n");
+        pilot_err("RCOutput: Unable to setup IO arming\n");
     }
     else
     {
-    	Print_Info("PX4RCOutput::init PWM_SERVO_ARM ok\n");
+    	pilot_info("PX4RCOutput::init PWM_SERVO_ARM ok\n");
     }
     if (ioctl(_pwm_fd, PWM_SERVO_SET_ARM_OK, 0) !=   0) {
         //hal.console->printf("RCOutput: Unable to setup IO arming OK\n");
-    	Print_Err("RCOutput: Unable to setup IO arming OK\n");
+    	pilot_err("RCOutput: Unable to setup IO arming OK\n");
     }
     _rate_mask = 0;
     _alt_fd = -1;    
@@ -39,7 +39,7 @@ void PX4RCOutput::init()
 
     if (ioctl(_pwm_fd, PWM_SERVO_GET_COUNT, (unsigned long)&_servo_count) != 0) {
         //hal.console->printf("RCOutput: Unable to get servo count\n");
-    	Print_Err("RCOutput: Unable to get servo count\n");
+    	pilot_err("RCOutput: Unable to get servo count\n");
         return;
     }
 
@@ -51,7 +51,7 @@ void PX4RCOutput::init()
     _alt_fd = open("/dev/px4fmu", O_RDWR);			// /dev/px4fmu需要改成底层对应的文件描述
     if (_alt_fd == -1) {
         //hal.console->printf("RCOutput: failed to open /dev/px4fmu");
-        Print_Err("RCOutput: failed to open /dev/px4fmu");
+        pilot_err("RCOutput: failed to open /dev/px4fmu");
         return;
     }
 #endif
@@ -77,17 +77,17 @@ void PX4RCOutput::_init_alt_channels(void)
     }
     if (ioctl(_alt_fd, PWM_SERVO_ARM, 0) != 0) {
         //hal.console->printf("RCOutput: Unable to setup alt IO arming\n");
-        Print_Err("RCOutput: Unable to setup alt IO arming\n");
+        pilot_err("RCOutput: Unable to setup alt IO arming\n");
         return;
     }
     if (ioctl(_alt_fd, PWM_SERVO_SET_ARM_OK, 0) != 0) {
         //hal.console->printf("RCOutput: Unable to setup alt IO arming OK\n");
-        Print_Err("RCOutput: Unable to setup alt IO arming OK\n");
+        pilot_err("RCOutput: Unable to setup alt IO arming OK\n");
         return;
     }
     if (ioctl(_alt_fd, PWM_SERVO_GET_COUNT, (unsigned long)&_alt_servo_count) != 0) {
         //hal.console->printf("RCOutput: Unable to get servo count\n");
-        Print_Err("RCOutput: Unable to get servo count\n");
+        pilot_err("RCOutput: Unable to get servo count\n");
     }
 }
 
@@ -101,7 +101,7 @@ void PX4RCOutput::set_freq_fd(int fd, uint32_t chmask, uint16_t freq_hz)
         // we're being asked to set the alt rate
         if (ioctl(fd, PWM_SERVO_SET_UPDATE_RATE, (unsigned long)freq_hz) != 0) {
             //hal.console->printf("RCOutput: Unable to set alt rate to %uHz\n", (unsigned)freq_hz);
-            Print_Err("RCOutput: Unable to set alt rate to %uHz\n", (unsigned)freq_hz);
+            pilot_err("RCOutput: Unable to set alt rate to %uHz\n", (unsigned)freq_hz);
             return;
         }
         _freq_hz = freq_hz;
@@ -145,7 +145,7 @@ void PX4RCOutput::set_freq_fd(int fd, uint32_t chmask, uint16_t freq_hz)
 
     if (ioctl(fd, PWM_SERVO_SET_SELECT_UPDATE_RATE, _rate_mask) != 0) {
         //hal.console->printf("RCOutput: Unable to set alt rate mask to 0x%x\n", (unsigned)_rate_mask);
-        Print_Err("RCOutput: Unable to set alt rate mask to 0x%x\n", (unsigned)_rate_mask);
+        pilot_err("RCOutput: Unable to set alt rate mask to 0x%x\n", (unsigned)_rate_mask);
     }
 }
 
@@ -163,7 +163,7 @@ void PX4RCOutput::set_freq(uint32_t chmask, uint16_t freq_hz)
     uint32_t alt_mask = chmask >> _servo_count;
     if (primary_mask && _pwm_fd != -1) {
     	//printf("PX4RCOutput::set_freq chmask=0x%x primary_mask=0x%x freq_hz=%d\n", chmask, primary_mask, freq_hz);
-    	Print_Info("PX4RCOutput::set_freq chmask=0x%x primary_mask=0x%x freq_hz=%d\n", chmask, primary_mask, freq_hz);
+    	pilot_info("PX4RCOutput::set_freq chmask=0x%x primary_mask=0x%x freq_hz=%d\n", chmask, primary_mask, freq_hz);
     	set_freq_fd(_pwm_fd, primary_mask, freq_hz);
     }
     if (alt_mask && _alt_fd != -1) {
@@ -218,7 +218,7 @@ void PX4RCOutput::set_safety_pwm(uint32_t chmask, uint16_t period_us)
     int ret = ioctl(_pwm_fd, PWM_SERVO_SET_DISARMED_PWM, (unsigned long)&pwm_values);
     if (ret != OK) {
         //hal.console->printf("Failed to setup disarmed PWM for 0x%08x to %u\n", (unsigned)chmask, period_us);
-    	Print_Err("Failed to setup disarmed PWM for 0x%08x to %u\n", (unsigned)chmask, period_us);
+    	pilot_err("Failed to setup disarmed PWM for 0x%08x to %u\n", (unsigned)chmask, period_us);
     }
 }
 
@@ -235,7 +235,7 @@ void PX4RCOutput::set_failsafe_pwm(uint32_t chmask, uint16_t period_us)
     int ret = ioctl(_pwm_fd, PWM_SERVO_SET_FAILSAFE_PWM, (unsigned long)&pwm_values);
     if (ret != OK) {
         //hal.console->printf("Failed to setup failsafe PWM for 0x%08x to %u\n", (unsigned)chmask, period_us);
-        Print_Err("Failed to setup failsafe PWM for 0x%08x to %u\n", (unsigned)chmask, period_us);
+        pilot_err("Failed to setup failsafe PWM for 0x%08x to %u\n", (unsigned)chmask, period_us);
     }
 }
 
@@ -250,7 +250,7 @@ void PX4RCOutput::force_safety_off(void)
     int ret = ioctl(_pwm_fd, PWM_SERVO_SET_FORCE_SAFETY_OFF, 0);
     if (ret != OK) {
         //hal.console->printf("Failed to force safety off\n");
-        Print_Err("Failed to force safety off\n");
+        pilot_err("Failed to force safety off\n");
     }
 }
 

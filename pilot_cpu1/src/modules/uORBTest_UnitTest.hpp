@@ -132,7 +132,7 @@ int uORBTest::UnitTest::latency_test(orb_id_t T, bool print)
 		t.time = hrt_absolute_time();
 
 		if (0 != orb_publish(T, pfd0, &t)) {
-			return Print_Err("mult. pub0 timing fail");
+			return pilot_err("mult. pub0 timing fail");
 		}
 
 		/* simulate >800 Hz system operation */
@@ -140,7 +140,7 @@ int uORBTest::UnitTest::latency_test(orb_id_t T, bool print)
 	}
 
 	if (pubsub_task < 0) {
-		return Print_Err("failed launching task");
+		return pilot_err("failed launching task");
 	}
 
 	return pubsubtest_res;
