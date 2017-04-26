@@ -14,26 +14,13 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-/* I2C Device Private Data */
-
-typedef struct{
-    u8  bus_id;
-	XIicPs* iicbus; 
-    xSemaphoreHandle iic_mutex;
-	u32 frequency;
-	u8  devaddr;
-	u8  regaddr;
-}iic_priv_s;
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 /************************** Function Prototypes ******************************/
-int iic_init(u8 iIicId, u32 FsclHz);
-iic_priv_s *iic_get_priv(u8 iIicId, u8 DevAddr, u32 FsclHz);
-int iic_transfer(iic_priv_s *iic_priv, const uint8_t *send, unsigned send_len, uint8_t *recv, unsigned recv_len, unsigned regaddrflag);
-void Iic_set_address(iic_priv_s *iic_priv, u8 reg_addr);
+int32_t iic_init(uint8_t bus_id, uint32_t clk);
+void *iic_register(uint8_t bus_id, uint8_t dev_addr, uint32_t clk);
+int32_t iic_transfer(void *iic_priv, const uint8_t *send, unsigned send_len, uint8_t *recv, unsigned recv_len);
 
 #ifdef __cplusplus
 }

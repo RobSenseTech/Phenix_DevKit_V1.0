@@ -22,7 +22,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_NavEKF/AP_NavEKF.h>
 
-#pragma GCC optimize("O3")
+//#pragma GCC optimize("O3")
 
 /*
   avoid a hang in the optimiser in clang++

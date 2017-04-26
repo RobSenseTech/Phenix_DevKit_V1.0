@@ -125,9 +125,6 @@
 //# undef ERROR
 //#endif
 //static const int ERROR = -1;
-#define OK						0
-#define DEV_FAILURE				0
-#define DEV_SUCCESS				1
 
 //#ifndef CONFIG_SCHED_WORKQUEUE
 //# error This requires CONFIG_SCHED_WORKQUEUE.
@@ -178,7 +175,7 @@ private:
 	//perf_counter_t		_buffer_overflows;
 	//perf_counter_t		_range_errors;
 	//perf_counter_t		_conf_errors;
-	iic_priv_s    *hmc5883_iic;
+	void *hmc5883_iic;
 	/* status reporting */
 	bool			_sensor_ok;		/**< sensor was found and reports ok */
 	bool			_calibrated;		/**< the calibration is valid */
@@ -362,7 +359,7 @@ extern "C" __EXPORT int hmc5883_main(int argc, char *argv[]);
 HMC5883::HMC5883(int bus, int dev_addr, uint32_t frequency, const char *path, enum Rotation rotation) :
 	CDev("hmc5883", path),
 //	_interface(interface),
-//	_work{},
+	_work(NULL),
 	_bus(bus),
 	_address(dev_addr),
 	_frequency(frequency),
@@ -428,9 +425,9 @@ HMC5883::~HMC5883()
 int
 HMC5883::init()
 {
-	int ret = DEV_FAILURE;
+	int ret = ERROR;
 
-	hmc5883_iic = iic_get_priv(_bus, _address, _frequency);
+	hmc5883_iic = iic_register(_bus, _address, _frequency);
 
 	ret = CDev::init();
 
@@ -596,14 +593,14 @@ HMC5883::hmc5883_iic_write(uint8_t address, uint8_t *data, unsigned count)
 	buf[0] = address;
 	memcpy(&buf[1], data, count);
 
-	return iic_transfer(hmc5883_iic, &buf[0], count + 1, NULL, 0,0);
+	return iic_transfer(hmc5883_iic, &buf[0], count + 1, NULL, 0);
 }
 
 
 int
 HMC5883::hmc5883_iic_read(uint8_t address, uint8_t *data, unsigned count)
 {
-	return iic_transfer(hmc5883_iic, &address, 1, data, count,0);
+	return iic_transfer(hmc5883_iic, &address, 1, data, count);
 }
 
 
@@ -836,7 +833,8 @@ HMC5883::start()
 void
 HMC5883::stop()
 {
-    xTimerDelete(_work, portMAX_DELAY);
+    if(_work != NULL)
+        xTimerDelete(_work, portMAX_DELAY);
 }
 
 
@@ -849,15 +847,15 @@ HMC5883::probe()
 
 	
 	data[0] = 0x0a;
-	iic_transfer(hmc5883_iic, &data[0], 1, &data[0], 1, 0);
+	iic_transfer(hmc5883_iic, &data[0], 1, &data[0], 1);
 	pilot_info("WHO AM I 0 = %c\r\n",data[0]);	
 
 	data[1] = 0x0b;
-	iic_transfer(hmc5883_iic, &data[1], 1, &data[1], 1, 0);
+	iic_transfer(hmc5883_iic, &data[1], 1, &data[1], 1);
 	pilot_info("WHO AM I 1 = %c\r\n",data[1]);		
 
 	data[2] = 0x0c;
-	iic_transfer(hmc5883_iic, &data[2], 1, &data[2], 1, 0);
+	iic_transfer(hmc5883_iic, &data[2], 1, &data[2], 1);
 	pilot_info("WHO AM I 2 = %c\r\n",data[2]);	
 	
 

@@ -949,6 +949,7 @@ void vTaskGetInfo( TaskHandle_t xTask, TaskStatus_t *pxTaskStatus, BaseType_t xG
  */
 void vTaskPrioritySet( TaskHandle_t xTask, UBaseType_t uxNewPriority ) PRIVILEGED_FUNCTION;
 
+void vTaskPrioritySetFromISR( TaskHandle_t xTask, UBaseType_t uxNewPriority ) PRIVILEGED_FUNCTION;
 /**
  * task. h
  * <pre>void vTaskSuspend( TaskHandle_t xTaskToSuspend );</pre>

@@ -65,10 +65,6 @@
 #include <stdbool.h>
 #include <fcntl.h>
 
-#define OK						0
-#define DEV_FAILURE				0
-#define DEV_SUCCESS				1
-
 #define RGBLED_ONTIME 120
 #define RGBLED_OFFTIME 120
 
@@ -117,7 +113,7 @@ private:
 	int			_param_sub;
 
 	unsigned		_retries;
-	iic_priv_s    *rgbled;
+	void        *rgbled_iic;
 	void 			set_color(rgbled_color_t ledcolor);
 	void			set_mode(rgbled_mode_t mode);
 	void			set_pattern(rgbled_pattern_t *pattern);
@@ -170,7 +166,7 @@ RGBLED::init()
 {
 	int ret;
 	
-	rgbled = iic_get_priv(_bus, _address, _frequency);
+	rgbled_iic = iic_register(_bus, _address, _frequency);
 	
 	ret = CDev::init();
 
@@ -581,7 +577,7 @@ RGBLED::send_led_enable(bool enable)
 
 	const uint8_t msg[2] = { SUB_ADDR_SETTINGS, settings_byte};
 
-	return iic_transfer(rgbled, msg, sizeof(msg), NULL, 0, 0);
+	return iic_transfer(rgbled_iic, msg, sizeof(msg), NULL, 0);
 }
 
 /**
@@ -596,7 +592,8 @@ RGBLED::send_led_rgb()
 		SUB_ADDR_PWM1, static_cast<uint8_t>((_g >> 4) * _brightness * _max_brightness + 0.5f),
 		SUB_ADDR_PWM2, static_cast<uint8_t>((_r >> 4) * _brightness * _max_brightness + 0.5f)
 	};
-	return iic_transfer(rgbled, msg, sizeof(msg), NULL, 0, 0);
+
+	return iic_transfer(rgbled_iic, msg, sizeof(msg), NULL, 0);
 }
 
 int
@@ -605,7 +602,7 @@ RGBLED::get(bool &on, bool &powersave, uint8_t &r, uint8_t &g, uint8_t &b)
 	uint8_t result[2];
 	int ret;
 
-	ret = iic_transfer(rgbled, NULL, 0, &result[0], 2, 0);
+	ret = iic_transfer(rgbled_iic, NULL, 0, &result[0], 2);
 //	pilot_info("result[0] = %x, result[1] = %x\r\n",result[0],result[1]);
 	
 	if (ret == OK) {

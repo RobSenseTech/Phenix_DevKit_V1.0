@@ -554,7 +554,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 	} else {
 		Status = XSdPs_IdentifyCard(InstancePtr);
 		if (Status == XST_FAILURE) {
-            xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 	}
@@ -563,7 +562,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 		(InstancePtr->CardType != XSDPS_CARD_MMC) &&
 		(InstancePtr->CardType != XSDPS_CHIP_EMMC)) {
 		Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 		goto RETURN_PATH;
 	}
 
@@ -571,7 +569,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 		Status = XSdPs_SdCardInitialize(InstancePtr);
 		if (Status != XST_SUCCESS) {
 			Status = XST_FAILURE;
-            xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 
@@ -588,7 +585,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 		Status = XSdPs_Change_ClkFreq(InstancePtr, InstancePtr->BusSpeed);
 		if (Status != XST_SUCCESS) {
 			Status = XST_FAILURE;
-            xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 
@@ -597,7 +593,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 		Status = XSdPs_MmcCardInitialize(InstancePtr);
 		if (Status != XST_SUCCESS) {
 			Status = XST_FAILURE;
-            xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 		/* Change clock to default clock 26MHz */
@@ -605,19 +600,16 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 		Status = XSdPs_Change_ClkFreq(InstancePtr, InstancePtr->BusSpeed);
 		if (Status != XST_SUCCESS) {
 			Status = XST_FAILURE;
-            xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 	} else {
 		Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 		goto RETURN_PATH;
 	}
 
 	Status = XSdPs_Select_Card(InstancePtr);
 	if (Status != XST_SUCCESS) {
 		Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 		goto RETURN_PATH;
 	}
 
@@ -626,14 +618,12 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 		Status = XSdPs_Pullup(InstancePtr);
 		if (Status != XST_SUCCESS) {
 			Status = XST_FAILURE;
-            xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 
 		Status = XSdPs_Get_BusWidth(InstancePtr, SCR);
 		if (Status != XST_SUCCESS) {
 			Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 
@@ -641,7 +631,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 			Status = XSdPs_Change_BusWidth(InstancePtr);
 			if (Status != XST_SUCCESS) {
 				Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 				goto RETURN_PATH;
 			}
 		}
@@ -649,7 +638,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 		/* Get speed supported by device */
 		Status = XSdPs_Get_BusSpeed(InstancePtr, ReadBuff);
 		if (Status != XST_SUCCESS) {
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 
@@ -663,7 +651,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 			/* Set UHS-I SDR104 mode */
 			Status = XSdPs_Uhs_ModeInit(InstancePtr, InstancePtr->Mode);
 			if (Status != XST_SUCCESS) {
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 				goto RETURN_PATH;
 			}
 
@@ -684,7 +671,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 					Status = XSdPs_Change_BusSpeed(InstancePtr);
 					if (Status != XST_SUCCESS) {
 						Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 						goto RETURN_PATH;
 					}
 				}
@@ -700,14 +686,12 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 		Status = XSdPs_Change_BusWidth(InstancePtr);
 		if (Status != XST_SUCCESS) {
 			Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 
 		Status = XSdPs_Get_Mmc_ExtCsd(InstancePtr, ExtCsd);
 		if (Status != XST_SUCCESS) {
 			Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 
@@ -719,20 +703,17 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 			Status = XSdPs_Change_BusSpeed(InstancePtr);
 			if (Status != XST_SUCCESS) {
 				Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 				goto RETURN_PATH;
 			}
 
 			Status = XSdPs_Get_Mmc_ExtCsd(InstancePtr, ExtCsd);
 			if (Status != XST_SUCCESS) {
 				Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 				goto RETURN_PATH;
 			}
 
 			if (ExtCsd[EXT_CSD_HS_TIMING_BYTE] != EXT_CSD_HS_TIMING_HIGH) {
 				Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 				goto RETURN_PATH;
 			}
 		}
@@ -741,7 +722,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 		Status = XSdPs_Change_BusWidth(InstancePtr);
 		if (Status != XST_SUCCESS) {
 			Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 
@@ -749,7 +729,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 		Status = XSdPs_Get_Mmc_ExtCsd(InstancePtr, ExtCsd);
 		if (Status != XST_SUCCESS) {
 			Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 			goto RETURN_PATH;
 		}
 
@@ -765,20 +744,17 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 			Status = XSdPs_Change_BusSpeed(InstancePtr);
 			if (Status != XST_SUCCESS) {
 				Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 				goto RETURN_PATH;
 			}
 
 			Status = XSdPs_Get_Mmc_ExtCsd(InstancePtr, ExtCsd);
 			if (Status != XST_SUCCESS) {
 				Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 				goto RETURN_PATH;
 			}
 
 			if (ExtCsd[EXT_CSD_HS_TIMING_BYTE] != EXT_CSD_HS_TIMING_HS200) {
 				Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 				goto RETURN_PATH;
 			}
 		}
@@ -789,7 +765,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 			Status = XSdPs_Set_Mmc_ExtCsd(InstancePtr, Arg);
 			if (Status != XST_SUCCESS) {
 				Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 				goto RETURN_PATH;
 			}
 		}
@@ -798,7 +773,6 @@ static u8 ExtCsd[512] __attribute__ ((aligned(32)));
 	Status = XSdPs_SetBlkSize(InstancePtr, XSDPS_BLK_SIZE_512_MASK);
 	if (Status != XST_SUCCESS) {
 		Status = XST_FAILURE;
-        xil_printf(">>>>>>>>>>>>>>>func:%s line:%d\n", __func__, __LINE__);
 		goto RETURN_PATH;
 	}
 

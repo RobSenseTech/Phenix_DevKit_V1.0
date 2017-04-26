@@ -1,9 +1,11 @@
 #set your project name
 PRJ_NAME = freeRTOS.elf
+BINARY = freeRTOS.bin
 
 #set your project type : choose one below
 CC = arm-none-eabi-gcc
 CXX = arm-none-eabi-g++
+OBJCOPY = arm-none-eabi-objcopy
 #CC = 
 #CC = ar -r 
 

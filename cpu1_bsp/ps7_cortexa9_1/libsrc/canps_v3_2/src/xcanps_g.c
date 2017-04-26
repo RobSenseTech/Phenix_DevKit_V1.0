@@ -47,8 +47,8 @@
 XCanPs_Config XCanPs_ConfigTable[] =
 {
 	{
-		XPAR_PS7_CAN_1_DEVICE_ID,
-		XPAR_PS7_CAN_1_BASEADDR
+		XPAR_PS7_CAN_0_DEVICE_ID,
+		XPAR_PS7_CAN_0_BASEADDR
 	}
 };
 

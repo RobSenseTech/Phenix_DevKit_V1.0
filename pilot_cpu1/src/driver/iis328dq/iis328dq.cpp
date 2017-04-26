@@ -146,11 +146,7 @@ protected:
 
 private:
 
-#ifdef USE_HRT
-	struct hrt_call		_call;
-#else
     xTimerHandle    _call;
-#endif
 	unsigned		_call_interval;
 
 	RingBuffer_t	*_reports;
@@ -227,12 +223,7 @@ private:
 	 *
 	 * @param arg		Instance pointer for the driver that is polling.
 	 */
-#ifdef USE_HRT
-	static void		measure_trampoline(void *arg);
-#else
-
 	static void		measure_trampoline(xTimerHandle xTimer);
-#endif
 
 	/**
 	 * check key registers for correct values
@@ -332,6 +323,7 @@ const uint8_t IIS328DQ::_checked_registers[IIS328DQ_NUM_CHECKED_REGISTERS] = { A
 
 IIS328DQ::IIS328DQ(int bus, const char* path, ESpi_device_id device, enum Rotation rotation) :
 	CDev("iis328dq", path),
+    _call(NULL),
 	_call_interval(0),
 	_reports(NULL),
 	_accel_range_m_s2(0.0f),
@@ -386,7 +378,7 @@ IIS328DQ::~IIS328DQ()
 int
 IIS328DQ::init()
 {
-	int ret = DEV_FAILURE;
+	int ret = ERROR;
 
 	/* do SPI init (and probe) first */
 	if (CDev::init() != OK)
@@ -535,10 +527,6 @@ IIS328DQ::ioctl(struct file *filp, int cmd, unsigned long arg)
 					/* update interval for next measurement */
 					/* XXX this is a bit shady, but no other way to adjust... */
 					_call_interval = ticks;
-
-                #ifdef USE_HRT
-                    _call.period = _call_interval - IIS328DQ_TIMER_REDUCTION;
-                #endif
 
 					/* adjust filters */
 					float cutoff_freq_hz = _accel_filter_x.get_cutoff_freq();
@@ -777,29 +765,19 @@ IIS328DQ::start()
 	vRingBufferFlush(_reports);
 
 	/* start polling at the specified rate */
-#ifdef USE_HRT
-	hrt_call_every(&_call,
-                       1000,
-                       _call_interval - IIS328DQ_TIMER_REDUCTION,
-                       (hrt_callout)&IIS328DQ::measure_trampoline, this);
-#else
     int ticks = USEC2TICK(_call_interval);
     if(ticks == 0)
         ticks = 1;//定时器时间间隔不可为0
 	/* reset the report ring and state machine */
 	_call = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, this, &IIS328DQ::measure_trampoline);
 	xTimerStart(_call, portMAX_DELAY);
-#endif
 }
 
 void
 IIS328DQ::stop()
 {
-#ifdef USE_HRT
-	hrt_cancel(&_call);
-#else
-    xTimerDelete(_call, portMAX_DELAY);
-#endif
+    if(_call != NULL)
+        xTimerDelete(_call, portMAX_DELAY);
 }
 
 void
@@ -842,11 +820,7 @@ IIS328DQ::reset()
 	_read = 0;
 }
 
-#ifdef USE_HRT
-void IIS328DQ::measure_trampoline(void *arg)
-#else
 void IIS328DQ::measure_trampoline(xTimerHandle xTimer)
-#endif
 {
     void *timer_id = pvTimerGetTimerID(xTimer);
 	IIS328DQ *dev = (IIS328DQ *)timer_id;

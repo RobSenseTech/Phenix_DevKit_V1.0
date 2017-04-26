@@ -16,8 +16,10 @@ OBJS_ALL += $(OBJS) $(OBJS_S) $(OBJS_DRV) $(OBJS_RTOS) $(OBJS_TEST) $(OBJS_MODUL
 
 
 #all target
-all: $(Output)$(PRJ_NAME)
+all: $(Output)$(PRJ_NAME) $(Output)$(BINARY)
 
+$(Output)$(BINARY):	$(Output)$(PRJ_NAME)
+	$(OBJCOPY) -O binary $(Output)$(PRJ_NAME) $(Output)$(BINARY)
 #tool invocations
 $(Output)$(PRJ_NAME):$(OBJS_ALL)
 	@echo 'Building target: $@'

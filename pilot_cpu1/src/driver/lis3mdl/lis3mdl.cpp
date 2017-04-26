@@ -76,9 +76,6 @@
 #endif
 static const int ERROR = -1;
 
-#define OK						0
-#define DEV_FAILURE				0
-#define DEV_SUCCESS				1
 /*
  * LIS3MDL internal constants and data structures.
  */
@@ -410,7 +407,7 @@ extern "C" __EXPORT int lis3mdl_main(int argc, char *argv[]);
 LIS3MDL::LIS3MDL(int bus, const char* path, ESpi_device_id device, enum Rotation rotation) :
 	CDev("lis3mdl", path),
 //	_interface(interface),
-//	_work{},
+	_work(NULL),
 	_measure_ticks(0),
 	_reports(NULL),
 	_scale{},
@@ -486,7 +483,7 @@ LIS3MDL::~LIS3MDL()
 int
 LIS3MDL::init()
 {
-	int ret = DEV_FAILURE;
+	int ret = ERROR;
 
 	if (CDev::init() != OK)
 		goto out;
@@ -575,7 +572,7 @@ int LIS3MDL::set_range(unsigned range)
 
 	if ((range_bits_in & 0x60) != (_range_bits << 5))
 	{
-		return DEV_FAILURE;
+		return ERROR;
 	}
 	return OK;
 }
@@ -948,7 +945,8 @@ LIS3MDL::start()
 void
 LIS3MDL::stop()
 {
-    xTimerDelete(_work, portMAX_DELAY);
+    if(_work != NULL)
+        xTimerDelete(_work, portMAX_DELAY);
 }
 
 int

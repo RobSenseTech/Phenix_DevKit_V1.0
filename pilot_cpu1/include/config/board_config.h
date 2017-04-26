@@ -17,19 +17,19 @@ extern "C" {
 #include "xparameters.h"
 #include "ocm_config.h"
 
-#define MIO_22            22
-#define MIO_23            23
-#define MIO_24            24
-#define MIO_25            25
+#define MIO_34            34
+#define MIO_36            36
+#define MIO_37            37
+#define MIO_35            35
 //#define MIO_UNKOWN        12
 
 /************************** Constant Definitions *****************************/
 /* SPI chip selects */
-#define GPIO_SPI_CS_GYRO                   MIO_22
-#define GPIO_SPI_CS_ACCEL                  MIO_24
-#define GPIO_SPI_CS_BARO                   MIO_25
+#define GPIO_SPI_CS_GYRO                   MIO_34
+#define GPIO_SPI_CS_ACCEL                  MIO_36
+#define GPIO_SPI_CS_BARO                   MIO_37
 //#define GPIO_SPI_CS_FRAM                   MIO_UNKOWN
-#define GPIO_SPI_CS_MAG                    MIO_23
+#define GPIO_SPI_CS_MAG                    MIO_35
 
 
 #define PX4_SPI_BUS_SENSORS	1

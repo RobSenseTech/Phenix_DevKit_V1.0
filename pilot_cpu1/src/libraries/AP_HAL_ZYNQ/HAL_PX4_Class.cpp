@@ -43,7 +43,7 @@ static Empty::I2CDeviceManager i2c_mgr_instance;
 #define UARTB_DEFAULT_DEVICE "/dev/uartns3"         //1st GPS
 #define UARTC_DEFAULT_DEVICE "/dev/uartns0"         //uart2 telem1
 #define UARTD_DEFAULT_DEVICE "/dev/uartns1"         //uart3 telem2
-#define UARTE_DEFAULT_DEVICE "/dev/uartns4"         //
+#define UARTE_DEFAULT_DEVICE "/dev/null"         //
 
 // 3 UART drivers, for GPS plus two mavlink-enabled devices
 static PX4UARTDriver uartADriver(UARTA_DEFAULT_DEVICE, "APM_uartA");
@@ -81,13 +81,19 @@ static TaskHandle_t daemon_task;                /**< Handle of daemon task / thr
 bool px4_ran_overtime;
 
 extern const AP_HAL::HAL& hal;
+extern uint32_t ulPortInterruptNesting;
 
 /*
   set the priority of the main APM task
  */
 void hal_px4_set_priority(uint8_t priority)
 {
-//    vTaskPrioritySet(daemon_task, priority);
+#if 1
+    if(ulPortInterruptNesting)
+        vTaskPrioritySetFromISR(daemon_task, priority);
+    else
+        vTaskPrioritySet(daemon_task, priority);
+#endif
 }
 
 /*
@@ -96,9 +102,9 @@ void hal_px4_set_priority(uint8_t priority)
   sketch - probably waiting on a low priority driver. Set the priority
   of the APM task low to let the driver run.
  */
-static void loop_overtime(xTimerHandle xTimer, void *)
+static void loop_overtime(void *)
 {
-    hal_px4_set_priority(APM_OVERTIME_PRIORITY);
+//    hal_px4_set_priority(APM_OVERTIME_PRIORITY);
     px4_ran_overtime = true;
 }
 
@@ -131,7 +137,7 @@ static void main_loop(void *pvParameters)
     hal.scheduler->system_initialized();
 
 //    struct hrt_call loop_overtime_call;
-    xTimerHandle loop_overtime_call;
+//    xTimerHandle loop_overtime_call;
 
     thread_running = true;
 

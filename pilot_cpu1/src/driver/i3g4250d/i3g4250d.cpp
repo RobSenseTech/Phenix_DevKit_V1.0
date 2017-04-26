@@ -215,11 +215,7 @@ protected:
 
 private:
 
-#ifdef USE_HRT
-	struct hrt_call		_call;
-#else
     xTimerHandle    _call;
-#endif
 	unsigned		_call_interval;
 
 	RingBuffer_t	*_reports;
@@ -292,12 +288,7 @@ private:
 	 *
 	 * @param arg		Instance pointer for the driver that is polling.
 	 */
-#ifdef USE_HRT
-	static void		measure_trampoline(void *arg);
-#else
-
 	static void		measure_trampoline(xTimerHandle xTimer);
-#endif
 	/**
 	 * check key registers for correct values
 	 */
@@ -398,6 +389,7 @@ const uint8_t I3G4250D::_checked_registers[I3G4250D_NUM_CHECKED_REGISTERS] = { A
 
 I3G4250D::I3G4250D(int bus, const char* path, ESpi_device_id device, enum Rotation rotation) :
 	CDev("i3g4250d", path),
+    _call(NULL),
 	_call_interval(0),
 	_reports(NULL),
 	_gyro_range_scale(0.0f),
@@ -452,7 +444,7 @@ I3G4250D::~I3G4250D()
 int
 I3G4250D::init()
 {
-	int ret = DEV_FAILURE;
+	int ret = ERROR;
 
 	/* do SPI init (and probe) first */
 	if (CDev::init() != OK)
@@ -601,9 +593,6 @@ I3G4250D::ioctl(struct file *filp, int cmd, unsigned long arg)
 					/* update interval for next measurement */
 					/* XXX this is a bit shady, but no other way to adjust... */
 					_call_interval = ticks;
-                #ifdef USE_HRT
-                    _call.period = _call_interval - I3G4250D_TIMER_REDUCTION;
-                #endif
 
 					/* adjust filters */
 					float cutoff_freq_hz = _gyro_filter_x.get_cutoff_freq();
@@ -864,30 +853,20 @@ I3G4250D::start()
 	vRingBufferFlush(_reports);
 
 	/* start polling at the specified rate */
-#ifdef USE_HRT //hrt会和freertos的调度有冲突，默认不用
-	hrt_call_every(&_call,
-                       1000,
-                       _call_interval - I3G4250D_TIMER_REDUCTION,
-                       (hrt_callout)&I3G4250D::measure_trampoline, this);
-#else
     int ticks = USEC2TICK(_call_interval);
     if(ticks == 0)
         ticks = 1;//定时器时间间隔不可为0
 	/* reset the report ring and state machine */
 	_call = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, this, &I3G4250D::measure_trampoline);
 	xTimerStart(_call, portMAX_DELAY);
-#endif
 	
 }
 
 void
 I3G4250D::stop()
 {
-#ifdef USE_HRT
-	hrt_cancel(&_call);
-#else
-    xTimerDelete(_call, portMAX_DELAY);
-#endif
+    if(_call != NULL)
+        xTimerDelete(_call, portMAX_DELAY);
 }
 
 void
@@ -936,11 +915,7 @@ I3G4250D::reset()
 	_read = 0;
 }
 
-#if USE_HRT 
-void I3G4250D::measure_trampoline(void *arg)
-#else
 void I3G4250D::measure_trampoline(xTimerHandle xTimer)
-#endif
 {
     void *timer_id = pvTimerGetTimerID(xTimer);
 	I3G4250D *dev = (I3G4250D *)timer_id;

@@ -217,17 +217,23 @@ bool sbus_input(int sbus_fd, uint16_t *values, uint16_t *num_values, bool *sbus_
     if((now - last_rx_time) < 3000)
         return false;
 
-    while(partial_frame_count == 0)
+//    while(partial_frame_count == 0)
+    if(partial_frame_count == 0)
     {
 	    ret = read(sbus_fd, (char *)&frame[0], 1);
         if(ret != 1)
         {
-            break;
+        //    break;
+            return false;
         }
 
         if(frame[0] == 0x0f)
         {
             partial_frame_count++;
+        }
+        else
+        {
+            return false;
         }
 
     }

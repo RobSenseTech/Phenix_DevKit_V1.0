@@ -486,7 +486,7 @@ PX4FMU::set_pwm_alt_channels(unsigned channels)
 int
 PX4FMU::set_i2c_bus_clock(unsigned bus, unsigned clock_hz)
 {
-	return DEV_FAILURE;
+	return ERROR;
 }
 
 void
@@ -1747,7 +1747,7 @@ fmu_main(int argc, char *argv[])
 		}
 
 		/* switch modes */
-		fmu_new_mode(new_mode);
+		return fmu_new_mode(new_mode);
 	}
 
 	if (!strcmp(verb, "test")) {

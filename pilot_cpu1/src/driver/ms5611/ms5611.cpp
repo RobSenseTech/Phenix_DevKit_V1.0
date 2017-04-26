@@ -69,10 +69,6 @@
 
 //using namespace pilot::driver;
 
-#define OK						0
-#define DEV_FAILURE				0
-#define DEV_SUCCESS				1
-
 /* SPI protocol address bits */
 #define DIR_READ				(1<<7)
 #define DIR_WRITE				(0<<7)
@@ -219,6 +215,7 @@ extern "C"  __EXPORT int ms5611_main(int argc, char *argv[]);
 
 MS5611::MS5611(int bus, const char* path, ESpi_device_id device) :
 	CDev("ms5611", path),
+    _work(NULL),
 	_measure_ticks(0),
 	_reports(NULL),
 	_collect_phase(false),
@@ -381,7 +378,7 @@ MS5611::reset_sensor()
 int
 MS5611::init()
 {
-	int ret = DEV_FAILURE;
+	int ret = ERROR;
 
 	ret = reset_sensor();
 	if (ret != OK) {
@@ -389,12 +386,12 @@ MS5611::init()
 		goto out;
 	}
 	
-	ret = _read_prom();
-	if (ret != OK) {
-		pilot_err("read prom failed\n");
-		goto out;
-	}
-	
+    ret = _read_prom();
+    if (ret != OK) {
+        pilot_err("read prom failed\n");
+        goto out;
+    }
+    
 	ret = CDev::init();
 
 	if (ret != OK) {
@@ -717,7 +714,8 @@ MS5611::start_cycle(unsigned delay_ticks)
 void
 MS5611::stop_cycle()
 {
-	xTimerStop(_work, portMAX_DELAY);
+    if(_work != NULL)
+        xTimerStop(_work, portMAX_DELAY);
 }
 
 void

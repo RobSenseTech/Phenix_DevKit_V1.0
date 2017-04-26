@@ -183,81 +183,9 @@ s32 spi_clock_source_divisor(u32 divisor) {
 	} else {
 		pilot_info("SPI clock enable successful\r\n");
 	}
-	spi_SCLK_init(spi_id);
-	spi_MOSI_init(spi_id);
-	spi_MISO_init(spi_id);
 
 	return Status;
  }
-
- s32 spi_SCLK_init(u32 spi_id) {
-	u32 Register = 0x22A0;
-	if(spi_id == 1)
-	{
-		Xil_Out32(XSLCR_SCLK_SPI_1_ADDR, Register);
-		Register = Xil_In32(XSLCR_SCLK_SPI_1_ADDR);
-	 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_SCLK_SPI_1_ADDR, Register);
-		return XST_SUCCESS;
-	}
-	else if (spi_id == 0)
-	{
-		Xil_Out32(XSLCR_SCLK_SPI_0_ADDR, Register);
-		Register = Xil_In32(XSLCR_SCLK_SPI_0_ADDR);
-	 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_SCLK_SPI_0_ADDR, Register);
-		return XST_SUCCESS;
- 	}
- else
- 	{
-	 pilot_err("spi_id error!\r\n");
-	 return XST_FAILURE;
- 	}
-}
-
- s32 spi_MOSI_init(u32 spi_id) {
-	u32 Register = 0x22A0;
-	if(spi_id == 1)
-		{
-			Xil_Out32(XSLCR_MOSI_SPI_1_ADDR, Register);
-			Register = Xil_In32(XSLCR_MOSI_SPI_1_ADDR);
-		 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MOSI_SPI_1_ADDR, Register);
-			return XST_SUCCESS;
-		}
-		else if (spi_id == 0)
-		{
-			Xil_Out32(XSLCR_MOSI_SPI_0_ADDR, Register);
-			Register = Xil_In32(XSLCR_MOSI_SPI_0_ADDR);
-		 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MOSI_SPI_0_ADDR, Register);
-			return XST_SUCCESS;
-		}
-		else
-	    {
-            pilot_err("spi_id error!\r\n");
-            return XST_FAILURE;
-	    }
- }
-
- s32 spi_MISO_init(u32 spi_id) {
-	u32 Register = 0x22A1;
-	if(spi_id == 1)
-		{
-			Xil_Out32(XSLCR_MISO_SPI_1_ADDR, Register);
-			Register = Xil_In32(XSLCR_MISO_SPI_1_ADDR);
-		 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MISO_SPI_1_ADDR, Register);
-			return XST_SUCCESS;
-		}
-		else if (spi_id == 0)
-		{
-			Xil_Out32(XSLCR_MISO_SPI_0_ADDR, Register);
-			Register = Xil_In32(XSLCR_MISO_SPI_0_ADDR);
-		 	//xil_printf("address 0x%08x : 0x%08x\r\n", XSLCR_MISO_SPI_0_ADDR, Register);
-			return XST_SUCCESS;
-		}
-		else
-		{
-	 	 pilot_err("spi_id error!\r\n");
-	 	 return XST_FAILURE;
-	  }
-	}
 
  s32 spi_SS_init(u8 slave_id) {
 	return XST_SUCCESS;
