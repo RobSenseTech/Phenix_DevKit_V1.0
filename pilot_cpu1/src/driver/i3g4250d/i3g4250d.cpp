@@ -960,7 +960,7 @@ I3G4250D::measure()
 
 	gyro_report report = {0};
 
-        check_registers();
+    check_registers();
 
 	/* fetch data from the sensor */
 	memset(raw_data, 0, sizeof(raw_data));
@@ -974,7 +974,7 @@ I3G4250D::measure()
     raw_report.z = ((int16_t)raw_data[8] << 8) | raw_data[7];
 
     if (!(raw_report.status & STATUS_ZYXDA)) {
-    return;
+        return;
     }
 
 	/*
@@ -1253,7 +1253,7 @@ test(int external_bus)
 	warnx("gyro x: \t% 9.5f\trad/s", (double)g_report.x);
 	warnx("gyro y: \t% 9.5f\trad/s", (double)g_report.y);
 	warnx("gyro z: \t% 9.5f\trad/s", (double)g_report.z);
-	warnx("temp: \t%d\tC", (int)g_report.temperature);
+	warnx("temp: \t%f\tC", (int)g_report.temperature);
 	warnx("gyro x: \t%d\traw", (int)g_report.x_raw);
 	warnx("gyro y: \t%d\traw", (int)g_report.y_raw);
 	warnx("gyro z: \t%d\traw", (int)g_report.z_raw);

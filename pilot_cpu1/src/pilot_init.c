@@ -17,6 +17,7 @@
 #include "ocm_config.h"
 #include  <fs/fs.h>
 #include <sys/stat.h>
+#include "ocm/ocm.h"
 
 
 extern int mpu6000_main(int argc, char *argv[]);
@@ -201,12 +202,19 @@ static void pilot_first_task(void *param)
 {
     int32_t ret = 0;
 
+#if CONFIG_FS_FAT
 	ret = mount("/dev/mmcsd0", "/fs/microsd", "vfat", 0, NULL);
     if(ret != 0)
         pilot_err("Failed to mount sd card:%d!!\n", (int)ret);
     else
         pilot_info("mount sd card success!!\n");
-
+#else
+    ret = mount(NULL, "/fs/microsd", "ocmfs", 0, NULL);
+    if(ret != 0)
+        pilot_err("Failed to mount ocmfs:%d!!\n", (int)ret);
+    else
+        pilot_info("mount ocmfs success!!\n");
+#endif
     //Create APM directory
     ret = mkdir("/fs/microsd/APM", 0777);
 
@@ -216,9 +224,10 @@ static void pilot_first_task(void *param)
 //    ImuTest();
 //    SpiTest();
 //    UartTest();
+//    top_main();
     //SbusTest();
-    //top_main();   
-
+//    ocm_test();
+//    ocmfs_test();
 //    sd_test();
 
     while(1)
@@ -227,10 +236,15 @@ static void pilot_first_task(void *param)
 
 int pilot_bringup()
 {
+#ifdef DISABLE_CACHE
+     Xil_DCacheDisable();
+#endif
     /*init generic interrupt controller*/
 	gic_init();
 
 	pilot_info("freeRTOS start: is little endian:%d\n", check_cpu());
+
+    ocm_msg_init();
 
     fs_initialize();
 

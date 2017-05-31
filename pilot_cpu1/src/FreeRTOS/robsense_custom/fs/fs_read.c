@@ -74,7 +74,7 @@ static inline ssize_t file_read(int fd, FAR void *buf, size_t nbytes)
 
       /* Yes.. Was this file opened for read access? */
 
-      if ((this_file->f_oflags & O_RDOK) == 0)
+      if ((this_file->f_oflags & O_RDOK) == 0 && this_file->f_oflags != O_RDONLY)
         {
           /* No.. File is not read-able */
 

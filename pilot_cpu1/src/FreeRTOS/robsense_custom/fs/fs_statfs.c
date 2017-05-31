@@ -126,7 +126,7 @@ int statfs(FAR const char *path, FAR struct statfs *buf)
         {
           /* Perform the statfs() operation */
 
-          ret = inode->u.i_mops->statfs(inode, buf);
+          ret = inode->u.i_mops->statfs(inode, relpath, buf);
         }
     }
   else

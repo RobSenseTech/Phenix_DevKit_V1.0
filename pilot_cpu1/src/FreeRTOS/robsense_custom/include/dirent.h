@@ -53,11 +53,23 @@
  * Note that because of the simplified filesystem organization
  * of NuttX, an inode can be BOTH a file and a directory
  */
-
+#if 0
 #define DTYPE_FILE      0x01
 #define DTYPE_CHR       0x02
 #define DTYPE_BLK       0x04
 #define DTYPE_DIRECTORY 0x08
+#else
+//linux value, ocmfs uses these value, so they must have the same value with linux
+#define DTYPE_UNKNOWN	0
+#define DTYPE_FIFO		1
+#define DTYPE_CHR		2
+#define DTYPE_DIRECTORY 4
+#define DTYPE_BLK		6
+#define DTYPE_FILE		8
+#define DTYPE_LNK		10
+#define DTYPE_SOCK		12
+#define DTYPE_WHT		14
+#endif
 
 #define DIRENT_ISFILE(dtype)      (((dtype) & DTYPE_FILE) != 0 )
 #define DIRENT_ISCHR(dtype)       (((dtype) & DTYPE_CHR) != 0 )

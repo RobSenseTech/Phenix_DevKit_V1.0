@@ -48,7 +48,8 @@
  ********************************************************************************/
 
 /* open flag settings for open() (and related APIs) */
-
+#if 0
+//nuttx value
 #define O_RDONLY    (1 << 0)        /* Open for read access (only) */
 #define O_RDOK      O_RDONLY        /* Read access is permitted (non-standard) */
 #define O_WRONLY    (1 << 1)        /* Open for write access (only) */
@@ -63,6 +64,24 @@
 #define O_SYNC      (1 << 7)        /* Synchronize output on write */
 #define O_DSYNC     O_SYNC          /* Equivalent to OSYNC in NuttX */
 #define O_BINARY    (1 << 8)        /* Open the file in binary (untranslated) mode. */
+#else
+//linux value, ocmfs uses these value, so they must have the same value with linux
+#define O_RDONLY    00000000
+#define O_RDOK      (O_RDONLY | O_RDWR)
+#define O_WRONLY    00000001
+#define O_WROK      (O_WRONLY | O_RDWR)
+#define O_RDWR      00000002
+#define O_CREAT     00000100	
+#define O_EXCL      00000200	
+#define O_APPEND    00002000
+#define O_TRUNC     00001000	
+#define O_NONBLOCK  00004000
+#define O_NDELAY    O_NONBLOCK
+#define O_DSYNC		00010000	/* used to be O_SYNC, see below */
+#define __O_SYNC	04000000
+#define O_SYNC		(__O_SYNC|O_DSYNC)
+
+#endif
 
 /* Unsupported, but required open flags */
 

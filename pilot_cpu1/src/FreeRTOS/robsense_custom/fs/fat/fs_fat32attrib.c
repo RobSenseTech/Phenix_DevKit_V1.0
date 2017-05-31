@@ -33,6 +33,7 @@
  *
  ****************************************************************************/
 
+#ifdef CONFIG_FS_FAT
 /****************************************************************************
  * Included Files
  ****************************************************************************/
@@ -185,3 +186,4 @@ int fat_setattrib(const char *path, fat_attrib_t setbits, fat_attrib_t clearbits
   return fat_attrib(path, NULL, setbits, clearbits);
 }
 
+#endif//CONFIG_FS_FAT

@@ -51,6 +51,7 @@
 #include "fs_fat32.h"
 #include "fs_mkfatfs.h"
 
+#ifdef CONFIG_FS_FAT
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
@@ -316,3 +317,5 @@ errout:
 
   return OK;
 }
+
+#endif//CONFIG_FS_FAT

@@ -44,6 +44,9 @@
 
 #include <fs/fs.h>
 
+#ifdef CONFIG_FS_OCMFS
+#include "ocmfs/ocmfs.h"
+#endif
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -200,6 +203,9 @@ struct fs_dirent_s
 #endif
 #ifdef CONFIG_FS_SMARTFS
       struct fs_smartfsdir_s smartfs;
+#endif
+#ifdef CONFIG_FS_OCMFS
+      struct fs_ocmfsdir_s  ocmfs;
 #endif
 #endif /* !CONFIG_DISABLE_MOUNTPOINT */
    } u;

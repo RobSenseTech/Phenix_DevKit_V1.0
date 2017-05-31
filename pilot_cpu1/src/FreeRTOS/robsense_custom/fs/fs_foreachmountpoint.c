@@ -119,7 +119,7 @@ static int mountpoint_filter(FAR struct inode *node,
 
       /* Get the status of the file system */
 
-      ret = node->u.i_mops->statfs(node, &statbuf);
+      ret = node->u.i_mops->statfs(node, dirpath, &statbuf);
       if (ret == OK)
         {
           /* And pass the full path and file system status to the handler */

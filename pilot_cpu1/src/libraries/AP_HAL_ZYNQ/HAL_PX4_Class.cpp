@@ -81,19 +81,13 @@ static TaskHandle_t daemon_task;                /**< Handle of daemon task / thr
 bool px4_ran_overtime;
 
 extern const AP_HAL::HAL& hal;
-extern uint32_t ulPortInterruptNesting;
 
 /*
   set the priority of the main APM task
  */
 void hal_px4_set_priority(uint8_t priority)
 {
-#if 1
-    if(ulPortInterruptNesting)
-        vTaskPrioritySetFromISR(daemon_task, priority);
-    else
-        vTaskPrioritySet(daemon_task, priority);
-#endif
+    vTaskPrioritySet(daemon_task, priority);
 }
 
 /*

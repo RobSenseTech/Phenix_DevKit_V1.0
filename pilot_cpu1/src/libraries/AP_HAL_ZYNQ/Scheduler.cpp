@@ -13,6 +13,7 @@
 #include "Storage.h"
 #include "RCOutput.h"
 #include "RCInput.h"
+#include "Phx_define.h"
 //#include <AP_Scheduler/AP_Scheduler.h>
 
 using namespace PX4;
@@ -67,8 +68,15 @@ void PX4Scheduler::delay_microseconds(uint16_t usec)
 /*
   wrapper around sem_post that boosts main thread priority
  */
+#if 0
 static void sem_post_boost(sem_t *sem)
+#else
+static void sem_post_boost(xTimerHandle xTimer)
+#endif
 {
+    void *timer_id = pvTimerGetTimerID(xTimer);
+    sem_t *sem = (sem_t *)timer_id;
+
     hal_px4_set_priority(APM_MAIN_PRIORITY_BOOST);
     sem_post(sem);
 }
@@ -76,7 +84,11 @@ static void sem_post_boost(sem_t *sem)
 /*
   return the main thread to normal priority
  */
+#if 0
 static void set_normal_priority(void *sem)
+#else
+static void set_normal_priority(xTimerHandle xTimer)
+#endif
 {
     hal_px4_set_priority(APM_MAIN_PRIORITY);
 }
@@ -90,6 +102,7 @@ static void set_normal_priority(void *sem)
  */
 void PX4Scheduler::delay_microseconds_boost(uint16_t usec) 
 {
+#if 0
     sem_t wait_semaphore;
     static struct hrt_call wait_call;
     sem_init(&wait_semaphore, 0, 0);
@@ -97,6 +110,22 @@ void PX4Scheduler::delay_microseconds_boost(uint16_t usec)
     sem_wait(&wait_semaphore);
     hrt_call_after(&wait_call, APM_MAIN_PRIORITY_BOOST_USEC, (hrt_callout)set_normal_priority, NULL);
     sem_destroy(&wait_semaphore);
+#else
+    sem_t wait_semaphore;
+    xTimerHandle    wait_call;
+    sem_init(&wait_semaphore, 0, 0);
+
+	wait_call = xTimerCreate("delay boost", USEC2TICK(usec), pdFALSE, (void *)&wait_semaphore, sem_post_boost);
+    xTimerStart(wait_call, portMAX_DELAY);
+    sem_wait(&wait_semaphore);
+    xTimerDelete(wait_call, portMAX_DELAY);
+
+    wait_call = NULL;
+	wait_call = xTimerCreate("delay boost", USEC2TICK(APM_MAIN_PRIORITY_BOOST_USEC), pdFALSE, NULL, set_normal_priority);
+    xTimerStart(wait_call, portMAX_DELAY);
+    sem_destroy(&wait_semaphore);
+    xTimerDelete(wait_call, portMAX_DELAY);
+#endif
 }
 
 

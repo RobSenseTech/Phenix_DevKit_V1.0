@@ -1,7 +1,6 @@
 
 #新驱动直接把路径加在下面即可
 #DRIVER_PATH += $(DRV_ROOT_PATH)/mpu6000
-DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/ocm
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uart
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uartns550
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/hrt

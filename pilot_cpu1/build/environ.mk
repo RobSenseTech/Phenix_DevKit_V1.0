@@ -71,5 +71,5 @@ else
 CFLAGS := $(RELEASE_FLAG)
 endif
 
-CFLAGS += -D__PX4_FREERTOS
+CFLAGS += -D__PX4_FREERTOS #-DDISABLE_CACHE #disable cache the performance will very bad 
 CXXFLAGS += 

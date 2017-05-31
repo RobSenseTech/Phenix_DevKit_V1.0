@@ -1,6 +1,7 @@
 #ifndef XDEBUG  /* prevent circular inclusions */
 #define XDEBUG  /* by using protection macros */
 
+#define DEBUG 1
 #if defined(DEBUG) && !defined(NDEBUG)
 
 #ifndef XDEBUG_WARNING
@@ -14,7 +15,7 @@ int printf(const char *format, ...);
 #define XDBG_DEBUG_GENERAL           0x00000002U    /* general debug  messages */
 #define XDBG_DEBUG_ALL               0xFFFFFFFFU    /* all debugging data */
 
-#define xdbg_current_types (XDBG_DEBUG_GENERAL)
+#define xdbg_current_types (XDBG_DEBUG_ALL)
 
 #define xdbg_stmnt(x)  x
 
