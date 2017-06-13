@@ -1,7 +1,7 @@
 #ifndef PILOT_PRINT_H
 #define PILOT_PRINT_H
 
-#ifdef LINUX_APP
+#ifdef __linux__
 #define OS_STRING      "Linux"
 #else
 #define OS_STRING      "FreeRTOS"

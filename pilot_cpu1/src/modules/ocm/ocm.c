@@ -44,7 +44,7 @@ static inline void ocm_write_dword(volatile uint32_t *addr, uint32_t value)
 {
     *addr = value;
 
-#if !defined(DISABLE_CACHE) && !defined(LINUX_APP)
+#if !defined(DISABLE_CACHE) && !defined(__linux__)
     Xil_DCacheFlushRange((INTPTR)addr, sizeof(uint32_t));
 #endif
 }
@@ -56,7 +56,7 @@ static inline int32_t ocm_write_bytes(volatile uint8_t *dest, uint8_t *src, uint
 {
     memcpy((void *)dest, (const void *)src, len);
 
-#if !defined(DISABLE_CACHE) && !defined(LINUX_APP)
+#if !defined(DISABLE_CACHE) && !defined(__linux__)
     Xil_DCacheFlushRange((INTPTR)dest, len);
 #endif
 
@@ -68,7 +68,7 @@ static inline int32_t ocm_write_bytes(volatile uint8_t *dest, uint8_t *src, uint
  */
 static inline uint32_t ocm_read_dword(volatile uint32_t *addr)
 {
-#if !defined(DISABLE_CACHE) && !defined(LINUX_APP)
+#if !defined(DISABLE_CACHE) && !defined(__linux__)
     //invalid cahce data, make sure we read the latest value
     Xil_DCacheInvalidateRange((INTPTR)addr, sizeof(uint32_t));
 #endif
@@ -81,7 +81,7 @@ static inline uint32_t ocm_read_dword(volatile uint32_t *addr)
  */
 static inline uint32_t ocm_read_bytes(uint8_t *dest, volatile uint8_t *src, uint32_t len)
 {
-#if !defined(DISABLE_CACHE) && !defined(LINUX_APP)
+#if !defined(DISABLE_CACHE) && !defined(__linux__)
     //invalid cahce data, make sure we read the latest value
     Xil_DCacheInvalidateRange((INTPTR)src, len);
 #endif
@@ -181,7 +181,7 @@ bool ocm_msg_busy(int32_t chn, int32_t len)
     ringbuf_t ringbuf;
     ringbuf_t *p_ringbuf = &ringbuf;
      void *class;
-#ifdef LINUX_APP
+#ifdef __linux__
     class = ocm_get_class(chn, p_ringbuf, BUF_MOSI);
 #else
     class = ocm_get_class(chn, p_ringbuf, BUF_MISO);
@@ -201,7 +201,7 @@ int32_t ocm_msg_send(int32_t chn, uint8_t *data, int32_t len)
     ringbuf_t ringbuf;
     ringbuf_t *p_ringbuf = &ringbuf;
     void *class;
-#ifdef LINUX_APP
+#ifdef __linux__
     class = ocm_get_class(chn, p_ringbuf, BUF_MOSI);
 #else
     class = ocm_get_class(chn, p_ringbuf, BUF_MISO);
@@ -264,7 +264,7 @@ int32_t ocm_msg_recv(int32_t chn, uint8_t *data, int32_t len)
     ringbuf_t ringbuf;
     ringbuf_t *p_ringbuf = &ringbuf;
     void *class;
-#ifdef LINUX_APP
+#ifdef __linux__
     class = ocm_get_class(chn, p_ringbuf, BUF_MISO);
 #else
     class = ocm_get_class(chn, p_ringbuf, BUF_MOSI);
@@ -326,7 +326,7 @@ int32_t ocm_msg_init()
     for(i=0; i<OCM_MSG_CHN_NUM; i++)
     {
         ocm_chn_t *p_chn = &ocm_chn[i];
-#ifdef LINUX_APP
+#ifdef __linux__
         extern uint32_t ocm_get_vir_addr(uint32_t phy_addr);
         uint32_t base = 0;
         uint32_t addr = 0;
@@ -364,7 +364,7 @@ int32_t ocm_msg_init()
             }
 
             /*Init value in ringbuffer class*/
-#ifndef LINUX_APP
+#ifndef __linux__
             p_buf->base_addr = (volatile uint8_t *)(OCM_MSG_BUF_BASE(OCM_MSG_CLASS_BASE)+i*OCM_MSG_BUF_LEN+j*OCM_MSG_BUF_LEN/BUF_MAX);
 #else
             p_buf->base_addr = (volatile uint8_t *)(OCM_MSG_BUF_BASE(base)+i*OCM_MSG_BUF_LEN+j*OCM_MSG_BUF_LEN/BUF_MAX);

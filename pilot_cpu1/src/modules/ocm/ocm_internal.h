@@ -1,7 +1,7 @@
 #ifndef _ZYNQ_OCM_INTERNAL_H_
 #define _ZYNQ_OCM_INTERNAL_H_
 
-#ifndef LINUX_APP
+#ifndef __linux__
 #include "xparameters.h"
 #include "xil_cache.h"
 #endif

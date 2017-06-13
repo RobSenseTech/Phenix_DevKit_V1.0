@@ -36,8 +36,8 @@ INCLUDEPATH := -I$(MODULES_PATH)\
 #list all dirs
 SUBDIRS := $(shell find $(SRC_PATH) -type d)
 #flags in makefile
-DEBUG_FLAG = -g3 -O0 -Wall -c -fmessage-length=0 -DLINUX_APP -D_GNU_SOURCE #wipe off warning of asprintf
-RELEASE_FLAG =   -O0 -Wall -c -fmessage-length=0 -DLINUX_APP -D_GNU_SOURCE
+DEBUG_FLAG = -g3 -O0 -Wall -c -fmessage-length=0 -D_GNU_SOURCE #wipe off warning of asprintf
+RELEASE_FLAG =   -O0 -Wall -c -fmessage-length=0 -D_GNU_SOURCE
 RM := rm -rf
 
 #set compile flag

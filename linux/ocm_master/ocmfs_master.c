@@ -499,7 +499,7 @@ static int ocmfs_readdir_proc(struct ocmfs_msg *msg)
     struct ocmfs_msg send_msg;
     int send_len = 0;
 
-    memcpy(&ocmfsdir, p_data, sizeof(struct ocmfs_file_s));
+    memcpy(&ocmfsdir, p_data, sizeof(struct fs_ocmfsdir_s));
     p_data += sizeof(struct fs_ocmfsdir_s);
 
     p_dir = readdir(ocmfsdir.dir);
