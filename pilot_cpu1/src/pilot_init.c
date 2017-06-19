@@ -29,6 +29,7 @@ extern int hmc5883_main(int argc, char *argv[]);
 extern int ms5611_main(int argc, char *argv[]);
 extern int ArduPilot_main(int argc, char* argv[]);
 extern int rgbled_main(int argc, char *argv[]);
+extern int px4flow_main(int argc, char *argv[]);
 
 static main_t main_list[]=
 {	
@@ -44,6 +45,7 @@ static main_t main_list[]=
 	{lis3mdl_main, 4, {"lis3mdl_main", "-R", "12","start"}},
 	{ms5611_main, 2, {"ms5611_main","start"}},
 //	{hmc5883_main, 2, {"hmc5883_main","start"}}
+    {px4flow_main, 2, {"px4flow_main", "start"}},
     {ArduPilot_main, 2, {"ArduPilot_main", "start"}},
 };
 

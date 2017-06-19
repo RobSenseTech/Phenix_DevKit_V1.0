@@ -1110,15 +1110,19 @@ test(bool external_bus)
 	{
 		fd = open(MS5611_BARO_DEVICE_PATH_EXT, O_RDONLY);
 		if (fd < 0)
+        {
 			pilot_err("%s open failed\n", MS5611_BARO_DEVICE_PATH_EXT);
 			return;
+        }
 	}
 	else
 	{
 		fd = open(MS5611_BARO_DEVICE_PATH_INT, O_RDONLY);
 		if (fd < 0)
+        {
 			pilot_err("%s open failed\n", MS5611_BARO_DEVICE_PATH_INT);
 			return;
+        }
 	}
 	
 	

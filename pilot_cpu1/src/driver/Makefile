@@ -20,6 +20,7 @@ DRIVER_PATH += $(DRV_ROOT_PATH)/rgbled
 DRIVER_PATH += $(DRV_ROOT_PATH)/ms5611
 DRIVER_PATH += $(DRV_ROOT_PATH)/fmu
 DRIVER_PATH += $(DRV_ROOT_PATH)/pwm
+DRIVER_PATH += $(DRV_ROOT_PATH)/px4flow
 DRIVER_PATH += $(DRV_ROOT_PATH)/common/drv_unistd
 DRIVER_PATH += $(DRV_ROOT_PATH)/common/systemlib/mixer
 DRIVER_PATH += $(DRV_ROOT_PATH)/common/systemlib/pwm_limit
