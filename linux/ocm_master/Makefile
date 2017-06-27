@@ -2,8 +2,7 @@
 PRJ_NAME = ocmfs_master
 
 #set your project type : choose one below
-#CC = arm-none-eabi-gcc   #arm-xilinx-linux-gnueabi-gcc
-CC = arm-xilinx-linux-gnueabi-gcc
+CC = arm-linux-gnueabihf-gcc  	#arm-xilinx-linux-gnueabi-gcc
 #CC = 
 #CC = ar -r 
 
@@ -49,7 +48,6 @@ endif
 
 #prepare files
 #SRCS := $(shell find $(SRC_PATH) -name *.c)
-#SRCS += $(shell find $(MODULES_PATH) -name "*.c")
 vpath %.c $(OCM_MOD)
 SRCS = $(wildcard *.c) $(notdir $(wildcard $(OCM_MOD)*.c))  
 OBJS:=$(SRCS:%.c=./%.o)
@@ -62,7 +60,7 @@ $(Output)$(PRJ_NAME):$(OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking:$(CC)'
 	@echo 'src:$(SRCS)'
-	$(CC) -o "$@" $(OBJS) $(LIBS)
+	$(CC) -static -o "$@" $(OBJS) $(LIBS)
 	cp $(Output)$(PRJ_NAME) ../filesystem/rootfs/usr/
 	../filesystem/mkramfs.sh ../filesystem/rootfs/
 	cp  uramdisk.image.gz ../../amp_system/linux_image/

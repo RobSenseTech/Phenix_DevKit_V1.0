@@ -17,7 +17,7 @@
 #cd ..
 
 
-genext2fs -b 15360 -N 1000 -d $1 ramdisk.image
+genext2fs -b 160384 -N 1000 -d $1 ramdisk.image
 if [ $? -ne 0 ]; then
 	echo "general ramdisk.image failed! make sure your PC has installed genext2fs and check the param of genext2fs"
 	exit 1

@@ -2,7 +2,7 @@
 PRJ_NAME = pilot_cmd 
 
 #set your project type : choose one below
-CC = arm-xilinx-linux-gnueabi-gcc
+CC = arm-linux-gnueabihf-gcc  	#arm-xilinx-linux-gnueabi-gcc
 #CC = 
 #CC = ar -r 
 
@@ -56,7 +56,7 @@ $(Output)$(PRJ_NAME):$(OBJS) $(OBJS_S) $(LSCRIPT)
 	@echo 'Building target: $@'
 	@echo 'Invoking:$(CC)'
 	@echo 'include:$(INCLUDEPATH)'
-	$(CC) -o "$@" $(OBJS) $(OBJS_S) $(LIBS)
+	$(CC) -static -o "$@" $(OBJS) $(OBJS_S) $(LIBS)
 	cp ../filesystem/rootfs.tar.gz .
 	tar xf rootfs.tar.gz 
 	cp $(Output)$(PRJ_NAME) rootfs/usr/
