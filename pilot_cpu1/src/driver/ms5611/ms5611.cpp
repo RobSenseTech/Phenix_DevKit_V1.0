@@ -119,7 +119,7 @@ protected:
     xTimerHandle    _work;
 	unsigned		_measure_ticks;
 
-	RingBuffer_t	*_reports;
+	ringbuf_t	*_reports;
 
 	bool			_collect_phase;
 	unsigned		_measure_phase;
@@ -404,8 +404,8 @@ MS5611::init()
 		vPortFree(_reports);
 		_reports = NULL;
 	}
-	_reports = (RingBuffer_t *) pvPortMalloc (sizeof(RingBuffer_t));
-	iRingBufferInit(_reports, 2, sizeof(sensor_baro_s));
+	_reports = (ringbuf_t *) pvPortMalloc (sizeof(ringbuf_t));
+	ringbuf_init(_reports, 2, sizeof(sensor_baro_s));
 
 //	_reports = new ringbuffer::RingBuffer(2, sizeof(sensor_baro_s));
 
@@ -422,7 +422,7 @@ MS5611::init()
 	struct baro_report brp;
 	/* do a first measurement cycle to populate reports with valid data */
 	_measure_phase = 0;
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 //	_reports->flush();
 
 	/* this do..while is goto without goto */
@@ -457,7 +457,7 @@ MS5611::init()
 		}
 
 		/* state machine will have generated a report, copy it out */
-		xRingBufferGet(_reports, &brp, sizeof(brp));
+		ringbuf_get(_reports, &brp, sizeof(brp));
 
 		ret = OK;
 
@@ -496,7 +496,7 @@ MS5611::read(struct file *filp, char *buffer, size_t buflen)
 		 * we are careful to avoid racing with them.
 		 */
 		while (count--) {
-			if (0 == xRingBufferGet(_reports, brp, sizeof(struct baro_report))) {
+			if (0 == ringbuf_get(_reports, brp, sizeof(struct baro_report))) {
 				ret += sizeof(struct baro_report);
 				brp++;
 			}
@@ -509,7 +509,7 @@ MS5611::read(struct file *filp, char *buffer, size_t buflen)
 	/* manual measurement - run one conversion */
 	do {
 		_measure_phase = 0;
-		vRingBufferFlush(_reports);	
+		ringbuf_flush(_reports);	
 
 		/* do temperature first */
 		if (OK != measure()) {
@@ -539,7 +539,7 @@ MS5611::read(struct file *filp, char *buffer, size_t buflen)
 
 		/* state machine will have generated a report, copy it out */
 //		if (_reports->get(brp)) {		
-		if (0 == xRingBufferGet(_reports, brp, sizeof(struct baro_report))) {
+		if (0 == ringbuf_get(_reports, brp, sizeof(struct baro_report))) {
 			ret = sizeof(*brp);
 		}
 
@@ -628,7 +628,7 @@ MS5611::ioctl(struct file *filp, int cmd, unsigned long arg)
 			irqstate_t flags = irqsave();
 
 //			if (!_reports->resize(arg)) {
-			if (!xRingBufferResize(_reports, arg)) {
+			if (!ringbuf_resize(_reports, arg)) {
 				irqrestore(flags);
 				return -ENOMEM;
 			}
@@ -639,7 +639,7 @@ MS5611::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 	case SENSORIOCGQUEUEDEPTH:
 //		return _reports->size();
-		return iRingBufferSize(_reports);
+		return ringbuf_size(_reports);
 		
 	case SENSORIOCRESET:
 		/*
@@ -704,7 +704,7 @@ MS5611::start_cycle(unsigned delay_ticks)
 	/* reset the report ring and state machine */
 	_collect_phase = false;
 	_measure_phase = 0;
-	vRingBufferFlush(_reports);	
+	ringbuf_flush(_reports);	
 	_work = xTimerCreate("poll_ms5611", USEC2TICK(_measure_ticks * 1000), pdTRUE, this, &MS5611::cycle_trampoline);
 	xTimerStart(_work, portMAX_DELAY);
 	
@@ -924,7 +924,7 @@ MS5611::collect()
 			orb_publish(ORB_ID(sensor_baro), _baro_topic, &report);
 		}
 
-		if (xRingBufferForce(_reports, &report, sizeof(report))) {
+		if (ringbuf_force(_reports, &report, sizeof(report))) {
 	//		perf_count(_buffer_overflows);
 		}
 
@@ -947,7 +947,7 @@ MS5611::print_info()
 	//perf_print_counter(_comms_errors);
 	//perf_print_counter(_buffer_overflows);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
-	vRingBufferPrintInfo(_reports, "report queue");
+	ringbuf_printinfo(_reports, "report queue");
 	printf("TEMP:           %d\n", _TEMP);
 	printf("SENS:           %lld\n", _SENS);
 	printf("OFF:            %lld\n", _OFF);

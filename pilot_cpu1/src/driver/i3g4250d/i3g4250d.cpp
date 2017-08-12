@@ -218,7 +218,7 @@ private:
     xTimerHandle    _call;
 	unsigned		_call_interval;
 
-	RingBuffer_t	*_reports;
+	ringbuf_t	*_reports;
 
 	struct gyro_scale	_gyro_scale;
 	float			_gyro_range_scale;
@@ -459,8 +459,8 @@ I3G4250D::init()
 		vPortFree(_reports);
 		_reports = NULL;
 	}
-	_reports = (RingBuffer_t *) pvPortMalloc (sizeof(RingBuffer_t));
-	iRingBufferInit(_reports, 2, sizeof(gyro_report));
+	_reports = (ringbuf_t *) pvPortMalloc (sizeof(ringbuf_t));
+	ringbuf_init(_reports, 2, sizeof(struct gyro_report));
 
 	if (_reports == NULL)
 		goto out;
@@ -473,7 +473,7 @@ I3G4250D::init()
 
 	/* advertise sensor topic, measure manually to initialize valid report */
 	struct gyro_report grp;
-	xRingBufferGet(_reports, &grp, sizeof(struct gyro_report));
+	ringbuf_get(_reports, &grp, sizeof(struct gyro_report));
 
 	_gyro_topic = orb_advertise_multi(ORB_ID(sensor_gyro), &grp,
 		&_orb_class_instance, (is_external()) ? ORB_PRIO_VERY_HIGH : ORB_PRIO_DEFAULT);
@@ -530,7 +530,7 @@ I3G4250D::read(struct file *filp, char *buffer, size_t buflen)
 		 * we are careful to avoid racing with it.
 		 */
 		while (count--) {
-			if (0 == xRingBufferGet(_reports, gbuf, sizeof(*gbuf))) {
+			if (0 == ringbuf_get(_reports, gbuf, sizeof(*gbuf))) {
 				ret += sizeof(*gbuf);
 				gbuf++;
 			}
@@ -541,11 +541,11 @@ I3G4250D::read(struct file *filp, char *buffer, size_t buflen)
 	}
 
 	/* manual measurement */
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 	measure();
 
 	/* measurement will have generated a report, copy it out */
-	if (0 == xRingBufferGet(_reports, gbuf, sizeof(*gbuf))) {
+	if (0 == ringbuf_get(_reports, gbuf, sizeof(*gbuf))) {
 		ret = sizeof(*gbuf);
 	}
 
@@ -620,7 +620,7 @@ I3G4250D::ioctl(struct file *filp, int cmd, unsigned long arg)
 			return -EINVAL;
 
 		irqstate_t flags = irqsave();
-		if (!xRingBufferResize(_reports, arg)) {
+		if (!ringbuf_resize(_reports, arg)) {
 			irqrestore(flags);
 			return -ENOMEM;
 		}
@@ -630,7 +630,7 @@ I3G4250D::ioctl(struct file *filp, int cmd, unsigned long arg)
 	}
 
 	case SENSORIOCGQUEUEDEPTH:
-		return iRingBufferSize(_reports);
+		return ringbuf_size(_reports);
 
 	case SENSORIOCRESET:
 		reset();
@@ -850,14 +850,14 @@ I3G4250D::start()
 //	stop();
 
 	/* reset the report ring */
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 
 	/* start polling at the specified rate */
     int ticks = USEC2TICK(_call_interval);
     if(ticks == 0)
         ticks = 1;//定时器时间间隔不可为0
 	/* reset the report ring and state machine */
-	_call = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, this, &I3G4250D::measure_trampoline);
+	_call = xTimerCreate("gyro timer", USEC2TICK(_call_interval), pdTRUE, this, &I3G4250D::measure_trampoline);
 	xTimerStart(_call, portMAX_DELAY);
 	
 }
@@ -957,6 +957,8 @@ I3G4250D::measure()
 		int16_t		z;
 	} raw_report;
     uint8_t raw_data[9];
+	static hrt_abstime start_time=0;
+    static unsigned int hb = 0;
 
 	gyro_report report = {0};
 
@@ -992,6 +994,13 @@ I3G4250D::measure()
 	 *		  74 from all measurements centers them around zero.
 	 */
 	report.timestamp = hrt_absolute_time();
+    hb++;
+    if(report.timestamp - start_time >= 1000000)
+    {
+        start_time = report.timestamp;
+        printf("count=%d x=%x y=%x z=%x\n", hb, raw_report.x, raw_report.y, raw_report.z);
+        hb = 0;
+    }
 
 	switch (_orientation) {
 
@@ -1054,7 +1063,7 @@ I3G4250D::measure()
 	report.range_rad_s = _gyro_range_rad_s;
 //	printf("%9.5f, %9.5f, %9.5f\n\r",report.x, report.y, report.z);
 
-	xRingBufferForce(_reports, &report, sizeof(report));
+	ringbuf_force(_reports, &report, sizeof(report));
 
 	/* notify anyone waiting for data */
 	poll_notify(POLLIN);
@@ -1074,7 +1083,7 @@ void
 I3G4250D::print_info()
 {
 	printf("gyro reads:          %u\n", _read);
-	vRingBufferPrintInfo(_reports, "report queue");
+	ringbuf_printinfo(_reports, "report queue");
         ::printf("checked_next: %u\n", _checked_next);
         for (uint8_t i=0; i<I3G4250D_NUM_CHECKED_REGISTERS; i++) {
             uint8_t v = read_reg(_checked_registers[i]);

@@ -103,6 +103,14 @@ static int iicps_soft_reset(u16 iic_id)
 	return XST_SUCCESS;
 }
 
+/*
+ * 如果发送/接收失败,调这个函数清空Transfer_size_reg0,否则配clk会失败
+ */
+static inline void iicps_clear_transmit(XIicPs* iicps)
+{
+     *(volatile uint32_t *)(iicps->Config.BaseAddress + XIICPS_TRANS_SIZE_OFFSET) = 0;
+}
+
 void *iic_register(uint8_t bus_id, uint8_t dev_addr, uint32_t clk)
 {
 	XIicPs *iicps = NULL;
@@ -135,10 +143,13 @@ void *iic_register(uint8_t bus_id, uint8_t dev_addr, uint32_t clk)
 	iic_priv->devaddr   = dev_addr;
 	iic_priv->clk       = clk;
 
+    xSemaphoreTake(iic_priv->iic_mutex, portMAX_DELAY);
+
     status = XIicPs_SetSClk(iicps, clk);
     if (status != XST_SUCCESS)
     {
-        return XST_FAILURE;
+        xSemaphoreGive(iic_priv->iic_mutex);
+        return NULL;
     }
 
     /*
@@ -147,9 +158,22 @@ void *iic_register(uint8_t bus_id, uint8_t dev_addr, uint32_t clk)
      */
     iic_priv->act_clk = XIicPs_GetSClk(iicps);
 
+    xSemaphoreGive(iic_priv->iic_mutex);
+
     return (void *)iic_priv;
 }
 
+void iic_deregister(void *iic_priv)
+{
+    iic_priv_s *priv = (iic_priv_s *)iic_priv;
+
+    if(iic_priv == NULL)
+        return;
+
+    xSemaphoreTake(priv->iic_mutex, portMAX_DELAY);
+    vPortFree(iic_priv);
+    xSemaphoreGive(priv->iic_mutex);
+}
 /*****************************************************************************/
 /**
 * This function contains what function.
@@ -221,7 +245,8 @@ int32_t iic_transfer(void *iic_priv, const uint8_t *send, unsigned send_len, uin
 	XIicPs *iicps = priv->iicps;
 	uint8_t dev = priv->devaddr;
 	uint32_t curr_clk = XIicPs_GetSClk(iicps);
-	int status = -1;	
+	int32_t status = -1;	
+    int32_t ret = -1;
     
 //	pilot_info("actclk is %dKHz\r\n",actclk/1000);
     xSemaphoreTake(priv->iic_mutex, portMAX_DELAY);
@@ -231,7 +256,7 @@ int32_t iic_transfer(void *iic_priv, const uint8_t *send, unsigned send_len, uin
         status = XIicPs_SetSClk(iicps, priv->clk);
         if (status != XST_SUCCESS)
         {
-//		pilot_info("clock is different, set to %dKHz\r\n",clk/1000);
+            pilot_err("set to %dKHz failed transmit size=%d\r\n",priv->clk/1000, *(volatile uint32_t *)0xE0005014);
             xSemaphoreGive(priv->iic_mutex);
             return XST_FAILURE;
         }
@@ -240,18 +265,26 @@ int32_t iic_transfer(void *iic_priv, const uint8_t *send, unsigned send_len, uin
 	if(send_len > 0)
 	{
 		Xil_AssertNonvoid(send != NULL);	
-		XIicPs_MasterSendPolled(iicps, (uint8_t *)send, send_len, dev);
+		ret = XIicPs_MasterSendPolled(iicps, (uint8_t *)send, send_len, dev);
+        if(ret != 0)
+        {
+            iicps_clear_transmit(iicps);
+        }
 	}
 
 	if(recv_len > 0)
 	{		
 		Xil_AssertNonvoid(recv != NULL);	
-        XIicPs_MasterRecvPolled(iicps, recv, recv_len, dev);
+        ret = XIicPs_MasterRecvPolled(iicps, recv, recv_len, dev);
+        if(ret != 0)
+        {
+            iicps_clear_transmit(iicps);
+        }
 	}
     
     xSemaphoreGive(priv->iic_mutex);
 
-	return XST_SUCCESS;
+	return ret;
 }
 
 

@@ -38,10 +38,7 @@ static main_t main_list[]=
 //    {rgbled_main, 2, {"rgbled_main", "test"}},
     {fmu_main, 2, {"fmu_main", "mode_pwm4"}},
     {i3g4250d_main, 2, {"i3g4250d_main","start"}},
-//    {i3g4250d_main, 4, {"i3g4250d_main", "-R", "10","start"}},
-//    {iis328dq_main, 4, {"iis328dq_main", "-R", "6","start"}},
     {iis328dq_main, 4, {"iis328dq_main", "-R", "10","start"}},
-//	{lis3mdl_main, 4, {"lis3mdl_main", "-R", "6","start"}},
 	{lis3mdl_main, 4, {"lis3mdl_main", "-R", "12","start"}},
 	{ms5611_main, 2, {"ms5611_main","start"}},
 //	{hmc5883_main, 2, {"hmc5883_main","start"}}

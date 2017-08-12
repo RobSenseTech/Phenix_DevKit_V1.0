@@ -149,7 +149,7 @@ private:
     xTimerHandle    _call;
 	unsigned		_call_interval;
 
-	RingBuffer_t	*_reports;
+	ringbuf_t	*_reports;
 
 	struct accel_scale	_accel_scale;
 	unsigned		_accel_range_m_s2;
@@ -393,8 +393,8 @@ IIS328DQ::init()
 		_reports = NULL;
 	}
 	/* allocate basic report buffers */
-	_reports = (RingBuffer_t *) pvPortMalloc (sizeof(RingBuffer_t));
-	iRingBufferInit(_reports, 2, sizeof(accel_report));
+	_reports = (ringbuf_t *) pvPortMalloc (sizeof(ringbuf_t));
+	ringbuf_init(_reports, 2, sizeof(accel_report));
 
 	if (_reports == NULL)
 		goto out;
@@ -407,7 +407,7 @@ IIS328DQ::init()
 
 	/* advertise sensor topic, measure manually to initialize valid report */
 	struct accel_report arp;
-	xRingBufferGet(_reports, &arp, sizeof(arp));
+	ringbuf_get(_reports, &arp, sizeof(arp));
 
 	_accel_topic = orb_advertise_multi(ORB_ID(sensor_accel), &arp,
 		&_orb_class_instance, (is_external()) ? ORB_PRIO_VERY_HIGH : ORB_PRIO_DEFAULT);
@@ -464,7 +464,7 @@ IIS328DQ::read(struct file *filp, char *buffer, size_t buflen)
 		 * we are careful to avoid racing with it.
 		 */
 		while (count--) {
-			if (0 == xRingBufferGet(_reports, abuf, sizeof(*abuf))) {
+			if (0 == ringbuf_get(_reports, abuf, sizeof(*abuf))) {
 				ret += sizeof(*abuf);
 				abuf++;
 			}
@@ -475,11 +475,11 @@ IIS328DQ::read(struct file *filp, char *buffer, size_t buflen)
 	}
 
 	/* manual measurement */
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 	measure();
 
 	/* measurement will have generated a report, copy it out */
-	if (0 == xRingBufferGet(_reports, abuf, sizeof(*abuf)))  {
+	if (0 == ringbuf_get(_reports, abuf, sizeof(*abuf)))  {
 		ret = sizeof(*abuf);
 	}
 
@@ -554,7 +554,7 @@ IIS328DQ::ioctl(struct file *filp, int cmd, unsigned long arg)
 			return -EINVAL;
 
 		irqstate_t flags = irqsave();
-		if (!xRingBufferResize(_reports, arg)) {
+		if (!ringbuf_resize(_reports, arg)) {
 			irqrestore(flags);
 			return -ENOMEM;
 		}
@@ -564,7 +564,7 @@ IIS328DQ::ioctl(struct file *filp, int cmd, unsigned long arg)
 	}
 
 	case SENSORIOCGQUEUEDEPTH:
-		return iRingBufferSize(_reports);
+		return ringbuf_size(_reports);
 
 	case SENSORIOCRESET:
 		reset();
@@ -762,7 +762,7 @@ IIS328DQ::start()
 	//stop();
 
 	/* reset the report ring */
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 
 	/* start polling at the specified rate */
     int ticks = USEC2TICK(_call_interval);
@@ -957,7 +957,7 @@ IIS328DQ::measure()
 	accel_report.range_m_s2 = _accel_range_m_s2;
 
     //pilot_warn("accel data:rawxyz[%04x,%04x,%04x] size=%d\n", accel_report.x_raw, accel_report.y_raw, accel_report.z_raw, sizeof(raw_accel_report));
-	xRingBufferForce(_reports, &accel_report, sizeof(accel_report));
+	ringbuf_force(_reports, &accel_report, sizeof(accel_report));
 
 	/* notify anyone waiting for data */
 	poll_notify(POLLIN);
@@ -975,7 +975,7 @@ void
 IIS328DQ::print_info()
 {
 	printf("accel reads:          %u\n", _read);
-	vRingBufferPrintInfo(_reports, "report queue");
+	ringbuf_printinfo(_reports, "report queue");
         ::printf("checked_next: %u\n", _checked_next);
         for (uint8_t i=0; i<IIS328DQ_NUM_CHECKED_REGISTERS; i++) {
             uint8_t v = read_reg(_checked_registers[i]);

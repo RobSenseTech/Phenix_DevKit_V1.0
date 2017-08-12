@@ -40,8 +40,8 @@ typedef struct{
 	int32_t uartps_id;	//uart编号
 	XUartPs *uartps_inst_ptr;
 	int32_t uartps_mode;
-	RingBuffer_t rx_ringbuf;
-	RingBuffer_t tx_ringbuf;
+	ringbuf_t rx_ringbuf;
+	ringbuf_t tx_ringbuf;
     SemaphoreHandle_t rx_mutex;
     SemaphoreHandle_t tx_mutex;
 }uartps_private_t;
@@ -134,8 +134,8 @@ uint32_t uartps_init(int32_t uartps_id)
 	}
 	priv->uartps_id = uartps_id;
 	priv->uartps_inst_ptr = inst_ptr;
-	iRingBufferInit(&priv->rx_ringbuf, 512, sizeof(char));
-	iRingBufferInit(&priv->tx_ringbuf, 512, sizeof(char));
+	ringbuf_init(&priv->rx_ringbuf, 512, sizeof(char));
+	ringbuf_init(&priv->tx_ringbuf, 512, sizeof(char));
     priv->rx_mutex = xSemaphoreCreateMutex();
     priv->tx_mutex = xSemaphoreCreateMutex();
 
@@ -220,7 +220,7 @@ ssize_t uartps_read(struct file *filp, char *buffer, size_t buflen)
 	while(len < buflen)
 	{
 //        pilot_info("head=%x tail=%x\n", priv->rx_ringbuf._Head, priv->rx_ringbuf._Tail); 
-		if(xRingBufferGet(&priv->rx_ringbuf, &buffer[len], priv->rx_ringbuf._ItemSize) == 0)
+		if(ringbuf_get(&priv->rx_ringbuf, &buffer[len], sizeof(uint8_t)) == 0)
         {
 			len++;
         }
@@ -247,7 +247,7 @@ ssize_t uartps_write(struct file *filp, const char *buffer, size_t buflen)
 	while (len < buflen) 
 	{
 		
-        if(xRingBufferPut(&priv->tx_ringbuf, &buffer[len], sizeof(uint8_t)) == 0)
+        if(ringbuf_put(&priv->tx_ringbuf, &buffer[len], sizeof(uint8_t)) == 0)
             len++;
         else
             break;
@@ -272,7 +272,7 @@ ssize_t uartps_write(struct file *filp, const char *buffer, size_t buflen)
      */
     if(XUartPs_IsTransmitEmpty(inst_ptr))
     {
-        if(xRingBufferGet(&priv->tx_ringbuf, &val, sizeof(uint8_t)) == 0)
+        if(ringbuf_get(&priv->tx_ringbuf, &val, sizeof(uint8_t)) == 0)
         {
             /*
              * Fill the FIFO from the buffer
@@ -300,7 +300,7 @@ int uartps_ioctl(file_t *filp, int cmd, unsigned long arg)
 			int available= 0;
 
             irqstate_t state = irqsave();
-			available= iRingBufferGetAvailable(&priv->rx_ringbuf);
+			available= ringbuf_available(&priv->rx_ringbuf);
 			*(int *)arg = available;
             irqrestore(state);
 			break;
@@ -310,7 +310,7 @@ int uartps_ioctl(file_t *filp, int cmd, unsigned long arg)
 			int space= 0;
 
             irqstate_t state = irqsave();
-			space = iRingBufferGetSpace(&priv->tx_ringbuf);
+			space = ringbuf_space(&priv->tx_ringbuf);
 			*(int *)arg = space;
             irqrestore(state);
 			break;
@@ -405,11 +405,11 @@ static void uartps_isr(void *arg)
 		/* Recieved data interrupt */
 		while(XUartPs_IsReceiveData(inst_ptr->Config.BaseAddress))
 		{
-            if(iRingBufferGetSpace(&priv->rx_ringbuf) > 0) 
+            if(ringbuf_space(&priv->rx_ringbuf) > 0) 
             {
             	val = XUartPs_ReadReg(inst_ptr->Config.BaseAddress, XUARTPS_FIFO_OFFSET);
 //            pilot_warn("isr=%x val=%d\n", isr, val);
-			    ret = xRingBufferPut(&priv->rx_ringbuf, &val, sizeof(uint8_t));
+			    ret = ringbuf_put(&priv->rx_ringbuf, &val, sizeof(uint8_t));
 
             }
             else
@@ -420,7 +420,7 @@ static void uartps_isr(void *arg)
                 if(isr & (XUARTPS_IXR_RXFULL)) 
                 {
                     val = XUartPs_ReadReg(inst_ptr->Config.BaseAddress, XUARTPS_FIFO_OFFSET);
-                    ret = xRingBufferForce(&priv->rx_ringbuf, &val, sizeof(uint8_t));
+                    ret = ringbuf_force(&priv->rx_ringbuf, &val, sizeof(uint8_t));
                 }
                 break;
             }
@@ -438,7 +438,7 @@ static void uartps_isr(void *arg)
         /* Transmit data interrupt */
 		while ((!XUartPs_IsTransmitFull(inst_ptr->Config.BaseAddress))) 
 		{
-			ret = xRingBufferGet(&priv->tx_ringbuf, &val, sizeof(uint8_t));
+			ret = ringbuf_get(&priv->tx_ringbuf, &val, sizeof(uint8_t));
 			
 			if(ret == 0)
 			{

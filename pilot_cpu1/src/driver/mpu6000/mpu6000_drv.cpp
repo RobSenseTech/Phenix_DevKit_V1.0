@@ -23,7 +23,7 @@ public:
 	virtual int	poll(file_t *filp, struct pollfd *fds, bool setup);
 
     void measure_trampoline(void *arg);
-    RingBuffer_t *_accel_reports;
+    ringbuf_t *_accel_reports;
 private:
     struct hrt_call _call;
     int _accel_class_instance;
@@ -53,7 +53,7 @@ void MPU6000::measure_trampoline(void *arg)
     hb++;
     arb.timestamp = hb;
 
-  //  xRingBufferForce(_accel_reports, &arb, sizeof(arb)); 
+  //  ringbuf_force(_accel_reports, &arb, sizeof(arb)); 
 
     poll_notify(POLLIN);
     orb_publish(ORB_ID(sensor_accel), _accel_topic, &arb);
@@ -72,11 +72,11 @@ int MPU6000::init()
 
     _accel_class_instance = register_class_devname(ACCEL_BASE_DEVICE_PATH);
 
-    _accel_reports = (RingBuffer_t *)pvPortMalloc(sizeof(RingBuffer_t));
-    iRingBufferInit(_accel_reports, 2, sizeof(struct sensor_accel_s));
+    _accel_reports = (ringbuf_t *)pvPortMalloc(sizeof(ringbuf_t));
+    ringbuf_init(_accel_reports, 2, sizeof(struct sensor_accel_s));
 
     struct sensor_accel_s arp;
-    xRingBufferGet(_accel_reports, &arp, sizeof(arp));
+    ringbuf_get(_accel_reports, &arp, sizeof(arp));
 
     _accel_topic = orb_advertise_multi(ORB_ID(sensor_accel), &arp, &_accel_orb_class_instance, ORB_PRIO_HIGH);
     if(_accel_topic == NULL)

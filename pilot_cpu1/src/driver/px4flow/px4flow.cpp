@@ -129,7 +129,7 @@ private:
 	uint16_t		_address;
 	uint32_t		_frequency;
 
-	RingBuffer_t	*_reports;
+	ringbuf_t	*_reports;
 	bool				_sensor_ok;
 	int				_measure_ticks;
 	bool				_collect_phase;
@@ -210,7 +210,8 @@ PX4FLOW::PX4FLOW(int bus, int dev_addr, uint32_t frequency, const char *path, en
 	// _debug_enabled = false;
 
 	// work_cancel in the dtor will explode if we don't do this...
-	// memset(&_work, 0, sizeof(_work));
+    _work = NULL;
+    px4flow = NULL;
 }
 
 PX4FLOW::~PX4FLOW()
@@ -232,14 +233,26 @@ int
 PX4FLOW::init()
 {
 	int ret = DEV_FAILURE;
+	/* get a publish handle on the range finder topic */
+	struct distance_sensor_s ds_report = {};
 
 	px4flow = iic_register(_bus, _address, _frequency);
+    if(px4flow == NULL)
+    {
+        pilot_err("register iic-%d failed\n", _bus);
+        return -1;
+    }
+
+    ret = probe();
+	if (ret != OK) {
+        goto err_out;
+	}
 
 	ret = CDev::init();
 
 	/* do I2C init (and probe) first */
 	if (ret != OK) {
-		return ret;
+        goto err_out;
 	}
 
 	/* allocate basic report buffers */
@@ -248,17 +261,14 @@ PX4FLOW::init()
 		vPortFree(_reports);
 		_reports = NULL;
 	}
-	_reports = (RingBuffer_t *) pvPortMalloc (sizeof(RingBuffer_t));
-	iRingBufferInit(_reports, 2, sizeof(optical_flow_s));
-
+	_reports = (ringbuf_t *) pvPortMalloc (sizeof(ringbuf_t));
 	if (_reports == NULL) {
-		return ret;
+        goto err_out;
 	}
 
-	_class_instance = register_class_devname(RANGE_FINDER_BASE_DEVICE_PATH);
+	ringbuf_init(_reports, 2, sizeof(optical_flow_s));
 
-	/* get a publish handle on the range finder topic */
-	struct distance_sensor_s ds_report = {};
+	_class_instance = register_class_devname(RANGE_FINDER_BASE_DEVICE_PATH);
 
 	_distance_sensor_topic = orb_advertise_multi(ORB_ID(distance_sensor), &ds_report,
 				 &_orb_class_instance, ORB_PRIO_HIGH);
@@ -272,6 +282,11 @@ PX4FLOW::init()
 	_sensor_ok = true;
 
 	return ret;
+
+err_out:
+    iic_deregister(px4flow);
+    px4flow = NULL;
+    return ret;
 }
 
 int
@@ -283,7 +298,8 @@ PX4FLOW::probe()
 	// 0x42) we check if a I2C_FRAME_SIZE byte transfer works from address
 	// 0. The ll40ls gives an error for that, whereas the flow
 	// happily returns some data
-	if (iic_transfer(px4flow, NULL, 0, &val[0], 22) != OK) {
+	if (iic_transfer(px4flow, NULL, 0, &val[0], I2C_FRAME_SIZE) != OK) {
+        pilot_err("probe filed\n");
 		return -EIO;
 	}
 
@@ -370,7 +386,7 @@ PX4FLOW::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 			irqstate_t flags = irqsave();
 
-			if (!xRingBufferResize(_reports, arg)) {
+			if (!ringbuf_resize(_reports, arg)) {
 				irqrestore(flags);
 				return -ENOMEM;
 			}
@@ -381,7 +397,7 @@ PX4FLOW::ioctl(struct file *filp, int cmd, unsigned long arg)
 		}
 
 	case SENSORIOCGQUEUEDEPTH:
-		return iRingBufferSize(_reports);
+		return ringbuf_size(_reports);
 
 	case SENSORIOCSROTATION:
 		_sensor_rotation = (enum Rotation)arg;
@@ -421,7 +437,7 @@ PX4FLOW::read(struct file *filp, char *buffer, size_t buflen)
 		 * we are careful to avoid racing with them.
 		 */
 		while (count--) {
-			if (0 == xRingBufferGet(_reports, rbuf, sizeof(*rbuf))) {
+			if (0 == ringbuf_get(_reports, rbuf, sizeof(*rbuf))) {
 				ret += sizeof(*rbuf);
 				rbuf++;
 			}
@@ -434,7 +450,7 @@ PX4FLOW::read(struct file *filp, char *buffer, size_t buflen)
 	/* manual measurement - run one conversion */
 	do {
 		// _reports->flush();
-		vRingBufferFlush(_reports);
+		ringbuf_flush(_reports);
 
 		/* trigger a measurement */
 		if (OK != measure()) {
@@ -449,7 +465,7 @@ PX4FLOW::read(struct file *filp, char *buffer, size_t buflen)
 		}
 
 		/* state machine will have generated a report, copy it out */
-		if (0 == xRingBufferGet(_reports, rbuf, sizeof(*rbuf))) {
+		if (0 == ringbuf_get(_reports, rbuf, sizeof(*rbuf))) {
 			ret = sizeof(*rbuf);
 		}
 
@@ -572,7 +588,7 @@ PX4FLOW::collect()
 	orb_publish(ORB_ID(distance_sensor), _distance_sensor_topic, &distance_report);
 
 	/* post a report to the ring */
-	if (xRingBufferForce(_reports, &report, sizeof(report))) {
+	if (ringbuf_force(_reports, &report, sizeof(report))) {
 		// perf_count(_buffer_overflows);
 	}
 
@@ -591,7 +607,7 @@ PX4FLOW::start()
 	/* reset the report ring and state machine */
 	_collect_phase = false;
 	// _reports->flush();
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 
 	/* schedule a cycle to start things */
 	// work_queue(HPWORK, &_work, (worker_t)&PX4FLOW::cycle_trampoline, this, 1);
@@ -619,7 +635,8 @@ void
 PX4FLOW::stop()
 {
 	// work_cancel(HPWORK, &_work);
-	xTimerDelete(_work, portMAX_DELAY);
+    if(_work != NULL)
+        xTimerDelete(_work, portMAX_DELAY);
 }
 
 void
@@ -661,7 +678,7 @@ PX4FLOW::print_info()
 	// perf_print_counter(_buffer_overflows);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	// _reports->print_info("report queue");
-	vRingBufferPrintInfo(_reports, "report queue");
+	ringbuf_printinfo(_reports, "report queue");
 }
 
 /**
@@ -694,7 +711,7 @@ void	info();
 int
 start()
 {
-	printf("px4flow driver start---\n");
+	pilot_info("px4flow driver start---\n");
 	int fd;
 
 	/* entry check: */
@@ -730,7 +747,7 @@ start()
 		const int *cur_bus = busses_to_try;
 
 		while (*cur_bus != -1) {
-			printf("px4flow driver bus no.---%d\n", *cur_bus);
+			pilot_info("retry-%d px4flow driver bus no.---%d\n", retry_nr, *cur_bus);
 			/* create the driver */
 			/* warnx("trying bus %d", *cur_bus); */
 			g_dev = new PX4FLOW(*cur_bus);
@@ -773,7 +790,7 @@ start()
 			if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_MAX) < 0) {
 				break;
 			}
-			printf("px4flow driver success!\n");
+			pilot_info("px4flow driver success!\n");
 			/* success! */
 			start_in_progress = false;
 			return 0;
@@ -782,7 +799,8 @@ start()
 		if (retry_nr < START_RETRY_COUNT) {
 			/* lets not be too verbose */
 			// warnx("PX4FLOW not found on I2C busses. Retrying in %d ms. Giving up in %d retries.", START_RETRY_TIMEOUT, START_RETRY_COUNT - retry_nr);
-			usleep(START_RETRY_TIMEOUT * 1000);
+			//usleep(START_RETRY_TIMEOUT * 1000);
+            vTaskDelay(START_RETRY_TIMEOUT / portTICK_RATE_MS);
 			retry_nr++;
 
 		} else {
@@ -813,7 +831,6 @@ stop()
 		errx(1, "driver not running");
 	}
 
-	exit(0);
 }
 
 /**
@@ -917,7 +934,6 @@ reset()
 		err(1, "driver poll restart failed");
 	}
 
-	exit(0);
 }
 
 /**
@@ -933,7 +949,6 @@ info()
 	printf("state @ %p\n", g_dev);
 	g_dev->print_info();
 
-	exit(0);
 }
 
 } // namespace

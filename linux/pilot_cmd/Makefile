@@ -57,14 +57,10 @@ $(Output)$(PRJ_NAME):$(OBJS) $(OBJS_S) $(LSCRIPT)
 	@echo 'Invoking:$(CC)'
 	@echo 'include:$(INCLUDEPATH)'
 	$(CC) -static -o "$@" $(OBJS) $(OBJS_S) $(LIBS)
-	cp ../filesystem/rootfs.tar.gz .
-	tar xf rootfs.tar.gz 
-	cp $(Output)$(PRJ_NAME) rootfs/usr/
-	../filesystem/mkramfs.sh rootfs/
-	tar -czf rootfs.tar.gz rootfs
+	cp $(Output)$(PRJ_NAME) ../filesystem/rootfs/usr/
+	../filesystem/mkramfs.sh ../filesystem/rootfs/
+	cp  uramdisk.image.gz ../../amp_system/linux_image/
 	mv  uramdisk.image.gz ../filesystem
-	mv  rootfs.tar.gz ../filesystem
-	rm rootfs -rf
 	@echo 'Finished building target: $@'
 	@echo ' '
 

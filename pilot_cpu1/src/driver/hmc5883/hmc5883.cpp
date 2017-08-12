@@ -160,7 +160,7 @@ private:
 	uint32_t		_frequency;
 	unsigned		_measure_ticks;
 
-	RingBuffer_t	*_reports;
+	ringbuf_t	*_reports;
 	mag_scale		_scale;
 	float 			_range_scale;
 	float 			_range_ga;
@@ -442,8 +442,8 @@ HMC5883::init()
 		vPortFree(_reports);
 		_reports = NULL;
 	}
-	_reports = (RingBuffer_t *) pvPortMalloc (sizeof(RingBuffer_t));
-	iRingBufferInit(_reports, 2, sizeof(mag_report));
+	_reports = (ringbuf_t *) pvPortMalloc (sizeof(ringbuf_t));
+	ringbuf_init(_reports, 2, sizeof(mag_report));
 	
 	
 	if (_reports == NULL) {
@@ -625,7 +625,7 @@ HMC5883::read(struct file *filp, char *buffer, size_t buflen)
 		 */
 		while (count--) {
 //			if (_reports->get(mag_buf)) {
-			if (0 == xRingBufferGet(_reports, mag_buf, sizeof(struct mag_report))) {	
+			if (0 == ringbuf_get(_reports, mag_buf, sizeof(struct mag_report))) {	
 				ret += sizeof(struct mag_report);
 				mag_buf++;
 			}
@@ -638,7 +638,7 @@ HMC5883::read(struct file *filp, char *buffer, size_t buflen)
 	/* manual measurement - run one conversion */
 	/* XXX really it'd be nice to lock against other readers here */
 	do {
-		vRingBufferFlush(_reports);
+		ringbuf_flush(_reports);
 
 		/* trigger a measurement */
 		if (OK != measure()) {
@@ -655,7 +655,7 @@ HMC5883::read(struct file *filp, char *buffer, size_t buflen)
 			break;
 		}
 
-		if (0 == xRingBufferGet(_reports, mag_buf, sizeof(struct mag_report))) {
+		if (0 == ringbuf_get(_reports, mag_buf, sizeof(struct mag_report))) {
 			ret = sizeof(struct mag_report);
 		}
 	} while (0);
@@ -745,7 +745,7 @@ HMC5883::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 			
 
-			if (!xRingBufferResize(_reports, arg)) {
+			if (!ringbuf_resize(_reports, arg)) {
 				irqrestore(flags);
 				return -ENOMEM;
 			}
@@ -756,7 +756,7 @@ HMC5883::ioctl(struct file *filp, int cmd, unsigned long arg)
 		}
 
 	case SENSORIOCGQUEUEDEPTH:
-		return iRingBufferSize(_reports);
+		return ringbuf_size(_reports);
 
 	case SENSORIOCRESET:
 		return reset();
@@ -823,7 +823,7 @@ HMC5883::start()
 {
 	/* reset the report ring and state machine */
 	_collect_phase = false;
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 	
 	_work = xTimerCreate("poll_hmc5883", _measure_ticks, pdTRUE, this, &HMC5883::cycle_trampoline);
 
@@ -1151,7 +1151,7 @@ HMC5883::collect()
 
 	/* post a report to the ring */
 	
-	if(xRingBufferForce(_reports, &new_report, sizeof(new_report))){
+	if(ringbuf_force(_reports, &new_report, sizeof(new_report))){
 //	if (_reports->force(&new_report)) {
 //		perf_count(_buffer_overflows);
 	}
@@ -1550,7 +1550,7 @@ HMC5883::print_info()
 	       (double)_scale.x_scale, (double)_scale.y_scale, (double)_scale.z_scale,
 	       (double)(1.0f / _range_scale), (double)_range_ga);
 	printf("temperature %.2f\n", (double)_last_report.temperature);
-	vRingBufferPrintInfo(_reports, "report queue");
+	ringbuf_printinfo(_reports, "report queue");
 }
 
 /**

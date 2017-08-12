@@ -461,10 +461,12 @@ AP_InertialSensor::init(uint16_t sample_rate)
     _sample_rate = sample_rate;
     _loop_delta_t = 1.0f / sample_rate;
 
+    pilot_warn("\n");
     if (_gyro_count == 0 && _accel_count == 0) {
         _start_backends();
     }
 
+    pilot_warn("\n");
     // initialise accel scale if need be. This is needed as we can't
     // give non-zero default values for vectors in AP_Param
     for (uint8_t i=0; i<get_accel_count(); i++) {
@@ -473,11 +475,13 @@ AP_InertialSensor::init(uint16_t sample_rate)
         }
     }
 
+    pilot_warn("\n");
     // calibrate gyros unless gyro calibration has been disabled
     if (gyro_calibration_timing() != GYRO_CAL_NEVER) {
         _init_gyro();
     }
 
+    pilot_warn("\n");
     _sample_period_usec = 1000*1000UL / _sample_rate;
 
     // establish the baseline time between samples
@@ -783,11 +787,14 @@ AP_InertialSensor::_init_gyro()
         converged[k] = false;
     }
 
+    pilot_warn("\n");
     for(int8_t c = 0; c < 5; c++) {
         hal.scheduler->delay(5);
+    pilot_warn("\n");
         update();
     }
 
+    pilot_warn("\n");
     // the strategy is to average 50 points over 0.5 seconds, then do it
     // again and see if the 2nd average is within a small margin of
     // the first
