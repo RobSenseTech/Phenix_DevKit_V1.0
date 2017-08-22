@@ -31,7 +31,9 @@ extern const AP_HAL::HAL& hal;
 
 PX4Storage::PX4Storage(void) :
     _fd(-1),
-    _dirty_mask(0)
+    _dirty_mask(0),
+    _perf_storage(perf_alloc(PC_ELAPSED, "APM_storage")),
+    _perf_errors(perf_alloc(PC_COUNT, "APM_storage_errors"))
 {
     dirty_sem = xSemaphoreCreateMutex();
 }
@@ -259,9 +261,13 @@ void PX4Storage::_timer_tick(void)
 		return;
 	}
 
+	perf_begin(_perf_storage);
+
 	if (_fd == -1) {
 		_fd = open(MTD_PARAMS_FILE, O_WRONLY);
 		if (_fd == -1) {
+			perf_end(_perf_storage);
+			perf_count(_perf_errors);
 			return;	
 		}
 	}
@@ -279,6 +285,8 @@ void PX4Storage::_timer_tick(void)
 	}
 	if (i == PX4_STORAGE_NUM_LINES) {
 		// this shouldn't be possible
+		perf_end(_perf_storage);
+		perf_count(_perf_errors);
         xSemaphoreGive(dirty_sem);
 		return;
 	}
@@ -310,8 +318,10 @@ void PX4Storage::_timer_tick(void)
                     _dirty_mask |= write_mask;
                     close(_fd);
                     _fd = -1;
+                    perf_count(_perf_errors);
 		}
 	}
     xSemaphoreGive(dirty_sem);
+	perf_end(_perf_storage);
 }
 

@@ -52,6 +52,7 @@
 #include "sleep.h"
 #include "timers.h"
 #include "driver.h"
+#include "perf/perf_counter.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -97,7 +98,7 @@
 class MS5611 : public device::CDev
 {
 public:
-	MS5611(int bus, const char* path, ESpi_device_id device);
+	MS5611(int bus, const char* path);
 	virtual ~MS5611();
 
 	virtual int		init();
@@ -138,12 +139,12 @@ protected:
 	int			_orb_class_instance;
 	int			_class_instance;
 
-//	perf_counter_t		_sample_perf;
-//	perf_counter_t		_measure_perf;
-//	perf_counter_t		_comms_errors;
-//	perf_counter_t		_buffer_overflows;
+	perf_counter_t		_sample_perf;
+	perf_counter_t		_measure_perf;
+	perf_counter_t		_comms_errors;
+	perf_counter_t		_buffer_overflows;
 
-	struct SDeviceViaSpi _devInstance;
+    struct spi_node ms5611_spi;
 	/**
 	 * Initialize the automatic measurement state machine and start it.
 	 *
@@ -213,7 +214,7 @@ protected:
  */
 extern "C"  __EXPORT int ms5611_main(int argc, char *argv[]);
 
-MS5611::MS5611(int bus, const char* path, ESpi_device_id device) :
+MS5611::MS5611(int bus, const char* path) :
 	CDev("ms5611", path),
     _work(NULL),
 	_measure_ticks(0),
@@ -226,19 +227,20 @@ MS5611::MS5611(int bus, const char* path, ESpi_device_id device) :
 	_msl_pressure(101325),
 	_baro_topic(NULL),
 	_orb_class_instance(-1),
-	_class_instance(-1)
-//	_sample_perf(perf_alloc(PC_ELAPSED, "ms5611_read")),
-//	_measure_perf(perf_alloc(PC_ELAPSED, "ms5611_measure")),
-//	_comms_errors(perf_alloc(PC_COUNT, "ms5611_comms_errors")),
-//	_buffer_overflows(perf_alloc(PC_COUNT, "ms5611_buffer_overflows"))
+	_class_instance(-1),
+	_sample_perf(perf_alloc(PC_ELAPSED, "ms5611_read")),
+	_measure_perf(perf_alloc(PC_ELAPSED, "ms5611_measure")),
+	_comms_errors(perf_alloc(PC_COUNT, "ms5611_comms_errors")),
+	_buffer_overflows(perf_alloc(PC_COUNT, "ms5611_buffer_overflows"))
 //added by prj
 {
-	_devInstance.spi_id = bus;
-	DeviceViaSpiCfgInitialize(&_devInstance,
-							  device, 
-							  "ms5611",
-							  ESPI_CLOCK_MODE_2,
-							  (11*1000*1000));
+    ms5611_spi.bus_id = bus;
+    ms5611_spi.cs_pin = GPIO_SPI_CS_BARO;
+    ms5611_spi.frequency = 11*1000*1000;     //spi frequency
+
+    spi_cs_init(&ms5611_spi);
+    spi_register_node(&ms5611_spi);
+
 	_class_instance = 0;
 }
 
@@ -253,14 +255,16 @@ MS5611::~MS5611()
 
 	/* free any existing reports */
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 	}
 
+    spi_deregister_node(&ms5611_spi);
 	// free perf counters
-//	perf_free(_sample_perf);
-//	perf_free(_measure_perf);
-//	perf_free(_comms_errors);
-//	perf_free(_buffer_overflows);
+	perf_free(_sample_perf);
+	perf_free(_measure_perf);
+	perf_free(_comms_errors);
+	perf_free(_buffer_overflows);
 
 }
 
@@ -270,7 +274,7 @@ MS5611::_reg16(unsigned reg)
 {
 	uint8_t cmd[3] = { (uint8_t)(reg | DIR_READ), 0, 0 };
 
-	SpiTransfer(&_devInstance, cmd, cmd, sizeof(cmd));
+	spi_transfer(&ms5611_spi, cmd, cmd, sizeof(cmd));
 
 	return (uint16_t)(((uint16_t)cmd[1] << 8) | cmd[2]);
 }
@@ -285,7 +289,7 @@ int MS5611::spi_read(unsigned address, void *data, unsigned count)
 
 	buf[0] = address | DIR_READ | ADDR_INCREMENT;
 
-	int ret = SpiTransfer(&_devInstance, &buf[0], &buf[0], count + 1);
+	int ret = spi_transfer(&ms5611_spi, &buf[0], &buf[0], count + 1);
 	memcpy(data, &buf[1], count);
 	return ret;
 }
@@ -300,7 +304,7 @@ int MS5611::spi_write(unsigned address, void *data, unsigned count)
 
 	buf[0] = address | DIR_WRITE;
 	memcpy(&buf[1], data, count);
-	return SpiTransfer(&_devInstance, &buf[0], &buf[0], count + 1);
+	return spi_transfer(&ms5611_spi, &buf[0], &buf[0], count + 1);
 }
 
 int
@@ -368,8 +372,8 @@ MS5611::reset_sensor()
 {
 	u8 cmd = ADDR_RESET_CMD | DIR_WRITE;
 
-	  SpiTransfer(&_devInstance, &cmd, &cmd, 1);
-	  pilot_info("cmd = %d\r\n",cmd);
+	spi_transfer(&ms5611_spi, &cmd, &cmd, 1);
+	pilot_info("cmd = %d\r\n",cmd);
 	return OK;
 //	return	write_reg(cmd,0);
 	
@@ -401,6 +405,7 @@ MS5611::init()
 
 	/* allocate basic report buffers */
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 		_reports = NULL;
 	}
@@ -681,7 +686,7 @@ MS5611::ms5611_spi_read(unsigned offset, void *data, unsigned count)
 	uint8_t buf[4] = { 0 | DIR_WRITE, 0, 0, 0 };
 
 	/* read the most recent measurement */
-	int ret = SpiTransfer(&_devInstance, &buf[0], &buf[0], sizeof(buf));
+	int ret = spi_transfer(&ms5611_spi, &buf[0], &buf[0], sizeof(buf));
 
 	if (ret == OK) {
 		/* fetch the raw value */
@@ -752,7 +757,7 @@ MS5611::cycle()
 			/* issue a reset command to the sensor */
 //added by prj
 			uint8_t cmd = ADDR_RESET_CMD | DIR_WRITE;
-			SpiTransfer(&_devInstance, &cmd, NULL, 1);
+			spi_transfer(&ms5611_spi, &cmd, NULL, 1);
 			/* reset the collection state machine and try again - we need
 			 * to wait 2.8 ms after issuing the sensor reset command
 			 * according to the MS5611 datasheet
@@ -783,7 +788,7 @@ MS5611::cycle()
 		/* issue a reset command to the sensor */
 		//added by  prj
 		uint8_t cmd = ADDR_RESET_CMD | DIR_WRITE;
-		SpiTransfer(&_devInstance, &cmd, NULL, 1);
+		spi_transfer(&ms5611_spi, &cmd, NULL, 1);
 		/* reset the collection state machine and try again 
 		start_cycle();
         */
@@ -799,6 +804,8 @@ MS5611::measure()
 {
 	int ret;
 
+	perf_begin(_measure_perf);
+
 	/*
 	 * In phase zero, request temperature; in other phases, request pressure.
 	 */
@@ -809,7 +816,13 @@ MS5611::measure()
 	 */
 	//added by prj
 	addr |= DIR_WRITE;
-	ret = SpiTransfer(&_devInstance, &addr, NULL, 1);
+	ret = spi_transfer(&ms5611_spi, &addr, NULL, 1);
+	if (OK != ret) 
+    {
+		perf_count(_comms_errors);
+	}
+
+	perf_end(_measure_perf);
 
 	return ret;
 }
@@ -820,20 +833,20 @@ MS5611::collect()
 	int ret;
 	uint32_t raw;
 
-//	perf_begin(_sample_perf);
+	perf_begin(_sample_perf);
 
 	struct baro_report report = {0};
 	/* this should be fairly close to the end of the conversion, so the best approximation of the time */
 	report.timestamp = hrt_absolute_time();
-//	report.error_count = perf_event_count(_comms_errors);
+	report.error_count = perf_event_count(_comms_errors);
 
 	/* read the most recent measurement - read offset/size are hardcoded in the interface */
 //added by prj
 	ret = ms5611_spi_read(0, (void *)&raw, 0);
 	
 	if (ret < 0) {
-		//perf_count(_comms_errors);
-		//perf_end(_sample_perf);
+		perf_count(_comms_errors);
+		perf_end(_sample_perf);
 		return ret;
 	}
 
@@ -925,7 +938,7 @@ MS5611::collect()
 		}
 
 		if (ringbuf_force(_reports, &report, sizeof(report))) {
-	//		perf_count(_buffer_overflows);
+			perf_count(_buffer_overflows);
 		}
 
 		/* notify anyone waiting for data */
@@ -935,7 +948,7 @@ MS5611::collect()
 	/* update the measurement state machine */
 	INCREMENT(_measure_phase, MS5611_MEASUREMENT_RATIO + 1);
 
-//	perf_end(_sample_perf);
+	perf_end(_sample_perf);
 
 	return OK;
 }
@@ -943,9 +956,9 @@ MS5611::collect()
 void
 MS5611::print_info()
 {
-	//perf_print_counter(_sample_perf);
-	//perf_print_counter(_comms_errors);
-	//perf_print_counter(_buffer_overflows);
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_comms_errors);
+	perf_print_counter(_buffer_overflows);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	ringbuf_printinfo(_reports, "report queue");
 	printf("TEMP:           %d\n", _TEMP);
@@ -1050,13 +1063,13 @@ start(bool external_bus)
 	/* create the driver */
 	if (external_bus) {
 #ifdef PX4_SPI_BUS_EXT
-		g_dev[external_bus] = new MS5611(PX4_SPI_BUS_EXT, MS5611_BARO_DEVICE_PATH_EXT, (ESpi_device_id)ESPI_DEVICE_TYPE_BARO);
+		g_dev[external_bus] = new MS5611(PX4_SPI_BUS_EXT, MS5611_BARO_DEVICE_PATH_EXT);
 #else
 		errx(0, "External SPI not available");
 		return;
 #endif
 	} else {
-		g_dev[external_bus] = new MS5611(SPI_DEVICE_ID_FOR_SENSOR, MS5611_BARO_DEVICE_PATH_INT, (ESpi_device_id)ESPI_DEVICE_TYPE_BARO);
+		g_dev[external_bus] = new MS5611(SPI_DEVICE_ID_FOR_SENSOR, MS5611_BARO_DEVICE_PATH_INT);
 	}
 	if (g_dev[external_bus] == NULL)
 		goto fail;

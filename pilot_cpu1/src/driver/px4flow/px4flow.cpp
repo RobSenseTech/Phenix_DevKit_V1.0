@@ -55,6 +55,7 @@
 #include "driver.h"
 #include "drivers/drv_px4flow.h"
 #include "drivers/drv_range_finder.h"
+#include "perf/perf_counter.h"
 
 #include <unistd.h>
 
@@ -138,9 +139,9 @@ private:
 	orb_advert_t		_px4flow_topic;
 	orb_advert_t		_distance_sensor_topic;
 
-	// perf_counter_t		_sample_perf;
-	// perf_counter_t		_comms_errors;
-	// perf_counter_t		_buffer_overflows;
+	 perf_counter_t		_sample_perf;
+	 perf_counter_t		_comms_errors;
+	 perf_counter_t		_buffer_overflows;
 	void *px4flow	;
 	enum Rotation				_sensor_rotation;
 
@@ -201,9 +202,9 @@ PX4FLOW::PX4FLOW(int bus, int dev_addr, uint32_t frequency, const char *path, en
 	_orb_class_instance(-1),
 	_px4flow_topic(NULL),
 	_distance_sensor_topic(NULL),
-	// _sample_perf(perf_alloc(PC_ELAPSED, "px4flow_read")),
-	// _comms_errors(perf_alloc(PC_COUNT, "px4flow_comms_errors")),
-	// _buffer_overflows(perf_alloc(PC_COUNT, "px4flow_buffer_overflows")),
+	_sample_perf(perf_alloc(PC_ELAPSED, "px4flow_read")),
+	_comms_errors(perf_alloc(PC_COUNT, "px4flow_comms_errors")),
+	_buffer_overflows(perf_alloc(PC_COUNT, "px4flow_buffer_overflows")),
 	_sensor_rotation(rotation)
 {
 	// disable debug() calls
@@ -221,12 +222,13 @@ PX4FLOW::~PX4FLOW()
 
 	/* free any existing reports */
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 	}
 
-	// perf_free(_sample_perf);
-	// perf_free(_comms_errors);
-	// perf_free(_buffer_overflows);
+	perf_free(_sample_perf);
+	perf_free(_comms_errors);
+	perf_free(_buffer_overflows);
 }
 
 int
@@ -258,6 +260,7 @@ PX4FLOW::init()
 	/* allocate basic report buffers */
 	// _reports = new ringbuffer::RingBuffer(2, sizeof(optical_flow_s));
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 		_reports = NULL;
 	}
@@ -487,7 +490,7 @@ PX4FLOW::measure()
 	ret = iic_transfer(px4flow, &cmd, 1, NULL, 0);
 
 	if (OK != ret) {
-		// perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		DEVICE_DEBUG("i2c::transfer returned %d", ret);
 		return ret;
 	}
@@ -505,7 +508,7 @@ PX4FLOW::collect()
 	/* read from the sensor */
 	uint8_t val[I2C_FRAME_SIZE + I2C_INTEGRAL_FRAME_SIZE] = { 0 };
 
-	// perf_begin(_sample_perf);
+	perf_begin(_sample_perf);
 
 	if (PX4FLOW_REG == 0x00) {
 		ret = iic_transfer(px4flow, NULL, 0, &val[0], I2C_FRAME_SIZE + I2C_INTEGRAL_FRAME_SIZE);
@@ -517,8 +520,8 @@ PX4FLOW::collect()
 
 	if (ret < 0) {
 		DEVICE_DEBUG("error reading from sensor: %d", ret);
-		// perf_count(_comms_errors);
-		// perf_end(_sample_perf);
+		perf_count(_comms_errors);
+		perf_end(_sample_perf);
 		return ret;
 	}
 
@@ -589,7 +592,7 @@ PX4FLOW::collect()
 
 	/* post a report to the ring */
 	if (ringbuf_force(_reports, &report, sizeof(report))) {
-		// perf_count(_buffer_overflows);
+		perf_count(_buffer_overflows);
 	}
 
 	/* notify anyone waiting for data */
@@ -597,7 +600,7 @@ PX4FLOW::collect()
 
 	ret = OK;
 
-	// perf_end(_sample_perf);
+	perf_end(_sample_perf);
 	return ret;
 }
 
@@ -673,9 +676,9 @@ PX4FLOW::cycle()
 void
 PX4FLOW::print_info()
 {
-	// perf_print_counter(_sample_perf);
-	// perf_print_counter(_comms_errors);
-	// perf_print_counter(_buffer_overflows);
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_comms_errors);
+	perf_print_counter(_buffer_overflows);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	// _reports->print_info("report queue");
 	ringbuf_printinfo(_reports, "report queue");

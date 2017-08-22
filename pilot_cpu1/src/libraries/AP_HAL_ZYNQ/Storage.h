@@ -3,6 +3,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include "AP_HAL_PX4_Namespace.h"
 #include "FreeRTOS.h"
+#include "perf/perf_counter.h"
 
 #define PX4_STORAGE_SIZE HAL_STORAGE_SIZE
 #define PX4_STORAGE_MAX_WRITE 512
@@ -29,6 +30,8 @@ private:
     void _mark_dirty(uint16_t loc, uint16_t length);
     uint8_t _buffer[PX4_STORAGE_SIZE] __attribute__((aligned(4)));
     volatile uint32_t _dirty_mask;
+    perf_counter_t  _perf_storage;
+    perf_counter_t  _perf_errors;
     bool _have_mtd;
     void _upgrade_to_mtd(void);
     uint32_t _mtd_signature(void);

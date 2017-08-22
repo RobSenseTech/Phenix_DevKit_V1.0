@@ -5,7 +5,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
-#include "spi/spi_backend.h"
+#include "spi/spi_drv.h"
 
 /* SPI protocol address bits */
 #define DIR_READ				(1<<7)
@@ -99,7 +99,7 @@
 #define I3G4250D_TEMP_OFFSET_CELSIUS		40
 
 
-struct SDeviceViaSpi _devInstance;
+struct spi_node test_spi;
 
 static void write_reg(unsigned reg, uint8_t value)
 {
@@ -108,7 +108,7 @@ static void write_reg(unsigned reg, uint8_t value)
 	cmd[0] = reg | DIR_WRITE;
 	cmd[1] = value;
 
-	SpiTransfer(&_devInstance, cmd, NULL, sizeof(cmd));
+	spi_transfer(&test_spi, cmd, NULL, sizeof(cmd));
 }
 
 static void write_checked_reg(unsigned reg, uint8_t value)
@@ -147,7 +147,7 @@ uint8_t read_reg(unsigned reg)
 	cmd[0] = reg | DIR_READ;
 	cmd[1] = 0;
 
-	SpiTransfer(&_devInstance, cmd, cmd, sizeof(cmd));
+	spi_transfer(&test_spi, cmd, cmd, sizeof(cmd));
 
 	return cmd[1];
 }
@@ -218,7 +218,7 @@ static void prvSpiTask( void *pvParameters )
         /* fetch data from the sensor */
         memset(&raw_report, 0, sizeof(raw_report));
         raw_report.cmd = ADDR_OUT_TEMP | DIR_READ | ADDR_INCREMENT;
-        SpiTransfer(&_devInstance, (uint8_t *)&raw_report, (uint8_t *)&raw_report, sizeof(raw_report));
+        spi_transfer(&test_spi, (uint8_t *)&raw_report, (uint8_t *)&raw_report, sizeof(raw_report));
 
         x = (((int16_t)raw_report.x[1]) << 8) | raw_report.x[0];
         y = (((int16_t)raw_report.y[1]) << 8) | raw_report.y[0];
@@ -257,12 +257,14 @@ static void prvSpiTask( void *pvParameters )
 #endif
 void SpiTest()
 {
-    _devInstance.spi_id = 1;
-	DeviceViaSpiCfgInitialize(&_devInstance,
-							ESPI_DEVICE_TYPE_GYRO, 
-							"i3g4250d",
-							ESPI_CLOCK_MODE_2,
-							(11*1000*1000));
+    test_spi.bus_id = 0;
+    test_spi.cs_pin = GPIO_SPI_CS_GYRO;
+    test_spi.frequency = 11*1000*1000;     //spi frequency
+
+    spi_cs_init(&test_spi);
+    spi_register_node(&test_spi);
+
+
     reset();
 	pilot_info("create spi task:%d\n", xTaskCreate(prvSpiTask, "spi read", configMINIMAL_STACK_SIZE*2, NULL, 1, NULL));
 }

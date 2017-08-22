@@ -76,7 +76,6 @@
 /***************************** Include Files *********************************/
 
 #include "xspips.h"
-#include "spi_user_defined.h"
 
 /************************** Constant Definitions *****************************/
 
@@ -474,7 +473,6 @@ s32 XSpiPs_PolledTransfer(XSpiPs *InstancePtr, u8 *SendBufPtr,
 	u32 CheckTransfer;
 	s32 Status_Polled;
 	u8 TempData;
-	u32 retry;
 
 	/*
 	 * The RecvBufPtr argument can be NULL.
@@ -529,7 +527,6 @@ s32 XSpiPs_PolledTransfer(XSpiPs *InstancePtr, u8 *SendBufPtr,
 		while((InstancePtr->RemainingBytes > (u32)0U) ||
 			(InstancePtr->RequestedBytes > (u32)0U)) {
 			TransCount = 0U;
-			retry = 0;
 			/*
 			 * Fill the TXFIFO with as many bytes as it will take (or as
 			 * many as we have to send).
@@ -610,12 +607,6 @@ s32 XSpiPs_PolledTransfer(XSpiPs *InstancePtr, u8 *SendBufPtr,
 			ConfigReg |= XSPIPS_CR_SSCTRL_MASK;
 			XSpiPs_WriteReg(InstancePtr->Config.BaseAddress,
 					 XSPIPS_CR_OFFSET, ConfigReg);
-			Status_Polled = spi_disable_slave_via_gpio(InstancePtr);
-			if (Status_Polled != XST_SUCCESS) {
-               // xil_printf("Steven:line:%d\n", __LINE__);
-		        InstancePtr->IsBusy = FALSE;
-				return Status_Polled;
-			}
 		}
 
 		/*
@@ -999,7 +990,6 @@ void XSpiPs_InterruptHandler(XSpiPs *InstancePtr)
 				XSpiPs_WriteReg(
 					SpiPtr->Config.BaseAddress,
 					 XSPIPS_CR_OFFSET, ConfigReg);
-				spi_disable_slave_via_gpio(InstancePtr);
 			}
 
 			/*
@@ -1060,7 +1050,6 @@ void XSpiPs_InterruptHandler(XSpiPs *InstancePtr)
 			XSpiPs_WriteReg(
 				SpiPtr->Config.BaseAddress,
 				 XSPIPS_CR_OFFSET, ConfigReg);
-			spi_disable_slave_via_gpio(InstancePtr);
 		}
 
 		SpiPtr->StatusHandler(SpiPtr->StatusRef,
@@ -1083,7 +1072,6 @@ void XSpiPs_InterruptHandler(XSpiPs *InstancePtr)
 			XSpiPs_WriteReg(
 				SpiPtr->Config.BaseAddress,
 				 XSPIPS_CR_OFFSET, ConfigReg);
-			spi_disable_slave_via_gpio(InstancePtr);
 		}
 
 		SpiPtr->StatusHandler(SpiPtr->StatusRef,

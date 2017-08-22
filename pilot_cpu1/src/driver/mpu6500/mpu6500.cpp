@@ -57,6 +57,8 @@
 #include "timers.h"
 #include "Phx_define.h"
 #include "driver.h"
+#include "systemlib/conversions/conversions.h"
+#include "perf/perf_counter.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -194,7 +196,7 @@ class MPU6500_gyro;
 class MPU6500 : public device::CDev
 {
 public:
-	MPU6500(int bus, const char *path_accel, const char *path_gyro, ESpi_device_id device, enum Rotation rotation);
+	MPU6500(int bus, const char *path_accel, const char *path_gyro, enum Rotation rotation);
 	virtual ~MPU6500();
 
 	virtual int		init();
@@ -231,8 +233,6 @@ private:
 	MPU6500_gyro		*_gyro;
 	uint8_t			_product;	/** product code */
 
-	uint8_t     _bus;
-
     xTimerHandle    _call;
 	unsigned		_call_interval;
 
@@ -252,16 +252,16 @@ private:
 	float			_gyro_range_rad_s;
 
 	unsigned		_sample_rate;
-//	perf_counter_t		_accel_reads;
-//	perf_counter_t		_gyro_reads;
-//	perf_counter_t		_sample_perf;
-//	perf_counter_t		_bad_transfers;
-//	perf_counter_t		_bad_registers;
-//	perf_counter_t		_good_transfers;
-//	perf_counter_t		_reset_retries;
-//	perf_counter_t		_duplicates;
-//	perf_counter_t		_system_latency_perf;
-//	perf_counter_t		_controller_latency_perf;
+  	perf_counter_t		_accel_reads;
+  	perf_counter_t		_gyro_reads;
+  	perf_counter_t		_sample_perf;
+  	perf_counter_t		_bad_transfers;
+  	perf_counter_t		_bad_registers;
+  	perf_counter_t		_good_transfers;
+  	perf_counter_t		_reset_retries;
+  	perf_counter_t		_duplicates;
+  	perf_counter_t		_system_latency_perf;
+  	perf_counter_t		_controller_latency_perf;
 
 	uint8_t			_register_wait;
 	uint64_t		_reset_wait;
@@ -278,7 +278,7 @@ private:
 
 	enum Rotation		_rotation;
 
-	struct SDeviceViaSpi _devInstance;
+    struct spi_node     mpu6500_spi;
 	// this is used to support runtime checking of key
 	// configuration registers to detect SPI bus errors and sensor
 	// reset
@@ -324,7 +324,8 @@ private:
 	 *
 	 * @param arg		Instance pointer for the driver that is polling.
 	 */
-	static void		measure_trampoline(void *arg);
+	//static void		measure_trampoline(void *arg);
+	static void		measure_trampoline(xTimerHandle xTimer);
 
 	/**
 	 * Fetch measurements from the sensor and update the report buffers.
@@ -385,7 +386,7 @@ private:
 	 *
 	 * @return true if the sensor is not on the main MCU board
 	 */
-	bool			is_external() { return (_bus == EXTERNAL_BUS); }
+	bool			is_external() { return (mpu6500_spi.bus_id == EXTERNAL_BUS); }
 
 	/**
 	 * Measurement self test
@@ -496,11 +497,10 @@ private:
 /** driver 'main' command */
 extern "C" { __EXPORT int mpu6500_main(int argc, char *argv[]); }
 
-MPU6500::MPU6500(int bus, const char *path_accel, const char *path_gyro, ESpi_device_id device, enum Rotation rotation) :
+MPU6500::MPU6500(int bus, const char *path_accel, const char *path_gyro, enum Rotation rotation) :
 	CDev("mpu6500", path_accel),
 	_gyro(new MPU6500_gyro(this, path_gyro)),
 	_product(0),
-    _bus(0),
 	_call{NULL},
 	_call_interval(0),
 	_accel_reports(nullptr),
@@ -515,16 +515,16 @@ MPU6500::MPU6500(int bus, const char *path_accel, const char *path_gyro, ESpi_de
 	_gyro_range_scale(0.0f),
 	_gyro_range_rad_s(0.0f),
 	_sample_rate(1000),
-//	_accel_reads(perf_alloc(PC_COUNT, "mpu6500_accel_read")),
-//	_gyro_reads(perf_alloc(PC_COUNT, "mpu6500_gyro_read")),
-//	_sample_perf(perf_alloc(PC_ELAPSED, "mpu6500_read")),
-//	_bad_transfers(perf_alloc(PC_COUNT, "mpu6500_bad_transfers")),
-//	_bad_registers(perf_alloc(PC_COUNT, "mpu6500_bad_registers")),
-//	_good_transfers(perf_alloc(PC_COUNT, "mpu6500_good_transfers")),
-//	_reset_retries(perf_alloc(PC_COUNT, "mpu6500_reset_retries")),
-//	_duplicates(perf_alloc(PC_COUNT, "mpu6500_duplicates")),
-//	_system_latency_perf(perf_alloc_once(PC_ELAPSED, "sys_latency")),
-//	_controller_latency_perf(perf_alloc_once(PC_ELAPSED, "ctrl_latency")),
+	_accel_reads(perf_alloc(PC_COUNT, "mpu6500_accel_read")),
+	_gyro_reads(perf_alloc(PC_COUNT, "mpu6500_gyro_read")),
+	_sample_perf(perf_alloc(PC_ELAPSED, "mpu6500_read")),
+	_bad_transfers(perf_alloc(PC_COUNT, "mpu6500_bad_transfers")),
+	_bad_registers(perf_alloc(PC_COUNT, "mpu6500_bad_registers")),
+	_good_transfers(perf_alloc(PC_COUNT, "mpu6500_good_transfers")),
+	_reset_retries(perf_alloc(PC_COUNT, "mpu6500_reset_retries")),
+	_duplicates(perf_alloc(PC_COUNT, "mpu6500_duplicates")),
+	_system_latency_perf(perf_alloc_once(PC_ELAPSED, "sys_latency")),
+	_controller_latency_perf(perf_alloc_once(PC_ELAPSED, "ctrl_latency")),
 	_register_wait(0),
 	_reset_wait(0),
 	_accel_filter_x(MPU6500_ACCEL_DEFAULT_RATE, MPU6500_ACCEL_DEFAULT_DRIVER_FILTER_FREQ),
@@ -543,8 +543,6 @@ MPU6500::MPU6500(int bus, const char *path_accel, const char *path_gyro, ESpi_de
 	_got_duplicate(false)
 {
 	// disable debug() calls
-	_debug_enabled = false;
-
 	_device_id.devid_s.devtype = DRV_ACC_DEVTYPE_MPU6500;
 
 	/* Prime _gyro with parents devid. */
@@ -567,13 +565,12 @@ MPU6500::MPU6500(int bus, const char *path_accel, const char *path_gyro, ESpi_de
 	_gyro_scale.z_offset = 0;
 	_gyro_scale.z_scale  = 1.0f;
 
-    _devInstance.spi_id = bus;
-	DeviceViaSpiCfgInitialize(&_devInstance,
-							device, 
-							"mpu6500",
-							ESPI_CLOCK_MODE_2,
-							(11*1000*1000));
+    mpu6500_spi.bus_id = bus;
+    mpu6500_spi.cs_pin = GPIO_SPI_CS_EXT;
+    mpu6500_spi.frequency = 11*1000*1000;     //spi frequency
 
+    spi_cs_init(&mpu6500_spi);
+    spi_register_node(&mpu6500_spi);
 
 }
 
@@ -587,10 +584,12 @@ MPU6500::~MPU6500()
 
 	/* free any existing reports */
 	if (_accel_reports != nullptr) {
+        ringbuf_deinit(_accel_reports);
 		vPortFree(_accel_reports);
 	}
 
 	if (_gyro_reports != nullptr) {
+        ringbuf_deinit(_gyro_reports);
 		vPortFree(_gyro_reports);
 	}
 
@@ -598,15 +597,16 @@ MPU6500::~MPU6500()
 		unregister_class_devname(ACCEL_BASE_DEVICE_PATH, _accel_class_instance);
 	}
 
+    spi_deregister_node(&mpu6500_spi);
 	/* delete the perf counter */
-	//perf_free(_sample_perf);
-	//perf_free(_accel_reads);
-	//perf_free(_gyro_reads);
-	//perf_free(_bad_transfers);
-	//perf_free(_bad_registers);
-	//perf_free(_good_transfers);
-	//perf_free(_reset_retries);
-	//perf_free(_duplicates);
+	perf_free(_sample_perf);
+	perf_free(_accel_reads);
+	perf_free(_gyro_reads);
+	perf_free(_bad_transfers);
+	perf_free(_bad_registers);
+	perf_free(_good_transfers);
+	perf_free(_reset_retries);
+	perf_free(_duplicates);
 }
 
 int
@@ -614,13 +614,12 @@ MPU6500::init()
 {
 	int ret;
 
-	/* do SPI init (and probe) first */
-	if (CDev::init() != OK)
-		goto out;
-
 	if (probe() != OK)
 		goto out;
 
+	/* do SPI init (and probe) first */
+	if (CDev::init() != OK)
+		goto out;
 
 	/* allocate basic report buffers */
 	_accel_reports = (ringbuf_t *) pvPortMalloc (sizeof(ringbuf_t));
@@ -685,7 +684,7 @@ MPU6500::init()
 
 	/* advertise sensor topic, measure manually to initialize valid report */
 	struct gyro_report grp;
-	ringbuf_get(_reports, &grp, sizeof(struct gyro_report));
+	ringbuf_get(_gyro_reports, &grp, sizeof(struct gyro_report));
 
 	_gyro->_gyro_topic = orb_advertise_multi(ORB_ID(sensor_gyro), &grp,
 			     &_gyro->_gyro_orb_class_instance, (is_external()) ? ORB_PRIO_MAX : ORB_PRIO_HIGH);
@@ -711,13 +710,13 @@ int MPU6500::reset()
 		state = irqsave();
 
 		write_reg(MPUREG_PWR_MGMT_1, BIT_H_RESET);
-		up_udelay(10000);
+		usleep(10000);
 
 		// Wake up device and select GyroZ clock. Note that the
 		// MPU6500 starts up in sleep mode, and it can take some time
 		// for it to come out of sleep
 		write_checked_reg(MPUREG_PWR_MGMT_1, MPU_CLK_SEL_PLLGYROZ);
-		up_udelay(1000);
+		usleep(1000);
 
 		// Disable I2C bus (recommended on datasheet)
 		write_checked_reg(MPUREG_USER_CTRL, BIT_I2C_IF_DIS);
@@ -727,7 +726,7 @@ int MPU6500::reset()
 			break;
 		}
 
-		//perf_count(_reset_retries);
+		perf_count(_reset_retries);
 		usleep(2000);
 	}
 
@@ -778,12 +777,15 @@ int MPU6500::reset()
 int
 MPU6500::probe()
 {
-
+	(void)read_reg(MPUREG_WHOAMI);
 	/* look for a product ID we recognise */
 	uint8_t who = read_reg(MPUREG_WHOAMI);
 
-//        log("WHOAMI  0x%02x", who);
-	if (who != 0x70) {return -EIO;}
+    pilot_info("mpu6500 WHOAMI  0x%02x\n", who);
+	if (who != 0x70) 
+    {
+        return -EIO;
+    }
 
 	return (OK);
 }
@@ -873,14 +875,14 @@ MPU6500::read(struct file *filp, char *buffer, size_t buflen)
 		return -EAGAIN;
 	}
 
-	//perf_count(_accel_reads);
+	perf_count(_accel_reads);
 
 	/* copy reports out of our buffer to the caller */
-	accel_report *arp = reinterpret_cast<accel_report *>(buffer);
+	struct accel_report *arp = reinterpret_cast<struct accel_report *>(buffer);
 	int transferred = 0;
 
 	while (count--) {
-		if (ringbuf_get(_accel_reports, &arp, sizeof(struct accel_report)) != 0) {
+		if (ringbuf_get(_accel_reports, arp, sizeof(struct accel_report)) != 0) {
 			break;
 		}
 
@@ -889,7 +891,7 @@ MPU6500::read(struct file *filp, char *buffer, size_t buflen)
 	}
 
 	/* return the number of bytes transferred */
-	return (transferred * sizeof(accel_report));
+	return (transferred * sizeof(struct accel_report));
 }
 
 int
@@ -1159,7 +1161,7 @@ MPU6500::test_error()
 	// development as a handy way to test the reset logic
 	uint8_t data[16];
 	memset(data, 0, sizeof(data));
-	transfer(data, data, sizeof(data));
+	spi_transfer(&mpu6500_spi, data, data, sizeof(data));
 	::printf("error triggered\n");
 	print_registers();
 	_in_factory_test = false;
@@ -1168,7 +1170,7 @@ MPU6500::test_error()
 ssize_t
 MPU6500::gyro_read(struct file *filp, char *buffer, size_t buflen)
 {
-	unsigned count = buflen / sizeof(gyro_report);
+	unsigned count = buflen / sizeof(struct gyro_report);
 
 	/* buffer must be large enough */
 	if (count < 1) {
@@ -1186,14 +1188,14 @@ MPU6500::gyro_read(struct file *filp, char *buffer, size_t buflen)
 		return -EAGAIN;
 	}
 
-	//perf_count(_gyro_reads);
+	perf_count(_gyro_reads);
 
 	/* copy reports out of our buffer to the caller */
-	gyro_report *grp = reinterpret_cast<gyro_report *>(buffer);
+	struct gyro_report *grp = reinterpret_cast<struct gyro_report *>(buffer);
 	int transferred = 0;
 
 	while (count--) {
-		if (0 != ringbuf_get(_gyro_reports, &grp, sizeof(grp))) {
+		if (0 != ringbuf_get(_gyro_reports, grp, sizeof(*grp))) {
 			break;
 		}
 
@@ -1202,7 +1204,7 @@ MPU6500::gyro_read(struct file *filp, char *buffer, size_t buflen)
 	}
 
 	/* return the number of bytes transferred */
-	return (transferred * sizeof(gyro_report));
+	return (transferred * sizeof(struct gyro_report));
 }
 
 int
@@ -1363,7 +1365,7 @@ MPU6500::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 	default:
 		/* give it to the superclass */
-		return SPI::ioctl(filp, cmd, arg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
 
@@ -1386,7 +1388,7 @@ MPU6500::gyro_ioctl(struct file *filp, int cmd, unsigned long arg)
 
 			irqstate_t flags = irqsave();
 
-			if (!ringbuf_resize(_gyro_reports)) {
+			if (!ringbuf_resize(_gyro_reports, arg)) {
 				irqrestore(flags);
 				return -ENOMEM;
 			}
@@ -1442,7 +1444,7 @@ MPU6500::gyro_ioctl(struct file *filp, int cmd, unsigned long arg)
 
 	default:
 		/* give it to the superclass */
-		return SPI::ioctl(filp, cmd, arg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
 
@@ -1452,9 +1454,9 @@ MPU6500::read_reg(unsigned reg, uint32_t speed)
 	uint8_t cmd[2] = { (uint8_t)(reg | DIR_READ), 0};
 
 	// general register transfer at low clock speed
-	set_frequency(speed);
+	spi_set_frequency(&mpu6500_spi, speed);
 
-	transfer(cmd, cmd, sizeof(cmd));
+	spi_transfer(&mpu6500_spi, cmd, cmd, sizeof(cmd));
 
 	return cmd[1];
 }
@@ -1465,9 +1467,9 @@ MPU6500::read_reg16(unsigned reg)
 	uint8_t cmd[3] = { (uint8_t)(reg | DIR_READ), 0, 0 };
 
 	// general register transfer at low clock speed
-	set_frequency(MPU6500_LOW_BUS_SPEED);
+	spi_set_frequency(&mpu6500_spi, MPU6500_LOW_BUS_SPEED);
 
-	transfer(cmd, cmd, sizeof(cmd));
+	spi_transfer(&mpu6500_spi, cmd, cmd, sizeof(cmd));
 
 	return (uint16_t)(cmd[1] << 8) | cmd[2];
 }
@@ -1481,9 +1483,9 @@ MPU6500::write_reg(unsigned reg, uint8_t value)
 	cmd[1] = value;
 
 	// general register transfer at low clock speed
-	set_frequency(MPU6500_LOW_BUS_SPEED);
+	spi_set_frequency(&mpu6500_spi, MPU6500_LOW_BUS_SPEED);
 
-	transfer(cmd, nullptr, sizeof(cmd));
+	spi_transfer(&mpu6500_spi, cmd, nullptr, sizeof(cmd));
 }
 
 void
@@ -1560,7 +1562,7 @@ void
 MPU6500::start()
 {
 	/* make sure we are stopped first */
-	stop();
+//	stop();
 
 	/* discard any stale data in the buffers */
 	ringbuf_flush(_accel_reports);
@@ -1581,14 +1583,19 @@ MPU6500::stop()
 	memset(_last_accel, 0, sizeof(_last_accel));
 
 	/* discard unread data in the buffers */
-	ringbuf_flush(_accel_reports);
-	ringbuf_flush(_gyro_reports);
+    if(_accel_reports != NULL)
+        ringbuf_flush(_accel_reports);
+
+    if(_gyro_reports != NULL)
+        ringbuf_flush(_gyro_reports);
 }
 
-void
-MPU6500::measure_trampoline(void *arg)
+//void MPU6500::measure_trampoline(void *arg)
+void MPU6500::measure_trampoline(xTimerHandle xTimer)
 {
-	MPU6500 *dev = reinterpret_cast<MPU6500 *>(arg);
+	//MPU6500 *dev = reinterpret_cast<MPU6500 *>(arg);
+    void *timer_id = pvTimerGetTimerID(xTimer);
+	MPU6500 *dev = (MPU6500 *)timer_id;
 
 	/* make another measurement */
 	dev->measure();
@@ -1616,7 +1623,7 @@ MPU6500::check_registers(void)
 		  and wait until we have seen 20 good values in a row
 		  before we consider the sensor to be OK again.
 		 */
-		//perf_count(_bad_registers);
+		perf_count(_bad_registers);
 
 		/*
 		  try to fix the bad register value. We only try to
@@ -1653,6 +1660,12 @@ MPU6500::check_registers(void)
 void
 MPU6500::measure()
 {
+/*
+	static hrt_abstime start_time=0;
+	hrt_abstime curr_time=0;
+    static unsigned int count = 0;
+*/
+
 	if (_in_factory_test) {
 		// don't publish any data while in factory test mode
 		return;
@@ -1676,7 +1689,7 @@ MPU6500::measure()
 	} report;
 
 	/* start measuring */
-//	perf_begin(_sample_perf);
+	perf_begin(_sample_perf);
 
 	/*
 	 * Fetch the full set of measurements from the MPU6500 in one pass.
@@ -1684,9 +1697,9 @@ MPU6500::measure()
 	mpu_report.cmd = DIR_READ | MPUREG_INT_STATUS;
 
 	// sensor transfer at high clock speed
-//	set_frequency(MPU6500_HIGH_BUS_SPEED);
+	spi_set_frequency(&mpu6500_spi, MPU6500_HIGH_BUS_SPEED);
 
-	if (OK != SpiTransfer(&_devInstance, (uint8_t *)&mpu_report, ((uint8_t *)&mpu_report), sizeof(mpu_report))) {
+	if (OK != spi_transfer(&mpu6500_spi, (uint8_t *)&mpu_report, ((uint8_t *)&mpu_report), sizeof(mpu_report))) {
 		return;
 	}
 
@@ -1701,8 +1714,8 @@ MPU6500::measure()
 	*/
 	if (!_got_duplicate && memcmp(&mpu_report.accel_x[0], &_last_accel[0], 6) == 0) {
 		// it isn't new data - wait for next timer
-//		perf_end(_sample_perf);
-		//perf_count(_duplicates);
+		perf_end(_sample_perf);
+		perf_count(_duplicates);
 		_got_duplicate = true;
 		return;
 	}
@@ -1710,6 +1723,7 @@ MPU6500::measure()
 	memcpy(&_last_accel[0], &mpu_report.accel_x[0], 6);
 	_got_duplicate = false;
 
+	
 	/*
 	 * Convert from big to little endian
 	 */
@@ -1724,7 +1738,16 @@ MPU6500::measure()
 	report.gyro_y = int16_t_from_bytes(mpu_report.gyro_y);
 	report.gyro_z = int16_t_from_bytes(mpu_report.gyro_z);
 
-
+/*
+    curr_time = hrt_absolute_time();
+    count++;
+    if(curr_time - start_time >= 1000000)
+    {
+        start_time = curr_time;
+        printf("mpu6500 count=%d x=%x y=%x z=%x\n", count, report.gyro_x, report.gyro_y, report.gyro_z);
+        count = 0;
+    }
+*/
 
 
 
@@ -1736,8 +1759,8 @@ MPU6500::measure()
 	    report.gyro_y == 0 &&
 	    report.gyro_z == 0) {
 		// all zero data - probably a SPI bus error
-//		perf_count(_bad_transfers);
-//		perf_end(_sample_perf);
+  		perf_count(_bad_transfers);
+  		perf_end(_sample_perf);
 		// note that we don't call reset() here as a reset()
 		// costs 20ms with interrupts disabled. That means if
 		// the mpu6k does go bad it would cause a FMU failure,
@@ -1745,7 +1768,7 @@ MPU6500::measure()
 		return;
 	}
 
-//	perf_count(_good_transfers);
+	perf_count(_good_transfers);
 
 	if (_register_wait != 0) {
 		// we are waiting for some good transfers before using
@@ -1798,8 +1821,8 @@ MPU6500::measure()
 	/*
 	 * Report buffers.
 	 */
-	accel_report		arb;
-	gyro_report		grb;
+	accel_report		arb = {0};
+	gyro_report		grb = {0};
 
 	/*
 	 * Adjust and scale results to m/s^2.
@@ -1810,7 +1833,7 @@ MPU6500::measure()
 	// transfers and bad register reads. This allows the higher
 	// level code to decide if it should use this sensor based on
 	// whether it has had failures
-//	grb.error_count = arb.error_count = perf_event_count(_bad_transfers) + perf_event_count(_bad_registers);
+	grb.error_count = arb.error_count = perf_event_count(_bad_transfers) + perf_event_count(_bad_registers);
 
 	/*
 	 * 1) Scale raw value to SI units using scaling from datasheet.
@@ -1908,8 +1931,8 @@ MPU6500::measure()
 
 //	if (accel_notify && !(_pub_blocked)) {
 		/* log the time of this report */
-//		perf_begin(_controller_latency_perf);
-//		perf_begin(_system_latency_perf);
+  		perf_begin(_controller_latency_perf);
+  		perf_begin(_system_latency_perf);
 		/* publish it */
 		orb_publish(ORB_ID(sensor_accel), _accel_topic, &arb);
 //	}
@@ -1920,20 +1943,20 @@ MPU6500::measure()
 //	}
 
 	/* stop measuring */
-//	perf_end(_sample_perf);
+	perf_end(_sample_perf);
 }
 
 void
 MPU6500::print_info()
 {
-//	perf_print_counter(_sample_perf);
-//	perf_print_counter(_accel_reads);
-//	perf_print_counter(_gyro_reads);
-//	perf_print_counter(_bad_transfers);
-//	perf_print_counter(_bad_registers);
-//	perf_print_counter(_good_transfers);
-//	perf_print_counter(_reset_retries);
-//	perf_print_counter(_duplicates);
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_accel_reads);
+	perf_print_counter(_gyro_reads);
+	perf_print_counter(_bad_transfers);
+	perf_print_counter(_bad_registers);
+	perf_print_counter(_good_transfers);
+	perf_print_counter(_reset_retries);
+	perf_print_counter(_duplicates);
 	ringbuf_printinfo(_accel_reports, "accel queue");
 	ringbuf_printinfo(_gyro_reports, "gyro queue");
 	pilot_info("checked_next: %u\n", _checked_next);
@@ -2069,18 +2092,20 @@ start(bool external_bus, enum Rotation rotation, int range)
 		/* if already started, the still command succeeded */
 	{
 		errx(0, "already started");
+        return;
 	}
 
 	/* create the driver */
 	if (external_bus) {
-#if defined(PX4_SPI_BUS_EXT) && defined(PX4_SPIDEV_EXT_MPU)
-		*g_dev_ptr = new MPU6500(PX4_SPI_BUS_EXT, path_accel, path_gyro, (spi_dev_e)PX4_SPIDEV_EXT_MPU, rotation);
+#if defined(PX4_SPI_BUS_EXT)
+		*g_dev_ptr = new MPU6500(PX4_SPI_BUS_EXT, path_accel, path_gyro, rotation);
 #else
 		errx(0, "External SPI not available");
+        return;
 #endif
 
 	} else {
-		*g_dev_ptr = new MPU6500(PX4_SPI_BUS_SENSORS, path_accel, path_gyro, (spi_dev_e)PX4_SPIDEV_MPU, rotation);
+		*g_dev_ptr = new MPU6500(PX4_SPI_BUS_SENSORS, path_accel, path_gyro, rotation);
 	}
 
 	if (*g_dev_ptr == nullptr) {
@@ -2108,7 +2133,7 @@ start(bool external_bus, enum Rotation rotation, int range)
 
 	close(fd);
 
-	exit(0);
+    return;
 fail:
 
 	if (*g_dev_ptr != nullptr) {
@@ -2133,7 +2158,6 @@ stop(bool external_bus)
 		warnx("already stopped.");
 	}
 
-	exit(0);
 }
 
 /**
@@ -2245,7 +2269,6 @@ reset(bool external_bus)
 
 	close(fd);
 
-	exit(0);
 }
 
 /**
@@ -2263,7 +2286,6 @@ info(bool external_bus)
 	printf("state @ %p\n", *g_dev_ptr);
 	(*g_dev_ptr)->print_info();
 
-	exit(0);
 }
 
 /**
@@ -2281,7 +2303,6 @@ regdump(bool external_bus)
 	printf("regdump @ %p\n", *g_dev_ptr);
 	(*g_dev_ptr)->print_registers();
 
-	exit(0);
 }
 
 /**
@@ -2298,7 +2319,6 @@ testerror(bool external_bus)
 
 	(*g_dev_ptr)->test_error();
 
-	exit(0);
 }
 
 /**
@@ -2315,7 +2335,6 @@ factorytest(bool external_bus)
 
 	(*g_dev_ptr)->factory_self_test();
 
-	exit(0);
 }
 
 void
@@ -2330,9 +2349,9 @@ usage()
 
 } // namespace
 
-int
-mpu6500_main(int argc, char *argv[])
+int mpu6500_main(int argc, char *argv[])
 {
+	bool external_bus = false;
 	int ch;
 	enum Rotation rotation = ROTATION_NONE;
 	int accel_range = 8;
@@ -2354,7 +2373,7 @@ mpu6500_main(int argc, char *argv[])
 
 		default:
 			mpu6500::usage();
-			exit(0);
+            return 0;
 		}
 	}
 
@@ -2366,10 +2385,12 @@ mpu6500_main(int argc, char *argv[])
 	 */
 	if (!strcmp(verb, "start")) {
 		mpu6500::start(external_bus, rotation, accel_range);
+		return 0;
 	}
 
 	if (!strcmp(verb, "stop")) {
 		mpu6500::stop(external_bus);
+		return 0;
 	}
 
 	/*
@@ -2377,6 +2398,7 @@ mpu6500_main(int argc, char *argv[])
 	 */
 	if (!strcmp(verb, "test")) {
 		mpu6500::test(external_bus);
+		return 0;
 	}
 
 	/*
@@ -2384,6 +2406,7 @@ mpu6500_main(int argc, char *argv[])
 	 */
 	if (!strcmp(verb, "reset")) {
 		mpu6500::reset(external_bus);
+		return 0;
 	}
 
 	/*
@@ -2391,6 +2414,7 @@ mpu6500_main(int argc, char *argv[])
 	 */
 	if (!strcmp(verb, "info")) {
 		mpu6500::info(external_bus);
+		return 0;
 	}
 
 	/*
@@ -2398,16 +2422,19 @@ mpu6500_main(int argc, char *argv[])
 	 */
 	if (!strcmp(verb, "regdump")) {
 		mpu6500::regdump(external_bus);
+		return 0;
 	}
 
 	if (!strcmp(verb, "factorytest")) {
 		mpu6500::factorytest(external_bus);
+		return 0;
 	}
 
 	if (!strcmp(verb, "testerror")) {
 		mpu6500::testerror(external_bus);
+		return 0;
 	}
 
 	mpu6500::usage();
-	exit(1);
+	return 0;
 }

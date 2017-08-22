@@ -4,6 +4,7 @@
 #include "AP_HAL_PX4_Namespace.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "perf/perf_counter.h"
 
 #define PX4_SCHEDULER_MAX_TIMER_PROCS 8
 
@@ -91,4 +92,8 @@ private:
 
     void delay_microseconds_semaphore(uint16_t us);
 
+    perf_counter_t  _perf_timers;
+    perf_counter_t  _perf_io_timers;
+    perf_counter_t  _perf_storage_timer;
+    perf_counter_t  _perf_delay;
 };

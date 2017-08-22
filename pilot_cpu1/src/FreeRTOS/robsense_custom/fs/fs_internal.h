@@ -313,6 +313,7 @@ EXTERN void files_release(int filedes);
 EXTERN int find_blockdriver(FAR const char *pathname, int mountflags,
                             FAR struct inode **ppinode);
 
+extern struct filelist *sched_getfiles(void);
 #undef EXTERN
 #if defined(__cplusplus)
 }

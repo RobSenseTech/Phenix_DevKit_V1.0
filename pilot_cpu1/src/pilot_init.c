@@ -20,7 +20,9 @@
 #include "ocm/ocm.h"
 
 
+extern int perf_main(int argc, char *argv[]);
 extern int mpu6000_main(int argc, char *argv[]);
+extern int mpu6500_main(int argc, char *argv[]);
 extern int i3g4250d_main(int argc, char *argv[]);
 extern int iis328dq_main(int argc, char *argv[]);
 extern int fmu_main(int argc, char *argv[]);
@@ -37,7 +39,11 @@ static main_t main_list[]=
     {rgbled_main, 5, {"rgbled_main", "rgb", "16", "16", "16"}},
 //    {rgbled_main, 2, {"rgbled_main", "test"}},
     {fmu_main, 2, {"fmu_main", "mode_pwm4"}},
+//    {mpu6500_main, 3, {"mpu6500_main", "-X","start"}},
+    
+    {perf_main, 1, {"perf_main"}},
     {i3g4250d_main, 2, {"i3g4250d_main","start"}},
+//    {i3g4250d_main, 3, {"i3g4250d_main","-X", "start"}},
     {iis328dq_main, 4, {"iis328dq_main", "-R", "10","start"}},
 	{lis3mdl_main, 4, {"lis3mdl_main", "-R", "12","start"}},
 	{ms5611_main, 2, {"ms5611_main","start"}},
@@ -159,10 +165,10 @@ static int cpu_peripheral_init()
 	//init spi in arm core
 	 for(i=0; i<XPAR_XSPIPS_NUM_INSTANCES; i++)
 	 {
-	   ret = SpiPsInit(i, 0x0);
+	   ret = spi_drv_init(i);
 	   if(ret != 0)
 	   {
-	      pilot_err("Spi_bus %d init failed:%d !!\n", i,ret);
+	      pilot_err("Spi bus %d init failed:%d !!\n", i,ret);
 	   }
 	 }
 

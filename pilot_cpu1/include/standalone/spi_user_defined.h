@@ -26,7 +26,7 @@ extern "C" {
 /***************** Macros (Inline Functions) Definitions *********************/
 
 /************************** Function Prototypes ******************************/
-EXTERN u32 spi_disable_slave_via_gpio(XSpiPs *InstancePtr);
+//EXTERN u32 spi_disable_slave_via_gpio(XSpiPs *InstancePtr);
 
 #undef EXTERN
 #if defined(__cplusplus)

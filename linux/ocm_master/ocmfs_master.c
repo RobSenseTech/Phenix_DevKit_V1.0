@@ -103,7 +103,7 @@ static int ocmfs_write_proc(struct ocmfs_msg *msg)
 
     ret = write(ff.fd, p_data, buflen);
     if(ret < 0)
-        pilot_err("linux fd=%d write err len=%d ret=%d\n", ff.fd, buflen, ret);
+        pilot_err("linux fd=%d write err len=%d ret=%d errno=%d\n", ff.fd, buflen, ret, errno);
 
     send_msg.cmd = OCMFS_CMD_WRITE;
     send_msg.data_len = sizeof(ret);

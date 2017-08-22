@@ -10,7 +10,7 @@
 /* Canonical definitions for peripheral PS7_CORTEXA9_1 */
 #define XPAR_CPU_CORTEXA9_0_CPU_CLK_FREQ_HZ 666666687
 
-#define TRANSFE_MAX_RETRY                       5
+
 /******************************************************************/
 
 #include "xparameters_ps.h"

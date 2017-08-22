@@ -21,6 +21,7 @@ extern "C" {
 #define MIO_36            36
 #define MIO_37            37
 #define MIO_35            35
+#define MIO_49            49
 //#define MIO_UNKOWN        12
 
 /************************** Constant Definitions *****************************/
@@ -31,10 +32,11 @@ extern "C" {
 //#define GPIO_SPI_CS_FRAM                   MIO_UNKOWN
 #define GPIO_SPI_CS_MAG                    MIO_35
 
+#define GPIO_SPI_CS_EXT                    MIO_49
 
-#define PX4_SPI_BUS_SENSORS	1
-#define PX4_SPI_BUS_RAMTRON	2
-#define PX4_SPI_BUS_EXT		4
+
+#define PX4_SPI_BUS_SENSORS	0
+#define PX4_SPI_BUS_EXT		1
 
 #define SPI_DEVICE_ID_FOR_SENSOR		XPAR_PS7_SPI_0_DEVICE_ID
 

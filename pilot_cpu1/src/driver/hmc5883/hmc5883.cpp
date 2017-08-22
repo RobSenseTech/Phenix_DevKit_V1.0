@@ -63,6 +63,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <errno.h>
+#include "perf/perf_counter.h"
 
 #define HMC5883_DEVICE_PATH "/dev/hmc5883"
 #define HMC5883_EXT_DEVICE_PATH "/dev/hmc5883_ext"
@@ -170,11 +171,11 @@ private:
 
 	orb_advert_t		_mag_topic;
 
-	//perf_counter_t		_sample_perf;
-	//perf_counter_t		_comms_errors;
-	//perf_counter_t		_buffer_overflows;
-	//perf_counter_t		_range_errors;
-	//perf_counter_t		_conf_errors;
+	perf_counter_t		_sample_perf;
+	perf_counter_t		_comms_errors;
+	perf_counter_t		_buffer_overflows;
+	perf_counter_t		_range_errors;
+	perf_counter_t		_conf_errors;
 	void *hmc5883_iic;
 	/* status reporting */
 	bool			_sensor_ok;		/**< sensor was found and reports ok */
@@ -372,11 +373,11 @@ HMC5883::HMC5883(int bus, int dev_addr, uint32_t frequency, const char *path, en
 	_class_instance(-1),
 	_orb_class_instance(-1),
 	_mag_topic(NULL),
-	//_sample_perf(perf_alloc(PC_ELAPSED, "hmc5883_read")),
-	//_comms_errors(perf_alloc(PC_COUNT, "hmc5883_comms_errors")),
-	//_buffer_overflows(perf_alloc(PC_COUNT, "hmc5883_buffer_overflows")),
-	//_range_errors(perf_alloc(PC_COUNT, "hmc5883_range_errors")),
-	//_conf_errors(perf_alloc(PC_COUNT, "hmc5883_conf_errors")),
+	_sample_perf(perf_alloc(PC_ELAPSED, "hmc5883_read")),
+	_comms_errors(perf_alloc(PC_COUNT, "hmc5883_comms_errors")),
+	_buffer_overflows(perf_alloc(PC_COUNT, "hmc5883_buffer_overflows")),
+	_range_errors(perf_alloc(PC_COUNT, "hmc5883_range_errors")),
+	_conf_errors(perf_alloc(PC_COUNT, "hmc5883_conf_errors")),
 	_sensor_ok(false),
 	_calibrated(false),
 	_rotation(rotation),
@@ -407,6 +408,7 @@ HMC5883::~HMC5883()
 	stop();
 
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 	}
 
@@ -415,11 +417,11 @@ HMC5883::~HMC5883()
 	}
 
 	// free perf counters
-	//perf_free(_sample_perf);
-	//perf_free(_comms_errors);
-	//perf_free(_buffer_overflows);
-	//perf_free(_range_errors);
-	//perf_free(_conf_errors);
+	perf_free(_sample_perf);
+	perf_free(_comms_errors);
+	perf_free(_buffer_overflows);
+	perf_free(_range_errors);
+	perf_free(_conf_errors);
 }
 
 int
@@ -439,6 +441,7 @@ HMC5883::init()
 	/* allocate basic report buffers */
 //	_reports = new ringbuffer::RingBuffer(2, sizeof(mag_report));
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 		_reports = NULL;
 	}
@@ -513,14 +516,14 @@ int HMC5883::set_range(unsigned range)
 	ret = write_reg(ADDR_CONF_B, (_range_bits << 5));
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	uint8_t range_bits_in = 0;
 	ret = read_reg(ADDR_CONF_B, range_bits_in);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	return !(range_bits_in == (_range_bits << 5));
@@ -539,16 +542,16 @@ void HMC5883::check_range(void)
 	ret = read_reg(ADDR_CONF_B, range_bits_in);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return;
 	}
 
 	if (range_bits_in != (_range_bits << 5)) {
-//		perf_count(_range_errors);
+		perf_count(_range_errors);
 		ret = write_reg(ADDR_CONF_B, (_range_bits << 5));
 
 		if (OK != ret) {
-//			perf_count(_comms_errors);
+			perf_count(_comms_errors);
 		}
 	}
 }
@@ -566,16 +569,16 @@ void HMC5883::check_conf(void)
 	ret = read_reg(ADDR_CONF_A, conf_reg_in);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return;
 	}
 
 	if (conf_reg_in != _conf_reg) {
-//		perf_count(_conf_errors);
+		perf_count(_conf_errors);
 		ret = write_reg(ADDR_CONF_A, _conf_reg);
 
 		if (OK != ret) {
-//			perf_count(_comms_errors);
+			perf_count(_comms_errors);
 		}
 	}
 }
@@ -977,7 +980,7 @@ HMC5883::measure()
 	ret = write_reg(ADDR_MODE, MODE_REG_SINGLE_MODE);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	return ret;
@@ -1000,7 +1003,7 @@ HMC5883::collect()
 	int	ret;
 	uint8_t check_counter;
 
-//	perf_begin(_sample_perf);
+	perf_begin(_sample_perf);
 	struct mag_report new_report = {0};
 	bool sensor_is_onboard = false;
 
@@ -1010,7 +1013,7 @@ HMC5883::collect()
 
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
 	new_report.timestamp = hrt_absolute_time();
-//	new_report.error_count = perf_event_count(_comms_errors);
+	new_report.error_count = perf_event_count(_comms_errors);
 
 	/*
 	 * @note  We could read the status register here, which could tell us that
@@ -1024,7 +1027,7 @@ HMC5883::collect()
 	ret = hmc5883_iic_read(ADDR_DATA_OUT_X_MSB, (uint8_t *)&hmc_report, sizeof(hmc_report));
 
 	if (ret != OK) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		DEVICE_DEBUG("data/status read error");
 		goto out;
 	}
@@ -1041,7 +1044,7 @@ HMC5883::collect()
 	if ((abs(report.x) > 2048) ||
 	    (abs(report.y) > 2048) ||
 	    (abs(report.z) > 2048)) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		goto out;
 	}
 
@@ -1151,9 +1154,9 @@ HMC5883::collect()
 
 	/* post a report to the ring */
 	
-	if(ringbuf_force(_reports, &new_report, sizeof(new_report))){
-//	if (_reports->force(&new_report)) {
-//		perf_count(_buffer_overflows);
+	if(ringbuf_force(_reports, &new_report, sizeof(new_report)))
+    {
+		perf_count(_buffer_overflows);
 	}
 
 	/* notify anyone waiting for data */
@@ -1167,7 +1170,7 @@ HMC5883::collect()
 	  vehicles have it is worth checking for.
 	 */
 //added by prj
-	//check_counter = perf_event_count(_sample_perf) % 256;
+	check_counter = perf_event_count(_sample_perf) % 256;
 
 	//if (check_counter == 0) {
 	//	check_range();
@@ -1180,7 +1183,7 @@ HMC5883::collect()
 	ret = OK;
 
 out:
-//	perf_end(_sample_perf);
+	perf_end(_sample_perf);
 	return ret;
 }
 
@@ -1420,7 +1423,7 @@ int HMC5883::set_excitement(unsigned enable)
 	ret = read_reg(ADDR_CONF_A, _conf_reg);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	_conf_reg &= ~0x03; // reset previous excitement mode
@@ -1438,7 +1441,7 @@ int HMC5883::set_excitement(unsigned enable)
 	ret = write_reg(ADDR_CONF_A, _conf_reg);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	uint8_t conf_reg_ret = 0;
@@ -1477,7 +1480,7 @@ int HMC5883::set_temperature_compensation(unsigned enable)
 	ret = read_reg(ADDR_CONF_A, _conf_reg);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return -EIO;
 	}
 
@@ -1491,14 +1494,14 @@ int HMC5883::set_temperature_compensation(unsigned enable)
 	ret = write_reg(ADDR_CONF_A, _conf_reg);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return -EIO;
 	}
 
 	uint8_t conf_reg_ret = 0;
 
 	if (read_reg(ADDR_CONF_A, conf_reg_ret) != OK) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return -EIO;
 	}
 
@@ -1540,9 +1543,9 @@ HMC5883::meas_to_float(uint8_t in[2])
 void
 HMC5883::print_info()
 {
-	//perf_print_counter(_sample_perf);
-	//perf_print_counter(_comms_errors);
-	//perf_print_counter(_buffer_overflows);
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_comms_errors);
+	perf_print_counter(_buffer_overflows);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	printf("output  (%.2f %.2f %.2f)\n", (double)_last_report.x, (double)_last_report.y, (double)_last_report.z);
 	printf("offsets (%.2f %.2f %.2f)\n", (double)_scale.x_offset, (double)_scale.y_offset, (double)_scale.z_offset);

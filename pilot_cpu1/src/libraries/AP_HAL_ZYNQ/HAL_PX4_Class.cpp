@@ -130,6 +130,8 @@ static void main_loop(void *pvParameters)
     g_callbacks->setup();
     hal.scheduler->system_initialized();
 
+    perf_counter_t perf_loop = perf_alloc(PC_ELAPSED, "APM_loop");
+    perf_counter_t perf_overrun = perf_alloc(PC_COUNT, "APM_overrun");
 //    struct hrt_call loop_overtime_call;
 //    xTimerHandle loop_overtime_call;
 
@@ -144,7 +146,8 @@ static void main_loop(void *pvParameters)
  //   xTimerStart(loop_overtime_call, portMAX_DELAY);
     pilot_info("main loop start thread\n");
     while (!_px4_thread_should_exit) {
-        
+        perf_begin(perf_loop);
+
         /*
           this ensures a tight loop waiting on a lower priority driver
           will eventually give up some time for the driver to run. It
@@ -161,9 +164,11 @@ static void main_loop(void *pvParameters)
               to let a driver run. Set it back to high priority now.
              */
             hal_px4_set_priority(APM_MAIN_PRIORITY);
+            perf_count(perf_overrun);
             px4_ran_overtime = false;
         }
 
+        perf_end(perf_loop);
 
         /*
           give up 250 microseconds of time, to ensure drivers get a

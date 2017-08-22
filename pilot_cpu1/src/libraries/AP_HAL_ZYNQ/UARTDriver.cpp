@@ -22,6 +22,7 @@ PX4UARTDriver::PX4UARTDriver(const char *devpath, const char *perf_name) :
     _baudrate(57600),
     _initialised(false),
     _in_timer(false),
+    _perf_uart(perf_alloc(PC_ELAPSED, perf_name)),
     _os_start_auto_space(-1),
     _flow_control(FLOW_CONTROL_DISABLE)
 {
@@ -504,6 +505,7 @@ void PX4UARTDriver::_timer_tick(void)
     n = BUF_AVAILABLE(_writebuf);
     if (n > 0) {
         uint16_t n1 = _writebuf_size - _writebuf_head;
+        perf_begin(_perf_uart);
         if (n1 >= n) {
             // do as a single write
             _write_fd(&_writebuf[_writebuf_head], n);
@@ -514,6 +516,7 @@ void PX4UARTDriver::_timer_tick(void)
                 _write_fd(&_writebuf[_writebuf_head], n - n1);                
             }
         }
+        perf_end(_perf_uart);
     }
 
     // try to fill the read buffer
@@ -521,6 +524,7 @@ void PX4UARTDriver::_timer_tick(void)
     n = BUF_SPACE(_readbuf);
     if (n > 0) {
         uint16_t n1 = _readbuf_size - _readbuf_tail;
+        perf_begin(_perf_uart);
         if (n1 >= n) {
             // one read will do
             assert(_readbuf_tail+n <= _readbuf_size);
@@ -533,6 +537,7 @@ void PX4UARTDriver::_timer_tick(void)
                 _read_fd(&_readbuf[_readbuf_tail], n - n1);                
             }
         }
+        perf_end(_perf_uart);
     }
 
     _in_timer = false;

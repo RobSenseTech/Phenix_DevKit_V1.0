@@ -13,6 +13,7 @@
 #include "Phx_define.h"
 #include "timers.h"
 #include "driver.h"
+#include "perf/perf_counter.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -122,7 +123,7 @@ extern "C" { __EXPORT int iis328dq_main(int argc, char *argv[]); }
 class IIS328DQ : public device::CDev
 {
 public:
-	IIS328DQ(int bus, const char* path, ESpi_device_id device, enum Rotation rotation);
+	IIS328DQ(int bus, const char* path, enum Rotation rotation);
 	virtual ~IIS328DQ();
 
 	virtual int		init();
@@ -164,6 +165,12 @@ private:
 
 	unsigned		_read;
 
+	perf_counter_t		_sample_perf;
+	perf_counter_t		_errors;
+	perf_counter_t		_bad_registers;
+	perf_counter_t		_bad_values;
+	perf_counter_t		_duplicates;
+
 	uint8_t			_register_wait;
 
 	LowPassFilter2p<float>	_accel_filter_x;
@@ -173,7 +180,7 @@ private:
 
 	enum Rotation		_rotation;
 
-	struct SDeviceViaSpi _devInstance;
+    struct spi_node     iis328dq_spi;
 
 	// values used to
 	float			_last_accel[3];
@@ -212,7 +219,7 @@ private:
 	 *
 	 * @return true if the sensor is not on the main MCU board
 	 */
-	bool			is_external() { return 0;} /*(_bus == EXTERNAL_BUS);*/
+	bool			is_external()  { return (iis328dq_spi.bus_id == EXTERNAL_BUS);}
 
 	/**
 	 * Static trampoline from the hrt_call context; because we don't have a
@@ -321,7 +328,7 @@ const uint8_t IIS328DQ::_checked_registers[IIS328DQ_NUM_CHECKED_REGISTERS] = { A
                                                                            ADDR_CTRL_REG4,
                                                                            ADDR_CTRL_REG5,};
 
-IIS328DQ::IIS328DQ(int bus, const char* path, ESpi_device_id device, enum Rotation rotation) :
+IIS328DQ::IIS328DQ(int bus, const char* path, enum Rotation rotation) :
 	CDev("iis328dq", path),
     _call(NULL),
 	_call_interval(0),
@@ -334,6 +341,11 @@ IIS328DQ::IIS328DQ(int bus, const char* path, ESpi_device_id device, enum Rotati
 	_orb_class_instance(-1),
 	_class_instance(-1),
 	_read(0),
+	_sample_perf(perf_alloc(PC_ELAPSED, "iis328dq_read")),
+	_errors(perf_alloc(PC_COUNT, "iis328dq_errors")),
+	_bad_registers(perf_alloc(PC_COUNT, "iis328dq_bad_registers")),
+	_bad_values(perf_alloc(PC_COUNT, "iis328dq_bad_values")),
+	_duplicates(perf_alloc(PC_COUNT, "iis328dq_duplicates")),
 	_register_wait(0),
 	_accel_filter_x(IIS328DQ_DEFAULT_RATE, IIS328DQ_DEFAULT_DRIVER_FILTER_FREQ),
 	_accel_filter_y(IIS328DQ_DEFAULT_RATE, IIS328DQ_DEFAULT_DRIVER_FILTER_FREQ),
@@ -353,12 +365,13 @@ IIS328DQ::IIS328DQ(int bus, const char* path, ESpi_device_id device, enum Rotati
 	_accel_scale.z_offset = 0;
 	_accel_scale.z_scale  = 1.0f;
 
-	_devInstance.spi_id = bus;
-	DeviceViaSpiCfgInitialize(&_devInstance,
-							device, 
-							"iis328dq",
-							ESPI_CLOCK_MODE_2,
-							(11*1000*1000));
+	iis328dq_spi.bus_id = bus;
+    iis328dq_spi.cs_pin = GPIO_SPI_CS_ACCEL;
+    iis328dq_spi.frequency = 11*1000*1000;     //spi frequency
+
+    spi_cs_init(&iis328dq_spi);
+    spi_register_node(&iis328dq_spi);
+
 }
 
 IIS328DQ::~IIS328DQ()
@@ -368,27 +381,38 @@ IIS328DQ::~IIS328DQ()
 
 	/* free any existing reports */
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 	}
 
 	if (_class_instance != -1)
 		unregister_class_devname(ACCEL_BASE_DEVICE_PATH, _class_instance);
+
+    spi_deregister_node(&iis328dq_spi);
+
+	/* delete the perf counter */
+	perf_free(_sample_perf);
+	perf_free(_errors);
+	perf_free(_bad_registers);
+	perf_free(_bad_values);
+	perf_free(_duplicates);
 }
 
 int
 IIS328DQ::init()
 {
 	int ret = ERROR;
-
-	/* do SPI init (and probe) first */
-	if (CDev::init() != OK)
-		goto out;
 	
 	if (probe() != OK)
 		goto out;
 
+	/* do SPI init (and probe) first */
+	if (CDev::init() != OK)
+		goto out;
+
 	/* allocate basic report buffers */
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 		_reports = NULL;
 	}
@@ -629,7 +653,7 @@ IIS328DQ::read_reg(unsigned reg)
 	cmd[0] = reg | DIR_READ;
 	cmd[1] = 0;
 
-	SpiTransfer(&_devInstance, cmd, cmd, sizeof(cmd));
+	spi_transfer(&iis328dq_spi, cmd, cmd, sizeof(cmd));
 
 	return cmd[1];
 }
@@ -642,7 +666,7 @@ IIS328DQ::write_reg(unsigned reg, uint8_t value)
 	cmd[0] = reg | DIR_WRITE;
 	cmd[1] = value;
 
-	SpiTransfer(&_devInstance, cmd, NULL, sizeof(cmd));
+	spi_transfer(&iis328dq_spi, cmd, NULL, sizeof(cmd));
 }
 
 void
@@ -834,6 +858,14 @@ IIS328DQ::check_registers(void)
 {
 	uint8_t v;
 	if ((v=read_reg(_checked_registers[_checked_next])) != _checked_values[_checked_next]) {
+        /*
+		  if we get the wrong value then we know the SPI bus
+		  or sensor is very sick. We set _register_wait to 20
+		  and wait until we have seen 20 good values in a row
+		  before we consider the sensor to be OK again.
+		 */
+		perf_count(_bad_registers);
+
 
 		/*
 		  try to fix the bad register value. We only try to
@@ -864,28 +896,34 @@ IIS328DQ::measure()
 
 	accel_report accel_report = {0};
 
+	/* start the performance counter */
+	perf_begin(_sample_perf);
+
 	check_registers();
 
 	if (_register_wait != 0) {
 		// we are waiting for some good transfers before using
 		// the sensor again.
 		_register_wait--;
+		perf_end(_sample_perf);
 		return;
 	}
 
 	/* fetch data from the sensor */
 	memset(&raw_data, 0, sizeof(raw_data));
 	raw_data[0] = ADDR_STATUS_REG | DIR_READ | ADDR_INCREMENT;
-	SpiTransfer(&_devInstance, raw_data, raw_data, sizeof(raw_data));
+	spi_transfer(&iis328dq_spi, raw_data, raw_data, sizeof(raw_data));
 
     raw_accel_report.status = raw_data[1];
     raw_accel_report.x = ((int16_t)raw_data[3] << 8) | raw_data[2];
     raw_accel_report.y = ((int16_t)raw_data[5] << 8) | raw_data[4];
     raw_accel_report.z = ((int16_t)raw_data[7] << 8) | raw_data[6];
 
-        if (!(raw_accel_report.status & STATUS_ZYXDA)) {
+    if (!(raw_accel_report.status & STATUS_ZYXDA)) {
+		perf_end(_sample_perf);
+		perf_count(_duplicates);
 		return;
-        }
+    }
 
 	/*
 	 * 1) Scale raw value to SI units using scaling from datasheet.
@@ -904,6 +942,13 @@ IIS328DQ::measure()
 
 
 	accel_report.timestamp = hrt_absolute_time();
+
+	// report the error count as the sum of the number of bad
+	// register reads and bad values. This allows the higher level
+	// code to decide if it should use this sensor based on
+	// whether it has had failures
+    accel_report.error_count = perf_event_count(_bad_registers) + perf_event_count(_bad_values);
+
 
 	accel_report.x_raw = raw_accel_report.x;
 	accel_report.y_raw = raw_accel_report.y;
@@ -942,6 +987,7 @@ IIS328DQ::measure()
 		// flight code will know to avoid this sensor, but
 		// we'll still give the data so that it can be logged
 		// and viewed
+		perf_count(_bad_values);
 		_constant_accel_count = 0;
 	}
 
@@ -969,12 +1015,20 @@ IIS328DQ::measure()
 	}
 
 	_read++;
+    
+	/* stop the perf counter */
+	perf_end(_sample_perf);
 }
 
 void
 IIS328DQ::print_info()
 {
 	printf("accel reads:          %u\n", _read);
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_errors);
+	perf_print_counter(_bad_registers);
+	perf_print_counter(_bad_values);
+	perf_print_counter(_duplicates);
 	ringbuf_printinfo(_reports, "report queue");
         ::printf("checked_next: %u\n", _checked_next);
         for (uint8_t i=0; i<IIS328DQ_NUM_CHECKED_REGISTERS; i++) {
@@ -1069,7 +1123,7 @@ start(bool external_bus, enum Rotation rotation)
 		errx(0, "External SPI not available");
 		return;
 	} else {
-		g_dev[external_bus] = new IIS328DQ(SPI_DEVICE_ID_FOR_SENSOR, IIS328DQ_DEVICE_PATH, (ESpi_device_id)ESPI_DEVICE_TYPE_ACCEL, rotation);
+		g_dev[external_bus] = new IIS328DQ(SPI_DEVICE_ID_FOR_SENSOR, IIS328DQ_DEVICE_PATH, rotation);
 	}
 
 	if (g_dev[external_bus] == NULL)

@@ -22,7 +22,11 @@ extern const AP_HAL::HAL& hal;
 
 extern bool _px4_thread_should_exit;
 
-PX4Scheduler::PX4Scheduler() 
+PX4Scheduler::PX4Scheduler() :
+    _perf_timers(perf_alloc(PC_ELAPSED, "APM_timers")),
+    _perf_io_timers(perf_alloc(PC_ELAPSED, "APM_IO_timers")),
+    _perf_storage_timer(perf_alloc(PC_ELAPSED, "APM_storage_timers")),
+	_perf_delay(perf_alloc(PC_ELAPSED, "APM_delay"))
 {}
 
 void PX4Scheduler::init()
@@ -62,7 +66,9 @@ void PX4Scheduler::delay_microseconds_semaphore(uint16_t usec)
 
 void PX4Scheduler::delay_microseconds(uint16_t usec) 
 {
+    perf_begin(_perf_delay);
     delay_microseconds_semaphore(usec);
+    perf_end(_perf_delay);
 }
 
 /*
@@ -135,6 +141,7 @@ void PX4Scheduler::delay(uint16_t ms)
         pilot_err("ERROR: delay() from timer process\n");
         return;
     }
+    perf_begin(_perf_delay);
 	uint64_t start = AP_HAL::micros64();
     
     while ((AP_HAL::micros64() - start)/1000 < ms && 
@@ -147,6 +154,7 @@ void PX4Scheduler::delay(uint16_t ms)
         }
     }
 
+    perf_end(_perf_delay);
     if (_px4_thread_should_exit) {
         return;
     }
@@ -260,7 +268,9 @@ void PX4Scheduler::_timer_thread(void *arg)
         sched->delay_microseconds_semaphore(1000);
 
         // run registered timers
+        perf_begin(sched->_perf_timers);
         sched->_run_timers(true);
+        perf_end(sched->_perf_timers);
 
         // process any pending RC output requests
         ((PX4RCOutput *)hal.rcout)->_timer_tick();
@@ -325,7 +335,9 @@ void PX4Scheduler::_io_thread(void *arg)
         poll(NULL, 0, 1);
 
         // run registered IO processes
+        perf_begin(sched->_perf_io_timers);
         sched->_run_io();
+        perf_end(sched->_perf_io_timers);
     }
     return ;
 }
@@ -341,7 +353,9 @@ void PX4Scheduler::_storage_thread(void *arg)
         poll(NULL, 0, 10);
 
         // process any pending storage writes
+        perf_begin(sched->_perf_storage_timer);
         ((PX4Storage *)hal.storage)->_timer_tick();
+        perf_end(sched->_perf_storage_timer);
     }
     return ;
 }

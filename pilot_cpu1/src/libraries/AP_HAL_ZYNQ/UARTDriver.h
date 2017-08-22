@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AP_HAL_PX4.h"
+#include "perf/perf_counter.h"
 #include "task.h"
 
 class PX4::PX4UARTDriver : public AP_HAL::UARTDriver {
@@ -60,6 +61,7 @@ private:
     uint16_t _writebuf_size;
     volatile uint16_t _writebuf_head;
     volatile uint16_t _writebuf_tail;
+    perf_counter_t  _perf_uart;
 
     int _write_fd(const uint8_t *buf, uint16_t n);
     int _read_fd(uint8_t *buf, uint16_t n);

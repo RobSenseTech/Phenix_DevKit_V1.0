@@ -24,7 +24,7 @@ static void top_task(void *pvParameters)
         uint32_t len = 0;
         vTaskGetRunTimeStats(buf); 
         //clear terminal
-        printf("\033[2J\033[1H");
+//        printf("\033[2J\033[1H");
         printf("\n%s\n", buf);
         memset(buf, 0, len);
 

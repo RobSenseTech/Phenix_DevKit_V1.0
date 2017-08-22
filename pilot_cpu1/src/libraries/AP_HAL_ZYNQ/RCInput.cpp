@@ -13,6 +13,7 @@ extern const AP_HAL::HAL& hal;
 
 void PX4RCInput::init()
 {
+	_perf_rcin = perf_alloc(PC_ELAPSED, "APM_rcin");
 	_rc_sub = orb_subscribe(ORB_ID(input_rc));
 	if (_rc_sub == -1) {
 		AP_HAL::panic("Unable to subscribe to input_rc");
@@ -103,6 +104,7 @@ void PX4RCInput::clear_overrides()
 
 void PX4RCInput::_timer_tick(void)
 {
+	perf_begin(_perf_rcin);
 	bool rc_updated = false;
 	if (orb_check(_rc_sub, &rc_updated) == 0 && rc_updated) {
 			xSemaphoreTake(rcin_mutex,portMAX_DELAY);		//用xSemaphoreTake替换掉pthread_mutex_lock
@@ -113,6 +115,7 @@ void PX4RCInput::_timer_tick(void)
 //    pilot_info("rc_updated=%d\n", rc_updated);
         // note, we rely on the vehicle code checking new_input() 
         // and a timeout for the last valid input to handle failsafe
+	perf_end(_perf_rcin);
 }
 
 //改函数是打开px4io板，这里由于没有px4io板，所以注释掉

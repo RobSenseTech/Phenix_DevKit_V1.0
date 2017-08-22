@@ -16,6 +16,7 @@ using namespace PX4;
 
 void PX4RCOutput::init()
 {
+    _perf_rcout = perf_alloc(PC_ELAPSED, "APM_rcout");
     _pwm_fd = open(PWM_OUTPUT0_DEVICE_PATH, O_RDWR);          //open函数接口待提供
     if (_pwm_fd == -1) {
         AP_HAL::panic("Unable to open " PWM_OUTPUT0_DEVICE_PATH);
@@ -410,6 +411,7 @@ void PX4RCOutput::_timer_tick(void)
     
     if (_need_update && _pwm_fd != -1) {
         _need_update = false;
+        perf_begin(_perf_rcout);
         // always send all outputs to first PWM device. This ensures that SBUS is properly updated in px4io
         ::write(_pwm_fd, (const char *)_period, _max_channel*sizeof(_period[0]));
         if (_max_channel > _servo_count) {
@@ -426,6 +428,7 @@ void PX4RCOutput::_timer_tick(void)
         // also publish to actuator_direct
         _publish_actuators();
 
+        perf_end(_perf_rcout);
         _last_output = now;
     }
 
