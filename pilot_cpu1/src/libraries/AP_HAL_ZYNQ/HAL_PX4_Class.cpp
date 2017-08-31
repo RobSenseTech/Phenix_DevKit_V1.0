@@ -39,10 +39,10 @@ static PX4GPIO gpioDriver;
 
 static Empty::I2CDeviceManager i2c_mgr_instance;
 
-#define UARTA_DEFAULT_DEVICE "/dev/uartns2"         //uart4 maclink console
+#define UARTA_DEFAULT_DEVICE "/dev/uartns2"         //serial3 maclink console
 #define UARTB_DEFAULT_DEVICE "/dev/uartns3"         //1st GPS
-#define UARTC_DEFAULT_DEVICE "/dev/uartns0"         //uart2 telem1
-#define UARTD_DEFAULT_DEVICE "/dev/uartns1"         //uart3 telem2
+#define UARTC_DEFAULT_DEVICE "/dev/uartns0"         //serial1 telem1
+#define UARTD_DEFAULT_DEVICE "/dev/uartns1"         //serial2 telem2
 #define UARTE_DEFAULT_DEVICE "/dev/null"         //
 
 // 3 UART drivers, for GPS plus two mavlink-enabled devices
@@ -87,7 +87,7 @@ extern const AP_HAL::HAL& hal;
  */
 void hal_px4_set_priority(uint8_t priority)
 {
-//    vTaskPrioritySet(daemon_task, priority);
+    vTaskPrioritySet(daemon_task, priority);
 }
 
 /*

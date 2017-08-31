@@ -143,6 +143,7 @@ protected:
 	perf_counter_t		_measure_perf;
 	perf_counter_t		_comms_errors;
 	perf_counter_t		_buffer_overflows;
+     perf_counter_t     _perf_interval;
 
     struct spi_node ms5611_spi;
 	/**
@@ -231,7 +232,8 @@ MS5611::MS5611(int bus, const char* path) :
 	_sample_perf(perf_alloc(PC_ELAPSED, "ms5611_read")),
 	_measure_perf(perf_alloc(PC_ELAPSED, "ms5611_measure")),
 	_comms_errors(perf_alloc(PC_COUNT, "ms5611_comms_errors")),
-	_buffer_overflows(perf_alloc(PC_COUNT, "ms5611_buffer_overflows"))
+	_buffer_overflows(perf_alloc(PC_COUNT, "ms5611_buffer_overflows")),
+	_perf_interval(perf_alloc(PC_INTERVAL, "ms5611_call_interval"))
 //added by prj
 {
     ms5611_spi.bus_id = bus;
@@ -265,6 +267,7 @@ MS5611::~MS5611()
 	perf_free(_measure_perf);
 	perf_free(_comms_errors);
 	perf_free(_buffer_overflows);
+	perf_free(_perf_interval);
 
 }
 
@@ -502,6 +505,9 @@ MS5611::read(struct file *filp, char *buffer, size_t buflen)
 		 */
 		while (count--) {
 			if (0 == ringbuf_get(_reports, brp, sizeof(struct baro_report))) {
+
+                //if(brp->pressure > 1100.0 || brp->pressure < 1000)
+                //    pilot_warn("pressure=%10.4f altitude=%10.4f temp=%.3f\n", brp->pressure, brp->altitude, brp->temperature);
 				ret += sizeof(struct baro_report);
 				brp++;
 			}
@@ -832,13 +838,19 @@ MS5611::collect()
 {
 	int ret;
 	uint32_t raw;
-
-	perf_begin(_sample_perf);
+    static hrt_abstime last_time;
 
 	struct baro_report report = {0};
 	/* this should be fairly close to the end of the conversion, so the best approximation of the time */
 	report.timestamp = hrt_absolute_time();
 	report.error_count = perf_event_count(_comms_errors);
+
+    //some times freertos timer is not correct
+    if(report.timestamp - last_time < MS5611_CONVERSION_INTERVAL)
+        return 0;
+
+	perf_begin(_sample_perf);
+    perf_count(_perf_interval);
 
 	/* read the most recent measurement - read offset/size are hardcoded in the interface */
 //added by prj
@@ -945,6 +957,7 @@ MS5611::collect()
 		poll_notify(POLLIN);
 	}
 
+    last_time = report.timestamp;
 	/* update the measurement state machine */
 	INCREMENT(_measure_phase, MS5611_MEASUREMENT_RATIO + 1);
 
@@ -959,6 +972,7 @@ MS5611::print_info()
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 	perf_print_counter(_buffer_overflows);
+	perf_print_counter(_perf_interval);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	ringbuf_printinfo(_reports, "report queue");
 	printf("TEMP:           %d\n", _TEMP);

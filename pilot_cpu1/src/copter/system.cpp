@@ -266,10 +266,8 @@ void Copter::startup_INS_ground()
     ahrs.init();//AP_AHRS::init
     ahrs.set_vehicle_class(AHRS_VEHICLE_COPTER);
 
-    pilot_warn("\n");
     // Warm up and calibrate gyro offsets
     ins.init(scheduler.get_loop_rate_hz());//AP_InertialSensor::init
-    pilot_warn("\n");
 
     // reset ahrs including gyro bias
     ahrs.reset();

@@ -214,7 +214,7 @@ static inline bool ringbuf_resize(ringbuf_t *ringbuf, int iNewSize)
 
 static inline void ringbuf_printinfo(ringbuf_t *ringbuf, const char *name)
 {
-	pilot_info("%s	%u/%lu (%u/%u @ %p)\n",
+	printf("%s	%u/%lu (%u/%u @ %p)\n",
 	       name,
 	       ringbuf->item_num,
 	       (unsigned long)ringbuf->item_num*ringbuf->item_size,

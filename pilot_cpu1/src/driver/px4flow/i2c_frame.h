@@ -44,7 +44,6 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
-#pragma pack(push,1)
 typedef  struct i2c_frame {
 	uint16_t frame_count;
 	int16_t pixel_flow_x_sum;
@@ -59,12 +58,10 @@ typedef  struct i2c_frame {
 	uint8_t sonar_timestamp;
 	int16_t ground_distance;
 } i2c_frame;
-#pragma pack(pop)
 
 #define I2C_FRAME_SIZE (sizeof(i2c_frame))
 
 
-#pragma pack(push,1)
 typedef struct i2c_integral_frame {
 	uint16_t frame_count_since_last_readout;
 	int16_t pixel_flow_x_integral;
@@ -78,7 +75,6 @@ typedef struct i2c_integral_frame {
 	int16_t gyro_temperature;
 	uint8_t qual;
 } i2c_integral_frame;
-#pragma pack(pop)
 
 #define I2C_INTEGRAL_FRAME_SIZE (sizeof(i2c_integral_frame))
 

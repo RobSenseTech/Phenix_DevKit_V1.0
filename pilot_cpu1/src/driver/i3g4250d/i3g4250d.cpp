@@ -533,7 +533,7 @@ I3G4250D::probe()
 		success = true;
 	}
 
-    pilot_info("I3G4250D whoe am i:%x\n", v);
+    //pilot_info("I3G4250D whoe am i:%x\n", v);
 	
 	if (success) {
 		_checked_values[0] = v;
@@ -927,9 +927,9 @@ I3G4250D::disable_i2c(void)
 void
 I3G4250D::reset()
 {
-//    write_checked_reg(ADDR_CTRL_REG1, 0);//进入power down模式,规避开机上电陀螺仪不正常的问题
-//
-//	vTaskDelay(100 / portTICK_RATE_MS);
+    write_checked_reg(ADDR_CTRL_REG1, 0);//进入power down模式,规避开机上电陀螺仪不正常的问题
+
+	vTaskDelay(100 / portTICK_RATE_MS);
 
 	/* set default configuration */
 	write_checked_reg(ADDR_CTRL_REG1,
@@ -1316,12 +1316,6 @@ test(int external_bus)
 		}
 	}
 	
-	/* reset to manual polling */
-	if (ioctl(fd_gyro, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_MANUAL) < 0){
-		err(1, "reset to manual polling");
-		return;
-	}
-
 	/* do a simple demand read */
 	sz = read(fd_gyro, (char*)&g_report, sizeof(g_report));
 
@@ -1340,11 +1334,6 @@ test(int external_bus)
 	warnx("temp: \t%d\traw", (int)g_report.temperature_raw);
 	warnx("gyro range: %8.4f rad/s (%d deg/s)", (double)g_report.range_rad_s,
 	      (int)((g_report.range_rad_s / M_PI_F) * 180.0f + 0.5f));
-
-	if (ioctl(fd_gyro, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0){
-		err(1, "reset to default polling");
-		return;
-	}
 
     close(fd_gyro);
 

@@ -47,12 +47,29 @@ void PX4Scheduler::init()
     xTaskCreate(&PX4Scheduler::_storage_thread, "storate thread", 2048, this, APM_STORAGE_PRIORITY, &_storage_thread_ctx);
 }
 
+static void sem_post_micro(xTimerHandle xTimer)
+{
+    void *timer_id = pvTimerGetTimerID(xTimer);
+    sem_t *sem = (sem_t *)timer_id;
+
+    sem_post(sem);
+}
 /**
    delay for a specified number of microseconds using a semaphore wait
  */
 void PX4Scheduler::delay_microseconds_semaphore(uint16_t usec) 
 {
     sem_t wait_semaphore;
+#if 1
+    xTimerHandle    wait_call;
+
+    sem_init(&wait_semaphore, 0, 0);
+	wait_call = xTimerCreate("delay micro sem ", USEC2TICK(usec), pdFALSE, (void *)&wait_semaphore, sem_post_micro);
+    xTimerStart(wait_call, portMAX_DELAY);
+    sem_wait(&wait_semaphore);
+    xTimerDelete(wait_call, portMAX_DELAY);
+    sem_destroy(&wait_semaphore);
+#else
     struct hrt_call wait_call;
     
     sem_init(&wait_semaphore, 0, 0);
@@ -60,6 +77,7 @@ void PX4Scheduler::delay_microseconds_semaphore(uint16_t usec)
     hrt_call_after(&wait_call, usec, (hrt_callout)sem_post, (void *)&wait_semaphore);
     sem_wait(&wait_semaphore);
     sem_destroy(&wait_semaphore);
+#endif
 
 }
 

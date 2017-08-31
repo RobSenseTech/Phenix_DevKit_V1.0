@@ -73,7 +73,6 @@
 #include <uORB/topics/optical_flow.h>
 #include <uORB/topics/distance_sensor.h>
 
-
 /* Configuration Constants */
 #define I2C_FLOW_ADDRESS 		0x42	///< 7-bit address. 8-bit address is 0x84, range 0x42 - 0x49
 
@@ -142,6 +141,7 @@ private:
 	 perf_counter_t		_sample_perf;
 	 perf_counter_t		_comms_errors;
 	 perf_counter_t		_buffer_overflows;
+     perf_counter_t     _perf_interval;
 	void *px4flow	;
 	enum Rotation				_sensor_rotation;
 
@@ -205,6 +205,7 @@ PX4FLOW::PX4FLOW(int bus, int dev_addr, uint32_t frequency, const char *path, en
 	_sample_perf(perf_alloc(PC_ELAPSED, "px4flow_read")),
 	_comms_errors(perf_alloc(PC_COUNT, "px4flow_comms_errors")),
 	_buffer_overflows(perf_alloc(PC_COUNT, "px4flow_buffer_overflows")),
+	_perf_interval(perf_alloc(PC_INTERVAL, "px4flow_upd")),
 	_sensor_rotation(rotation)
 {
 	// disable debug() calls
@@ -229,6 +230,7 @@ PX4FLOW::~PX4FLOW()
 	perf_free(_sample_perf);
 	perf_free(_comms_errors);
 	perf_free(_buffer_overflows);
+	perf_free(_perf_interval);
 }
 
 int
@@ -296,11 +298,13 @@ int
 PX4FLOW::probe()
 {
 	uint8_t val[I2C_FRAME_SIZE];
+//	uint8_t cmd = 0;
 
 	// to be sure this is not a ll40ls Lidar (which can also be on
 	// 0x42) we check if a I2C_FRAME_SIZE byte transfer works from address
 	// 0. The ll40ls gives an error for that, whereas the flow
 	// happily returns some data
+	//if (iic_transfer(px4flow, &cmd, 1, &val[0], I2C_FRAME_SIZE) != OK) {
 	if (iic_transfer(px4flow, NULL, 0, &val[0], I2C_FRAME_SIZE) != OK) {
         pilot_err("probe filed\n");
 		return -EIO;
@@ -486,12 +490,10 @@ PX4FLOW::measure()
 	 * Send the command to begin a measurement.
 	 */
 	uint8_t cmd = PX4FLOW_REG;
-	// ret = transfer(&cmd, 1, NULL, 0);
 	ret = iic_transfer(px4flow, &cmd, 1, NULL, 0);
 
 	if (OK != ret) {
 		perf_count(_comms_errors);
-		DEVICE_DEBUG("i2c::transfer returned %d", ret);
 		return ret;
 	}
 
@@ -509,6 +511,7 @@ PX4FLOW::collect()
 	uint8_t val[I2C_FRAME_SIZE + I2C_INTEGRAL_FRAME_SIZE] = { 0 };
 
 	perf_begin(_sample_perf);
+    perf_count(_perf_interval);
 
 	if (PX4FLOW_REG == 0x00) {
 		ret = iic_transfer(px4flow, NULL, 0, &val[0], I2C_FRAME_SIZE + I2C_INTEGRAL_FRAME_SIZE);
@@ -519,7 +522,6 @@ PX4FLOW::collect()
 	}
 
 	if (ret < 0) {
-		DEVICE_DEBUG("error reading from sensor: %d", ret);
 		perf_count(_comms_errors);
 		perf_end(_sample_perf);
 		return ret;
@@ -656,14 +658,11 @@ void
 PX4FLOW::cycle()
 {
 	if (OK != measure()) {
-		DEVICE_DEBUG("measure error");
+        return;
 	}
 
 	/* perform collection */
 	if (OK != collect()) {
-		DEVICE_DEBUG("collection error");
-		/* restart the measurement state machine */
-		start();
 		return;
 	}
 
@@ -673,12 +672,15 @@ PX4FLOW::cycle()
 
 }
 
+extern int iic_rx_err;
 void
 PX4FLOW::print_info()
 {
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 	perf_print_counter(_buffer_overflows);
+	perf_print_counter(_perf_interval);
+    printf("iic_rx_err=%d\n", iic_rx_err);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	// _reports->print_info("report queue");
 	ringbuf_printinfo(_reports, "report queue");
@@ -868,10 +870,6 @@ test()
 	warnx("framecount_integral: %u",
 	      f_integral.frame_count_since_last_readout);
 
-	/* start the sensor polling at 10Hz */
-	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 10)) {
-		errx(1, "failed to set 10Hz poll rate");
-	}
 
 	/* read the sensor 5x and report each value */
 	for (unsigned i = 0; i < 10; i++) {
@@ -971,6 +969,7 @@ px4flow_main(int argc, char *argv[])
 	 */
 	if (!strcmp(argv[1], "stop")) {
 		px4flow::stop();
+        return 0;
 	}
 
 	/*
@@ -978,6 +977,7 @@ px4flow_main(int argc, char *argv[])
 	 */
 	if (!strcmp(argv[1], "test")) {
 		px4flow::test();
+        return 0;
 	}
 
 	/*
@@ -985,6 +985,7 @@ px4flow_main(int argc, char *argv[])
 	 */
 	if (!strcmp(argv[1], "reset")) {
 		px4flow::reset();
+        return 0;
 	}
 
 	/*
@@ -992,6 +993,7 @@ px4flow_main(int argc, char *argv[])
 	 */
 	if (!strcmp(argv[1], "info") || !strcmp(argv[1], "status")) {
 		px4flow::info();
+        return 0;
 	}
 
 	errx(1, "unrecognized command, try 'start', 'test', 'reset' or 'info'");

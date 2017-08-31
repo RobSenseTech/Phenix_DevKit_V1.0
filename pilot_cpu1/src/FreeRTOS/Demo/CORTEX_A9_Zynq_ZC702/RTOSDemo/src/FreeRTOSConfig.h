@@ -146,7 +146,7 @@
 /* Software timer definitions. */
 #define configUSE_TIMERS						1
 #define configTIMER_TASK_PRIORITY				( configMAX_PRIORITIES - 1 )
-#define configTIMER_QUEUE_LENGTH				5
+#define configTIMER_QUEUE_LENGTH				10
 #define configTIMER_TASK_STACK_DEPTH			( configMINIMAL_STACK_SIZE * 10 )
 
 /* If configUSE_TASK_FPU_SUPPORT is set to 1 (or undefined) then each task will

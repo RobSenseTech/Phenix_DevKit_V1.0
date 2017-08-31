@@ -36,7 +36,7 @@ INCLUDEPATH := -I../src/FreeRTOS \
 			   -I../src/FreeRTOS/robsense_custom/ \
 			   -I../src/FreeRTOS/robsense_custom/include/ \
 			   -I../src/FreeRTOS/robsense_custom/fs \
-			   -I../include/standalone \
+			   -I../../cpu1_bsp/ps7_cortexa9_1/include \
 			   -I../include/print \
 			   -I../include/drivers\
 			   -I../include/common \

@@ -96,15 +96,12 @@ const struct mountpt_operations ocmfs_operations =
   ocmfs_stat           /* stat */
 };
 
-int ocmfs_msg_trans(struct ocmfs_msg *send_msg, struct ocmfs_msg *recv_msg)
+static int ocmfs_msg_trans(struct ocmfs_msg *send_msg, struct ocmfs_msg *recv_msg)
 {
     int tmp_len = 0;
     int ret = 0;
 
     tmp_len = sizeof(send_msg->cmd) + sizeof(send_msg->data_len) + send_msg->data_len;
-
-    if(tmp_len > OCMFS_MAX_DATA_LEN)
-        tmp_len = OCMFS_MAX_DATA_LEN;
 
     //align
     tmp_len = OCMFS_ALIGN(tmp_len);
