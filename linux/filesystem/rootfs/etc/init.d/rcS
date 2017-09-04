@@ -38,7 +38,9 @@ then
 	echo "++ Running user script init.sh from SD Card"
      	source /mnt/init.sh
 fi
+#ifconfig eth0 192.168.0.244 netmask 255.255.255.0 up
 
+./usr/ocmfs_master&
 sleep 1
 
 ./usr/rwmem.elf 0xfffffff0 0x1a000000

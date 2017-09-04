@@ -36,6 +36,7 @@
 #ifndef __FS_FAT_FS_MKATFS_H
 #define __FS_FAT_FS_MKATFS_H
 
+#ifdef CONFIG_FS_FAT
 /****************************************************************************
  * Included Files
  ****************************************************************************/
@@ -167,4 +168,5 @@ EXTERN int mkfatfs_writefatfs(FAR struct fat_format_s *fmt,
 }
 #endif
 
+#endif //CONFIG_FS_FAT
 #endif /* __FS_FAT_FS_MKATFS_H */

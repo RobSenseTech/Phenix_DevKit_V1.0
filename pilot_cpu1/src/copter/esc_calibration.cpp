@@ -30,7 +30,7 @@ void Copter::esc_calibration_startup_check()
         }
         return;
     }
-	printf("esc_calibrate=%d channel_throttle=%d\n", g.esc_calibrate, channel_throttle->control_in);
+	//printf("esc_calibrate=%d channel_throttle=%d\n", g.esc_calibrate, channel_throttle->control_in);
     // check ESC parameter
     switch (g.esc_calibrate) {
         case ESCCAL_NONE:

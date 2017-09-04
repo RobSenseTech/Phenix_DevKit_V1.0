@@ -1,7 +1,7 @@
 #include "device/cdev.h"
 #include "drv_device.h"
 #include <sys/ioctl.h>
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "irq.h"
 
 namespace device
@@ -74,7 +74,7 @@ CDev::register_class_devname(const char *class_devname)
     int ret = -ENOSPC;
 
 	if (class_devname == NULL) {
-        Print_Err("Device name is NULL\n");
+        pilot_err("Device name is NULL\n");
 		return -EINVAL;
 	}
 
@@ -191,21 +191,21 @@ CDev::close_last(file_t *filp)
 ssize_t
 CDev::read(file_t *filp, char *buffer, size_t buflen)
 {
-    Print_Err("No such system api\n");
+    pilot_err("No such system api\n");
 	return -ENOSYS;
 }
 
 ssize_t
 CDev::write(file_t *filp, const char *buffer, size_t buflen)
 {
-    Print_Err("No such system api\n");
+    pilot_err("No such system api\n");
 	return -ENOSYS;
 }
 
 off_t
 CDev::seek(file_t *filp, off_t offset, int whence)
 {
-    Print_Err("No such system api\n");
+    pilot_err("No such system api\n");
 	return -ENOSYS;
 }
 
@@ -318,7 +318,7 @@ CDev::store_poll_waiter(struct pollfd *fds)
 		}
 	}
 
-    Print_Err("Too much poll waiters!!\n");
+    pilot_err("Too much poll waiters!!\n");
 	return -ENOMEM;
 }
 
@@ -334,7 +334,7 @@ CDev::remove_poll_waiter(struct pollfd *fds)
 		}
 	}
 
-	Print_Err("poll: bad fd state");
+	pilot_err("poll: bad fd state");
 	return -EINVAL;
 }
 

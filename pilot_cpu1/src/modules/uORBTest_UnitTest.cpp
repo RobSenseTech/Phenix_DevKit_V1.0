@@ -109,7 +109,7 @@ int uORBTest::UnitTest::pubsublatency_main(void)
 		FILE *f = fopen(fname, "w");
 
 		if (f == NULL) {
-			Print_Warn("Error opening file!\n");
+			pilot_warn("Error opening file!\n");
 			return uORB::ERROR;
 		}
 
@@ -122,7 +122,7 @@ int uORBTest::UnitTest::pubsublatency_main(void)
 
 	delete[] timings;
 
-	Print_Warn("mean: %8.4f", static_cast<double>(latency_integral / maxruns));
+	pilot_warn("mean: %8.4f", static_cast<double>(latency_integral / maxruns));
 
 	pubsubtest_passed = true;
 
@@ -167,7 +167,7 @@ int uORBTest::UnitTest::info()
 
 int uORBTest::UnitTest::test_single()
 {
-	Print_Info("try single-topic support");
+	pilot_info("try single-topic support");
 
 	struct orb_test t, u;
 	int sfd;
@@ -178,150 +178,150 @@ int uORBTest::UnitTest::test_single()
 	ptopic = orb_advertise(ORB_ID(orb_test), &t);
 
 	if (ptopic == NULL) {
-		return Print_Err("advertise failed: %d", errno);
+		return pilot_err("advertise failed: %d", errno);
 	}
 
-	Print_Info("publish handle 0x%08x", ptopic);
+	pilot_info("publish handle 0x%08x", ptopic);
 	sfd = orb_subscribe(ORB_ID(orb_test));
 
 	if (sfd < 0) {
-		return Print_Err("subscribe failed: %d", errno);
+		return pilot_err("subscribe failed: %d", errno);
 	}
 
-	Print_Info("subscribe fd %d", sfd);
+	pilot_info("subscribe fd %d", sfd);
 	u.val = 1;
 
 	if (0 != orb_copy(ORB_ID(orb_test), sfd, &u)) {
-		return Print_Err("copy(1) failed: %d", errno);
+		return pilot_err("copy(1) failed: %d", errno);
 	}
 
 	if (u.val != t.val) {
-		return Print_Err("copy(1) mismatch: %d expected %d", u.val, t.val);
+		return pilot_err("copy(1) mismatch: %d expected %d", u.val, t.val);
 	}
 
 	if (0 != orb_check(sfd, &updated)) {
-		return Print_Err("check(1) failed");
+		return pilot_err("check(1) failed");
 	}
 
 	if (updated) {
-		return Print_Err("spurious updated flag");
+		return pilot_err("spurious updated flag");
 	}
 
 	t.val = 2;
-	Print_Info("try publish");
+	pilot_info("try publish");
 
 	if (0 != orb_publish(ORB_ID(orb_test), ptopic, &t)) {
-		return Print_Err("publish failed");
+		return pilot_err("publish failed");
 	}
 
 	if (0 != orb_check(sfd, &updated)) {
-		return Print_Err("check(2) failed");
+		return pilot_err("check(2) failed");
 	}
 
 	if (!updated) {
-		return Print_Err("missing updated flag");
+		return pilot_err("missing updated flag");
 	}
 
 	if (0 != orb_copy(ORB_ID(orb_test), sfd, &u)) {
-		return Print_Err("copy(2) failed: %d", errno);
+		return pilot_err("copy(2) failed: %d", errno);
 	}
 
 	if (u.val != t.val) {
-		return Print_Err("copy(2) mismatch: %d expected %d", u.val, t.val);
+		return pilot_err("copy(2) mismatch: %d expected %d", u.val, t.val);
 	}
 
 	orb_unsubscribe(sfd);
 
-	return Print_Info("PASS single-topic test");
+	return pilot_info("PASS single-topic test");
 }
 
 int uORBTest::UnitTest::test_multi()
 {
 	/* this routine tests the multi-topic support */
-	Print_Info("try multi-topic support");
+	pilot_info("try multi-topic support");
 
 	struct orb_test t, u;
 	t.val = 0;
 	int instance0;
 	orb_advert_t pfd0 = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance0, ORB_PRIO_MAX);
 
-	Print_Info("advertised");
+	pilot_info("advertised");
 
 	int instance1;
 	orb_advert_t pfd1 = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance1, ORB_PRIO_MIN);
 
 	if (instance0 != 0) {
-		return Print_Err("mult. id0: %d", instance0);
+		return pilot_err("mult. id0: %d", instance0);
 	}
 
 	if (instance1 != 1) {
-		return Print_Err("mult. id1: %d", instance1);
+		return pilot_err("mult. id1: %d", instance1);
 	}
 
 	t.val = 103;
 
 	if (0 != orb_publish(ORB_ID(orb_multitest), pfd0, &t)) {
-		return Print_Err("mult. pub0 fail");
+		return pilot_err("mult. pub0 fail");
 	}
 
-	Print_Info("published");
+	pilot_info("published");
 
 	t.val = 203;
 
 	if (0 != orb_publish(ORB_ID(orb_multitest), pfd1, &t)) {
-		return Print_Err("mult. pub1 fail");
+		return pilot_err("mult. pub1 fail");
 	}
 
 	/* subscribe to both topics and ensure valid data is received */
 	int sfd0 = orb_subscribe_multi(ORB_ID(orb_multitest), 0);
 
 	if (0 != orb_copy(ORB_ID(orb_multitest), sfd0, &u)) {
-		return Print_Err("sub #0 copy failed: %d", errno);
+		return pilot_err("sub #0 copy failed: %d", errno);
 	}
 
 	if (u.val != 103) {
-		return Print_Err("sub #0 val. mismatch: %d", u.val);
+		return pilot_err("sub #0 val. mismatch: %d", u.val);
 	}
 
 	int sfd1 = orb_subscribe_multi(ORB_ID(orb_multitest), 1);
 
 	if (0 != orb_copy(ORB_ID(orb_multitest), sfd1, &u)) {
-		return Print_Err("sub #1 copy failed: %d", errno);
+		return pilot_err("sub #1 copy failed: %d", errno);
 	}
 
 	if (u.val != 203) {
-		return Print_Err("sub #1 val. mismatch: %d", u.val);
+		return pilot_err("sub #1 val. mismatch: %d", u.val);
 	}
 
 	/* test priorities */
 	int prio;
 
 	if (0 != orb_priority(sfd0, &prio)) {
-		return Print_Err("prio #0");
+		return pilot_err("prio #0");
 	}
 
 	if (prio != ORB_PRIO_MAX) {
-		return Print_Err("prio: %d", prio);
+		return pilot_err("prio: %d", prio);
 	}
 
 	if (0 != orb_priority(sfd1, &prio)) {
-		return Print_Err("prio #1");
+		return pilot_err("prio #1");
 	}
 
 	if (prio != ORB_PRIO_MIN) {
-		return Print_Err("prio: %d", prio);
+		return pilot_err("prio: %d", prio);
 	}
 
 	if (0 != latency_test<struct orb_test>(ORB_ID(orb_test), false)) {
-		return Print_Err("latency test failed");
+		return pilot_err("latency test failed");
 	}
 
-	return Print_Info("PASS multi-topic test");
+	return pilot_info("PASS multi-topic test");
 }
 
 int uORBTest::UnitTest::test_multi_reversed()
 {
-	Print_Info("try multi-topic support subscribing before publishing");
+	pilot_info("try multi-topic support subscribing before publishing");
 
 	/* For these tests 0 and 1 instances are taken from before, therefore continue with 2 and 3. */
 
@@ -329,7 +329,7 @@ int uORBTest::UnitTest::test_multi_reversed()
 	int sfd2 = orb_subscribe_multi(ORB_ID(orb_multitest), 2);
 
 	if (sfd2 < 0) {
-		return Print_Err("sub. id2: ret: %d", sfd2);
+		return pilot_err("sub. id2: ret: %d", sfd2);
 	}
 
 	struct orb_test t, u;
@@ -344,50 +344,50 @@ int uORBTest::UnitTest::test_multi_reversed()
 
 	orb_advert_t pfd3 = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance3, ORB_PRIO_MIN);
 
-	Print_Info("advertised");
+	pilot_info("advertised");
 
 	if (instance2 != 2) {
-		return Print_Err("mult. id2: %d", instance2);
+		return pilot_err("mult. id2: %d", instance2);
 	}
 
 	if (instance3 != 3) {
-		return Print_Err("mult. id3: %d", instance3);
+		return pilot_err("mult. id3: %d", instance3);
 	}
 
 	t.val = 204;
 
 	if (0 != orb_publish(ORB_ID(orb_multitest), pfd2, &t)) {
-		return Print_Err("mult. pub0 fail");
+		return pilot_err("mult. pub0 fail");
 	}
 
 
 	t.val = 304;
 
 	if (0 != orb_publish(ORB_ID(orb_multitest), pfd3, &t)) {
-		return Print_Err("mult. pub1 fail");
+		return pilot_err("mult. pub1 fail");
 	}
 
-	Print_Info("published");
+	pilot_info("published");
 
 	if (0 != orb_copy(ORB_ID(orb_multitest), sfd2, &u)) {
-		return Print_Err("sub #2 copy failed: %d", errno);
+		return pilot_err("sub #2 copy failed: %d", errno);
 	}
 
 	if (u.val != 204) {
-		return Print_Err("sub #3 val. mismatch: %d", u.val);
+		return pilot_err("sub #3 val. mismatch: %d", u.val);
 	}
 
 	int sfd3 = orb_subscribe_multi(ORB_ID(orb_multitest), 3);
 
 	if (0 != orb_copy(ORB_ID(orb_multitest), sfd3, &u)) {
-		return Print_Err("sub #3 copy failed: %d", errno);
+		return pilot_err("sub #3 copy failed: %d", errno);
 	}
 
 	if (u.val != 304) {
-		return Print_Err("sub #3 val. mismatch: %d", u.val);
+		return pilot_err("sub #3 val. mismatch: %d", u.val);
 	}
 
-	return Print_Info("PASS multi-topic reversed");
+	return pilot_info("PASS multi-topic reversed");
 }
 
 

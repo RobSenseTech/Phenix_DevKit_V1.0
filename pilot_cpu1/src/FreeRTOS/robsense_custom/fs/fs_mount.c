@@ -58,7 +58,7 @@
 
 /* These file systems do not require block drivers */
 
-#if defined(CONFIG_FS_NXFFS) || defined(CONFIG_FS_BINFS) || defined(CONFIG_NFS) 
+#if defined(CONFIG_FS_NXFFS) || defined(CONFIG_FS_BINFS) || defined(CONFIG_NFS) || defined(CONFIG_FS_OCMFS)
 #  define NONBDFS_SUPPORT
 #endif
 
@@ -106,6 +106,9 @@ extern const struct mountpt_operations nfs_operations;
 #ifdef CONFIG_FS_BINFS
 extern const struct mountpt_operations binfs_operations;
 #endif
+#ifdef CONFIG_FS_OCMFS
+extern const struct mountpt_operations ocmfs_operations;
+#endif
 
 static const struct fsmap_t g_nonbdfsmap[] =
 {
@@ -117,6 +120,9 @@ static const struct fsmap_t g_nonbdfsmap[] =
 #endif
 #ifdef CONFIG_FS_BINFS
     { "binfs", &binfs_operations },
+#endif
+#ifdef CONFIG_FS_OCMFS
+    { "ocmfs", &ocmfs_operations },
 #endif
     { NULL,   NULL },
 };
@@ -216,7 +222,7 @@ int mount(FAR const char *source, FAR const char *target,
       ret = find_blockdriver(source, mountflags, &blkdrvr_inode);
       if (ret < 0)
       {
-        Print_Err("Failed to find block driver %s\n", source);
+        pilot_err("Failed to find block driver %s\n", source);
         errcode = -ret;
         goto errout;
       }

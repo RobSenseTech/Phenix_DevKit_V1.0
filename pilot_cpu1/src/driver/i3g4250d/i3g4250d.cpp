@@ -44,7 +44,7 @@
 #include "drv_gyro.h"
 #include <uORB/uORB.h>
 #include "conversion/rotation.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "math.h"
 #include "driver_define.h"
 #include "drv_unistd/drv_unistd.h"
@@ -55,6 +55,7 @@
 #include "timers.h"
 #include "Phx_define.h"
 #include "driver.h"
+#include "perf/perf_counter.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -191,7 +192,7 @@ extern "C" { __EXPORT int i3g4250d_main(int argc, char *argv[]); }
 class I3G4250D : public device::CDev
 {
 public:
-	I3G4250D(int bus, const char* path, ESpi_device_id device, enum Rotation rotation);
+	I3G4250D(int bus, const char* path, enum Rotation rotation);
 	virtual ~I3G4250D();
 
 	virtual int		init();
@@ -210,19 +211,23 @@ public:
 	// trigger an error
 	void			test_error();
 
+	/**
+	 * Write a register in the I3G4250D, updating _checked_values
+	 *
+	 * @param reg		The register to write.
+	 * @param value		The new value to write.
+	 */
+	void			write_checked_reg(unsigned reg, uint8_t value);
+
 protected:
 	virtual int		probe();
 
 private:
 
-#ifdef USE_HRT
-	struct hrt_call		_call;
-#else
     xTimerHandle    _call;
-#endif
 	unsigned		_call_interval;
 
-	RingBuffer_t	*_reports;
+	ringbuf_t	*_reports;
 
 	struct gyro_scale	_gyro_scale;
 	float			_gyro_range_scale;
@@ -237,6 +242,11 @@ private:
 
 	unsigned		_read;
 
+	perf_counter_t		_sample_perf;
+	perf_counter_t		_errors;
+	perf_counter_t		_bad_registers;
+	perf_counter_t		_duplicates;
+
 	uint8_t			_register_wait;
 
 	LowPassFilter2p<float>	_gyro_filter_x;
@@ -249,7 +259,7 @@ private:
 	// configuration registers to detect SPI bus errors and sensor
 	// reset
 
-	struct SDeviceViaSpi _devInstance;
+    struct spi_node     i3g4250d_spi;
 
 #define I3G4250D_NUM_CHECKED_REGISTERS 8
 	static const uint8_t	_checked_registers[I3G4250D_NUM_CHECKED_REGISTERS];
@@ -281,7 +291,7 @@ private:
 	 *
 	 * @return true if the sensor is not on the main MCU board
 	 */
-	bool			is_external() { return 0;/*(_bus == EXTERNAL_BUS); */}
+	bool			is_external() {return (i3g4250d_spi.bus_id == EXTERNAL_BUS);}
 
 	/**
 	 * Static trampoline from the hrt_call context; because we don't have a
@@ -292,12 +302,7 @@ private:
 	 *
 	 * @param arg		Instance pointer for the driver that is polling.
 	 */
-#ifdef USE_HRT
-	static void		measure_trampoline(void *arg);
-#else
-
 	static void		measure_trampoline(xTimerHandle xTimer);
-#endif
 	/**
 	 * check key registers for correct values
 	 */
@@ -334,14 +339,6 @@ private:
 	 * @param setbits	Bits in the register to set.
 	 */
 	void			modify_reg(unsigned reg, uint8_t clearbits, uint8_t setbits);
-
-	/**
-	 * Write a register in the I3G4250D, updating _checked_values
-	 *
-	 * @param reg		The register to write.
-	 * @param value		The new value to write.
-	 */
-	void			write_checked_reg(unsigned reg, uint8_t value);
 
 	/**
 	 * Set the I3G4250D measurement range.
@@ -396,8 +393,9 @@ const uint8_t I3G4250D::_checked_registers[I3G4250D_NUM_CHECKED_REGISTERS] = { A
                                                                            ADDR_FIFO_CTRL_REG,
 									   ADDR_LOW_ODR };
 
-I3G4250D::I3G4250D(int bus, const char* path, ESpi_device_id device, enum Rotation rotation) :
+I3G4250D::I3G4250D(int bus, const char* path, enum Rotation rotation) :
 	CDev("i3g4250d", path),
+    _call(NULL),
 	_call_interval(0),
 	_reports(NULL),
 	_gyro_range_scale(0.0f),
@@ -409,6 +407,10 @@ I3G4250D::I3G4250D(int bus, const char* path, ESpi_device_id device, enum Rotati
 	_current_bandwidth(50),
 	_orientation(SENSOR_BOARD_ROTATION_DEFAULT),
 	_read(0),
+	_sample_perf(perf_alloc(PC_ELAPSED, "i3g4250d_read")),
+	_errors(perf_alloc(PC_COUNT, "i3g4250d_errors")),
+	_bad_registers(perf_alloc(PC_COUNT, "i3g4250d_bad_registers")),
+	_duplicates(perf_alloc(PC_COUNT, "i3g4250d_duplicates")),
 	_register_wait(0),
 	_gyro_filter_x(I3G4250D_DEFAULT_RATE, I3G4250D_DEFAULT_FILTER_FREQ),
 	_gyro_filter_y(I3G4250D_DEFAULT_RATE, I3G4250D_DEFAULT_FILTER_FREQ),
@@ -427,12 +429,22 @@ I3G4250D::I3G4250D(int bus, const char* path, ESpi_device_id device, enum Rotati
 	_gyro_scale.z_offset = 0;
 	_gyro_scale.z_scale  = 1.0f;
 
-	_devInstance.spi_id = bus;
-	DeviceViaSpiCfgInitialize(&_devInstance,
-							device, 
-							"i3g4250d",
-							ESPI_CLOCK_MODE_2,
-							(11*1000*1000));
+    i3g4250d_spi.bus_id = bus;
+
+    if(bus == PX4_SPI_BUS_SENSORS)
+    {
+        i3g4250d_spi.cs_pin = GPIO_SPI_CS_GYRO;
+    }
+    else
+    {
+        i3g4250d_spi.cs_pin = GPIO_SPI_CS_EXT;
+    }
+
+    i3g4250d_spi.frequency = 11*1000*1000;     //spi frequency
+
+    spi_cs_init(&i3g4250d_spi);
+    spi_register_node(&i3g4250d_spi);
+
 }
 
 I3G4250D::~I3G4250D()
@@ -442,33 +454,43 @@ I3G4250D::~I3G4250D()
 
 	/* free any existing reports */
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 	}
 
 	if (_class_instance != -1)
 		unregister_class_devname(GYRO_BASE_DEVICE_PATH, _class_instance);
+
+    spi_deregister_node(&i3g4250d_spi);
+
+	/* delete the perf counter */
+	perf_free(_sample_perf);
+	perf_free(_errors);
+	perf_free(_bad_registers);
+	perf_free(_duplicates);
 }
 
 int
 I3G4250D::init()
 {
-	int ret = DEV_FAILURE;
+	int ret = ERROR;
+
+
+	if (probe() != OK)
+		goto out;
 
 	/* do SPI init (and probe) first */
 	if (CDev::init() != OK)
 		goto out;
 
-	if (probe() != OK)
-		goto out;
-
-
 	/* allocate basic report buffers */
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 		_reports = NULL;
 	}
-	_reports = (RingBuffer_t *) pvPortMalloc (sizeof(RingBuffer_t));
-	iRingBufferInit(_reports, 2, sizeof(gyro_report));
+	_reports = (ringbuf_t *) pvPortMalloc (sizeof(ringbuf_t));
+	ringbuf_init(_reports, 2, sizeof(struct gyro_report));
 
 	if (_reports == NULL)
 		goto out;
@@ -481,7 +503,7 @@ I3G4250D::init()
 
 	/* advertise sensor topic, measure manually to initialize valid report */
 	struct gyro_report grp;
-	xRingBufferGet(_reports, &grp, sizeof(struct gyro_report));
+	ringbuf_get(_reports, &grp, sizeof(struct gyro_report));
 
 	_gyro_topic = orb_advertise_multi(ORB_ID(sensor_gyro), &grp,
 		&_orb_class_instance, (is_external()) ? ORB_PRIO_VERY_HIGH : ORB_PRIO_DEFAULT);
@@ -506,9 +528,12 @@ I3G4250D::probe()
 
 	/* verify that the device is attached and functioning, accept
 	 * i3g4250d*/
+    while(success==false)
 	if ((v=read_reg(ADDR_WHO_AM_I)) == WHO_I_AM) {
 		success = true;
 	}
+
+    //pilot_info("I3G4250D whoe am i:%x\n", v);
 	
 	if (success) {
 		_checked_values[0] = v;
@@ -538,7 +563,7 @@ I3G4250D::read(struct file *filp, char *buffer, size_t buflen)
 		 * we are careful to avoid racing with it.
 		 */
 		while (count--) {
-			if (0 == xRingBufferGet(_reports, gbuf, sizeof(*gbuf))) {
+			if (0 == ringbuf_get(_reports, gbuf, sizeof(*gbuf))) {
 				ret += sizeof(*gbuf);
 				gbuf++;
 			}
@@ -549,11 +574,11 @@ I3G4250D::read(struct file *filp, char *buffer, size_t buflen)
 	}
 
 	/* manual measurement */
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 	measure();
 
 	/* measurement will have generated a report, copy it out */
-	if (0 == xRingBufferGet(_reports, gbuf, sizeof(*gbuf))) {
+	if (0 == ringbuf_get(_reports, gbuf, sizeof(*gbuf))) {
 		ret = sizeof(*gbuf);
 	}
 
@@ -601,9 +626,6 @@ I3G4250D::ioctl(struct file *filp, int cmd, unsigned long arg)
 					/* update interval for next measurement */
 					/* XXX this is a bit shady, but no other way to adjust... */
 					_call_interval = ticks;
-                #ifdef USE_HRT
-                    _call.period = _call_interval - I3G4250D_TIMER_REDUCTION;
-                #endif
 
 					/* adjust filters */
 					float cutoff_freq_hz = _gyro_filter_x.get_cutoff_freq();
@@ -631,7 +653,7 @@ I3G4250D::ioctl(struct file *filp, int cmd, unsigned long arg)
 			return -EINVAL;
 
 		irqstate_t flags = irqsave();
-		if (!xRingBufferResize(_reports, arg)) {
+		if (!ringbuf_resize(_reports, arg)) {
 			irqrestore(flags);
 			return -ENOMEM;
 		}
@@ -641,7 +663,7 @@ I3G4250D::ioctl(struct file *filp, int cmd, unsigned long arg)
 	}
 
 	case SENSORIOCGQUEUEDEPTH:
-		return iRingBufferSize(_reports);
+		return ringbuf_size(_reports);
 
 	case SENSORIOCRESET:
 		reset();
@@ -706,7 +728,7 @@ I3G4250D::read_reg(unsigned reg)
 	cmd[0] = reg | DIR_READ;
 	cmd[1] = 0;
 
-	SpiTransfer(&_devInstance, cmd, cmd, sizeof(cmd));
+	spi_transfer(&i3g4250d_spi, cmd, cmd, sizeof(cmd));
 
 	return cmd[1];
 }
@@ -719,7 +741,7 @@ I3G4250D::write_reg(unsigned reg, uint8_t value)
 	cmd[0] = reg | DIR_WRITE;
 	cmd[1] = value;
 
-	SpiTransfer(&_devInstance, cmd, NULL, sizeof(cmd));
+	spi_transfer(&i3g4250d_spi, cmd, NULL, sizeof(cmd));
 }
 
 void
@@ -861,33 +883,23 @@ I3G4250D::start()
 //	stop();
 
 	/* reset the report ring */
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 
 	/* start polling at the specified rate */
-#ifdef USE_HRT //hrt会和freertos的调度有冲突，默认不用
-	hrt_call_every(&_call,
-                       1000,
-                       _call_interval - I3G4250D_TIMER_REDUCTION,
-                       (hrt_callout)&I3G4250D::measure_trampoline, this);
-#else
     int ticks = USEC2TICK(_call_interval);
     if(ticks == 0)
         ticks = 1;//定时器时间间隔不可为0
 	/* reset the report ring and state machine */
-	_call = xTimerCreate("accel timer", USEC2TICK(_call_interval), pdTRUE, this, &I3G4250D::measure_trampoline);
+	_call = xTimerCreate("gyro timer", USEC2TICK(_call_interval), pdTRUE, this, &I3G4250D::measure_trampoline);
 	xTimerStart(_call, portMAX_DELAY);
-#endif
 	
 }
 
 void
 I3G4250D::stop()
 {
-#ifdef USE_HRT
-	hrt_cancel(&_call);
-#else
-    xTimerDelete(_call, portMAX_DELAY);
-#endif
+    if(_call != NULL)
+        xTimerDelete(_call, portMAX_DELAY);
 }
 
 void
@@ -915,6 +927,10 @@ I3G4250D::disable_i2c(void)
 void
 I3G4250D::reset()
 {
+    write_checked_reg(ADDR_CTRL_REG1, 0);//进入power down模式,规避开机上电陀螺仪不正常的问题
+
+	vTaskDelay(100 / portTICK_RATE_MS);
+
 	/* set default configuration */
 	write_checked_reg(ADDR_CTRL_REG1,
                           REG1_POWER_NORMAL | REG1_Z_ENABLE | REG1_Y_ENABLE | REG1_X_ENABLE);
@@ -933,14 +949,12 @@ I3G4250D::reset()
 	set_range(I3G4250D_DEFAULT_RANGE_DPS);
 	set_driver_lowpass_filter(I3G4250D_DEFAULT_RATE, I3G4250D_DEFAULT_FILTER_FREQ);
 
+	vTaskDelay(100 / portTICK_RATE_MS);
+
 	_read = 0;
 }
 
-#if USE_HRT 
-void I3G4250D::measure_trampoline(void *arg)
-#else
 void I3G4250D::measure_trampoline(xTimerHandle xTimer)
-#endif
 {
     void *timer_id = pvTimerGetTimerID(xTimer);
 	I3G4250D *dev = (I3G4250D *)timer_id;
@@ -954,6 +968,14 @@ I3G4250D::check_registers(void)
 {
 	uint8_t v;
 	if ((v=read_reg(_checked_registers[_checked_next])) != _checked_values[_checked_next]) {
+
+        /*
+		  if we get the wrong value then we know the SPI bus
+		  or sensor is very sick. We set _register_wait to 20
+		  and wait until we have seen 20 good values in a row
+		  before we consider the sensor to be OK again.
+		 */
+		perf_count(_bad_registers);
 
 		/*
 		  try to fix the bad register value. We only try to
@@ -982,15 +1004,22 @@ I3G4250D::measure()
 		int16_t		z;
 	} raw_report;
     uint8_t raw_data[9];
+/*	
+	static hrt_abstime start_time=0;
+    static unsigned int count = 0;
+	*/
 
-	gyro_report report = {0};
+	struct gyro_report report = {0};
 
-        check_registers();
+	/* start the performance counter */
+	perf_begin(_sample_perf);
+
+    check_registers();
 
 	/* fetch data from the sensor */
 	memset(raw_data, 0, sizeof(raw_data));
 	raw_data[0] = ADDR_OUT_TEMP | DIR_READ | ADDR_INCREMENT;
-	SpiTransfer(&_devInstance, raw_data, raw_data, sizeof(raw_data));
+	spi_transfer(&i3g4250d_spi, raw_data, raw_data, sizeof(raw_data));
 
     raw_report.temp = raw_data[1];
     raw_report.status = raw_data[2];
@@ -999,7 +1028,9 @@ I3G4250D::measure()
     raw_report.z = ((int16_t)raw_data[8] << 8) | raw_data[7];
 
     if (!(raw_report.status & STATUS_ZYXDA)) {
-    return;
+		perf_end(_sample_perf);
+		perf_count(_duplicates);
+        return;
     }
 
 	/*
@@ -1017,6 +1048,17 @@ I3G4250D::measure()
 	 *		  74 from all measurements centers them around zero.
 	 */
 	report.timestamp = hrt_absolute_time();
+    report.error_count = perf_event_count(_bad_registers);
+   
+   /*
+    count++;
+    if(report.timestamp - start_time >= 1000000)
+    {
+        start_time = report.timestamp;
+        printf("count=%d x=%x y=%x z=%x\n", count, raw_report.x, raw_report.y, raw_report.z);
+        count = 0;
+    }
+	*/
 
 	switch (_orientation) {
 
@@ -1079,7 +1121,7 @@ I3G4250D::measure()
 	report.range_rad_s = _gyro_range_rad_s;
 //	printf("%9.5f, %9.5f, %9.5f\n\r",report.x, report.y, report.z);
 
-	xRingBufferForce(_reports, &report, sizeof(report));
+	ringbuf_force(_reports, &report, sizeof(report));
 
 	/* notify anyone waiting for data */
 	poll_notify(POLLIN);
@@ -1093,13 +1135,20 @@ I3G4250D::measure()
 	}
 
 	_read++;
+
+	/* stop the perf counter */
+	perf_end(_sample_perf);
 }
 
 void
 I3G4250D::print_info()
 {
 	printf("gyro reads:          %u\n", _read);
-	vRingBufferPrintInfo(_reports, "report queue");
+    perf_print_counter(_sample_perf);
+	perf_print_counter(_errors);
+	perf_print_counter(_bad_registers);
+	perf_print_counter(_duplicates);
+	ringbuf_printinfo(_reports, "report queue");
         ::printf("checked_next: %u\n", _checked_next);
         for (uint8_t i=0; i<I3G4250D_NUM_CHECKED_REGISTERS; i++) {
             uint8_t v = read_reg(_checked_registers[i]);
@@ -1189,10 +1238,16 @@ start(bool external_bus, enum Rotation rotation)
 
 	/* create the driver */
     if (external_bus) {
+#ifdef PX4_SPI_BUS_EXT
+		g_dev[external_bus] = new I3G4250D(PX4_SPI_BUS_EXT, I3G4250D_EXT_DEVICE_PATH, rotation);
+#else
 		errx(0, "External SPI not available");
 		return;
-	} else {
-		g_dev[external_bus] = new I3G4250D(SPI_DEVICE_ID_FOR_SENSOR, I3G4250D_DEVICE_PATH, (ESpi_device_id)ESPI_DEVICE_TYPE_GYRO, rotation);
+#endif
+	}
+    else
+    {
+		g_dev[external_bus] = new I3G4250D(SPI_DEVICE_ID_FOR_SENSOR, I3G4250D_DEVICE_PATH, rotation);
 	}
 	
 	if (g_dev[external_bus] == NULL)
@@ -1261,12 +1316,6 @@ test(int external_bus)
 		}
 	}
 	
-	/* reset to manual polling */
-	if (ioctl(fd_gyro, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_MANUAL) < 0){
-		err(1, "reset to manual polling");
-		return;
-	}
-
 	/* do a simple demand read */
 	sz = read(fd_gyro, (char*)&g_report, sizeof(g_report));
 
@@ -1278,18 +1327,13 @@ test(int external_bus)
 	warnx("gyro x: \t% 9.5f\trad/s", (double)g_report.x);
 	warnx("gyro y: \t% 9.5f\trad/s", (double)g_report.y);
 	warnx("gyro z: \t% 9.5f\trad/s", (double)g_report.z);
-	warnx("temp: \t%d\tC", (int)g_report.temperature);
+	warnx("temp: \t%f\tC", (int)g_report.temperature);
 	warnx("gyro x: \t%d\traw", (int)g_report.x_raw);
 	warnx("gyro y: \t%d\traw", (int)g_report.y_raw);
 	warnx("gyro z: \t%d\traw", (int)g_report.z_raw);
 	warnx("temp: \t%d\traw", (int)g_report.temperature_raw);
 	warnx("gyro range: %8.4f rad/s (%d deg/s)", (double)g_report.range_rad_s,
 	      (int)((g_report.range_rad_s / M_PI_F) * 180.0f + 0.5f));
-
-	if (ioctl(fd_gyro, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0){
-		err(1, "reset to default polling");
-		return;
-	}
 
     close(fd_gyro);
 
@@ -1381,6 +1425,17 @@ test_error(int external_bus)
 	return;
 }
 
+void regwrite(int external_bus, uint8_t reg, uint8_t value)
+{
+	if (g_dev[external_bus] == NULL) {
+		errx(1, "driver not running");
+		return;
+	}
+
+    printf("write reg 0x%x value 0x%x\n", reg, value);
+	g_dev[external_bus]->write_checked_reg(reg, value);
+}
+
 void
 usage()
 {
@@ -1463,6 +1518,22 @@ int i3g4250d_main(int argc, char *argv[])
 		i3g4250d::test_error(external_bus);
 		return 0;
 	}
+
+    if(!strcmp(verb, "regw"))
+    {
+        uint8_t reg, value;
+
+		if (argc < 4) {
+			warnx("Usage: i3g4250d regw <reg> <value>");
+			return 1;
+		}
+
+		reg = strtol(argv[2], NULL, 0);
+		value = strtol(argv[3], NULL, 0);
+
+        i3g4250d::regwrite(external_bus, reg, value);
+        return 0;
+    }
 
 	errx(1, "unrecognized command, try 'start', 'test', 'reset', 'info', 'testerror' or 'regdump'");
 	return 0;

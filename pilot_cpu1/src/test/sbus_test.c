@@ -1,4 +1,4 @@
-#include "FreeRTOS_Print.h" 
+#include "pilot_print.h" 
 #include "ringbuffer.h"
 #include "xuartps.h"
 
@@ -16,7 +16,7 @@ static void prvSbusTask( void *pvParameters )
     sbus_fd = sbus_init(RC_SERIAL_PORT, true);
     if(sbus_fd == 0)
     {
-        Print_Err("sbus init error!!\n");
+        pilot_err("sbus init error!!\n");
     }
 
 	while(1)
@@ -32,7 +32,7 @@ static void prvSbusTask( void *pvParameters )
         {
             for(i=0; i<raw_rc_count; i++)
             {
-               Print_Info("raw_rc_values[%d]=%d\n", i, raw_rc_values[i]);
+               pilot_info("raw_rc_values[%d]=%d\n", i, raw_rc_values[i]);
             }
         }
 
@@ -43,6 +43,6 @@ static void prvSbusTask( void *pvParameters )
 void SbusTest()
 {
 
-	Print_Info("create sbus task:%d\n", xTaskCreate(prvSbusTask, "subs", configMINIMAL_STACK_SIZE*2, NULL, 1, NULL));
+	pilot_info("create sbus task:%d\n", xTaskCreate(prvSbusTask, "subs", configMINIMAL_STACK_SIZE*2, NULL, 1, NULL));
 }
 

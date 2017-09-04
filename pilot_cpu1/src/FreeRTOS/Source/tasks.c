@@ -1559,6 +1559,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 	}
 
 #endif /* INCLUDE_vTaskPrioritySet */
+
 /*-----------------------------------------------------------*/
 
 #if ( INCLUDE_vTaskSuspend == 1 )

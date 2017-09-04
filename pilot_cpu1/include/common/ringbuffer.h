@@ -9,80 +9,80 @@ extern "C"{
 #include <stdbool.h>
 #include <stdlib.h>
 #include "stdint.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "FreeRTOS.h"
 
-typedef struct xRingBuffer
+typedef struct ringbuffer
 {
-	unsigned			_NumItems;
-	size_t		_ItemSize;
-	uint8_t				*_ucBuf;
-	volatile unsigned	_Head;
-	volatile unsigned	_Tail;
-}RingBuffer_t;
+	unsigned			item_num;
+	size_t		item_size;
+	uint8_t				*_buf;
+	volatile unsigned	_head;
+	volatile unsigned	_tail;
+}ringbuf_t;
 
-static inline int iRingBufferInit(RingBuffer_t *pxRingBuf, unsigned xNumItems, unsigned xItemSize)
+static inline int ringbuf_init(ringbuf_t *ringbuf, unsigned item_num, unsigned item_size)
 {
-	pxRingBuf->_NumItems = xNumItems;
-	pxRingBuf->_ItemSize = xItemSize;
-	pxRingBuf->_Head = 0;
-	pxRingBuf->_Tail = 0;
-	pxRingBuf->_ucBuf = (uint8_t *)pvPortMalloc((xNumItems+1) * xItemSize);
-	if(pxRingBuf->_ucBuf == NULL)
+	ringbuf->item_num = item_num;
+	ringbuf->item_size = item_size;
+	ringbuf->_head = 0;
+	ringbuf->_tail = 0;
+	ringbuf->_buf = (uint8_t *)pvPortMalloc((item_num+1) * item_size);
+	if(ringbuf->_buf == NULL)
 	{
 		return -1;
 	}
-    memset(pxRingBuf->_ucBuf, 0, (xNumItems+1) * xItemSize);
+    memset(ringbuf->_buf, 0, (item_num+1) * item_size);
 	
 	return 0;
 }
 
-static inline int iRingBufferDeInit(RingBuffer_t *pxRingBuf)
+static inline int ringbuf_deinit(ringbuf_t *ringbuf)
 {
-	pxRingBuf->_NumItems = 0;
-	pxRingBuf->_ItemSize = 0;
-	pxRingBuf->_Head = 0;
-	pxRingBuf->_Tail = 0;
+	ringbuf->item_num = 0;
+	ringbuf->item_size = 0;
+	ringbuf->_head = 0;
+	ringbuf->_tail = 0;
     
-    if(pxRingBuf != NULL)
-    	vPortFree(pxRingBuf->_ucBuf);
+    if(ringbuf != NULL)
+    	vPortFree(ringbuf->_buf);
 	
     return 0;
 }
 
-static inline unsigned _xNext(RingBuffer_t *pxRingBuf, unsigned xIndex)
+static inline unsigned _next(ringbuf_t *ringbuf, unsigned index)
 {
-	return (pxRingBuf->_NumItems - 1 == xIndex) ? 0 : (xIndex + 1);
+	return (ringbuf->item_num - 1 == index) ? 0 : (index + 1);
 }
 
-//从buffer读数据，如果vBuf为空，则只移动指针，不拷数据，相当于丢掉最旧的数据
-static inline bool xRingBufferGet(RingBuffer_t *pxRingBuf,void *vBuf, size_t xGetLen)
+//从buffer读数据，如果buf为空，则只移动指针，不拷数据，相当于丢掉最旧的数据
+static inline bool ringbuf_get(ringbuf_t *ringbuf,void *buf, size_t get_len)
 {
-	unsigned xCandidate;
-	unsigned xNext;
+	unsigned candidate;
+	unsigned next;
 
 	//buffer非空
-	if(pxRingBuf->_Tail != pxRingBuf->_Head)
+	if(ringbuf->_tail != ringbuf->_head)
 	{
-		if((xGetLen == 0) || (xGetLen > pxRingBuf->_ItemSize))
+		if((get_len == 0) || (get_len > ringbuf->item_size))
 		{
-			xGetLen = pxRingBuf->_ItemSize;
+			get_len = ringbuf->item_size;
 		}
 
 		do
 		{
-			xCandidate = pxRingBuf->_Tail;
+			candidate = ringbuf->_tail;
 			
-			xNext = _xNext(pxRingBuf, xCandidate);
+			next = _next(ringbuf, candidate);
 
-			if(vBuf != NULL)	
+			if(buf != NULL)	
 			{
-				memcpy(vBuf, &pxRingBuf->_ucBuf[xCandidate * pxRingBuf->_ItemSize], xGetLen);
+				memcpy(buf, &ringbuf->_buf[candidate * ringbuf->item_size], get_len);
 			}
 
 				//GCC提供的原子操作
-		}while(!__sync_bool_compare_and_swap(&pxRingBuf->_Tail, xCandidate, xNext));
-		//Print_Warn("tail=%d\n", pxRingBuf->_Tail);
+		}while(!__sync_bool_compare_and_swap(&ringbuf->_tail, candidate, next));
+		//pilot_warn("tail=%d\n", ringbuf->_tail);
 		return 0;
 	}
 	else
@@ -91,20 +91,20 @@ static inline bool xRingBufferGet(RingBuffer_t *pxRingBuf,void *vBuf, size_t xGe
 	}
 }
 
-static inline bool xRingBufferPut(RingBuffer_t *pxRingBuf,const void *vBuf, size_t xPutLen)
+static inline bool ringbuf_put(ringbuf_t *ringbuf,const void *buf, size_t put_len)
 {
-	unsigned xNext = _xNext(pxRingBuf, pxRingBuf->_Head);
+	unsigned next = _next(ringbuf, ringbuf->_head);
 
-	if(xNext != pxRingBuf->_Tail)
+	if(next != ringbuf->_tail)
 	{
-		if((xPutLen == 0) || (xPutLen > pxRingBuf->_ItemSize))
+		if((put_len == 0) || (put_len > ringbuf->item_size))
 		{
-			xPutLen = pxRingBuf->_ItemSize;
+			put_len = ringbuf->item_size;
 		}
 
-		memcpy(&pxRingBuf->_ucBuf[pxRingBuf->_Head * pxRingBuf->_ItemSize], vBuf, xPutLen);
-		pxRingBuf->_Head = xNext;
-		//Print_Warn("head=%d\n", pxRingBuf->_Head);
+		memcpy(&ringbuf->_buf[ringbuf->_head * ringbuf->item_size], buf, put_len);
+		ringbuf->_head = next;
+		//pilot_warn("head=%d\n", ringbuf->_head);
 		return 0;
 	}
 	else
@@ -113,9 +113,9 @@ static inline bool xRingBufferPut(RingBuffer_t *pxRingBuf,const void *vBuf, size
 	}
 }
 
-static inline int iRingBufferGetAvailable(RingBuffer_t *pxRingBuf)
+static inline int ringbuf_available(ringbuf_t *ringbuf)
 {
-	unsigned xTail, xHead;
+	unsigned tail, head;
 
 	/*
 	 * Make a copy of the head/tail pointers in a fashion that
@@ -126,17 +126,17 @@ static inline int iRingBufferGetAvailable(RingBuffer_t *pxRingBuf)
 	 * re-try the copy.
 	 */
 	do {
-		xHead = pxRingBuf->_Head;
-		xTail = pxRingBuf->_Tail;
-	} while (xHead != pxRingBuf->_Head);
+		head = ringbuf->_head;
+		tail = ringbuf->_tail;
+	} while (head != ringbuf->_head);
 
 
-	return (xTail <= xHead) ? (xHead - xTail) : (pxRingBuf->_NumItems - xTail + xHead);	
+	return (tail <= head) ? (head - tail) : (ringbuf->item_num - tail + head);	
 }
 
-static inline int iRingBufferGetSpace(RingBuffer_t *pxRingBuf)
+static inline int ringbuf_space(ringbuf_t *ringbuf)
 {
-	unsigned xTail, xHead;
+	unsigned tail, head;
 
 	/*
 	 * Make a copy of the head/tail pointers in a fashion that
@@ -147,80 +147,80 @@ static inline int iRingBufferGetSpace(RingBuffer_t *pxRingBuf)
 	 * re-try the copy.
 	 */
 	do {
-		xHead = pxRingBuf->_Head;
-		xTail = pxRingBuf->_Tail;
-	} while (xHead != pxRingBuf->_Head);
+		head = ringbuf->_head;
+		tail = ringbuf->_tail;
+	} while (head != ringbuf->_head);
 
-	return (xTail > xHead) ? (xTail - xHead - 1) : (pxRingBuf->_NumItems - xHead + xTail - 1);	
+	return (tail > head) ? (tail - head - 1) : (ringbuf->item_num - head + tail - 1);	
 }
 
-static inline bool xRingBufferEmpty(RingBuffer_t *pxRingBuf)
+static inline bool ringbuf_empty(ringbuf_t *ringbuf)
 {
-    return pxRingBuf->_Head == pxRingBuf->_Tail;
+    return ringbuf->_head == ringbuf->_tail;
 }
 
-static inline void vRingBufferFlush(RingBuffer_t *pxRingBuf)
+static inline void ringbuf_flush(ringbuf_t *ringbuf)
 {
 
-	while (!xRingBufferEmpty(pxRingBuf)) {
-		xRingBufferGet(pxRingBuf, NULL, 0);
+	while (!ringbuf_empty(ringbuf)) {
+		ringbuf_get(ringbuf, NULL, 0);
 	}
     return ;
 }
 
-static inline bool xRingBufferForce(RingBuffer_t *pxRingBuf,const void *vBuf, size_t xPutLen)
+static inline bool ringbuf_force(ringbuf_t *ringbuf,const void *buf, size_t put_len)
 {
 
 	bool overwrote = false;
 
 	for (;;) {
-		if (xRingBufferPut(pxRingBuf, vBuf, xPutLen) == 0) {
+		if (ringbuf_put(ringbuf, buf, put_len) == 0) {
 			break;
 		}
 
         //删除buffer中最旧的数据，给新数据腾空间
-		xRingBufferGet(pxRingBuf, NULL, 0);
+		ringbuf_get(ringbuf, NULL, 0);
 		overwrote = true;
 	}
 
 	return overwrote;
 }
 
-static inline int iRingBufferSize(RingBuffer_t *pxRingBuf)
+static inline int ringbuf_size(ringbuf_t *ringbuf)
 {
 
-    return (pxRingBuf->_ucBuf != NULL) ? pxRingBuf->_NumItems : 0;
+    return (ringbuf->_buf != NULL) ? ringbuf->item_num : 0;
 }
 
-static inline bool xRingBufferResize(RingBuffer_t *pxRingBuf, int iNewSize)
+static inline bool ringbuf_resize(ringbuf_t *ringbuf, int iNewSize)
 {
-	uint8_t *OldBuffer;
-	uint8_t *NewBuffer = (uint8_t *)pvPortMalloc((iNewSize + 1) * pxRingBuf->_ItemSize);
+	uint8_t *old_buf;
+	uint8_t *new_buf = (uint8_t *)pvPortMalloc((iNewSize + 1) * ringbuf->item_size);
 
-	if (NewBuffer == NULL) {
+	if (new_buf == NULL) {
 		return false;
 	}
 
-    memset(NewBuffer, 0, (iNewSize + 1) * pxRingBuf->_ItemSize);
+    memset(new_buf, 0, (iNewSize + 1) * ringbuf->item_size);
 
-	OldBuffer = pxRingBuf->_ucBuf;
-	pxRingBuf->_ucBuf = NewBuffer;
-	pxRingBuf->_NumItems = iNewSize;
-	pxRingBuf->_Head = 0;
-	pxRingBuf->_Tail = 0;
-    vPortFree(OldBuffer);
+	old_buf = ringbuf->_buf;
+	ringbuf->_buf = new_buf;
+	ringbuf->item_num = iNewSize;
+	ringbuf->_head = 0;
+	ringbuf->_tail = 0;
+    vPortFree(old_buf);
 	return true;
 }
 
-static inline void vRingBufferPrintInfo(RingBuffer_t *pxRingBuf, const char *pcName)
+static inline void ringbuf_printinfo(ringbuf_t *ringbuf, const char *name)
 {
-	Print_Info("%s	%u/%lu (%u/%u @ %p)\n",
-	       pcName,
-	       pxRingBuf->_NumItems,
-	       (unsigned long)pxRingBuf->_NumItems*pxRingBuf->_ItemSize,
-	       pxRingBuf->_Head,
-	       pxRingBuf->_Tail,
-	       pxRingBuf->_ucBuf);
+	printf("%s	%u/%lu (%u/%u @ %p)\n",
+	       name,
+	       ringbuf->item_num,
+	       (unsigned long)ringbuf->item_num*ringbuf->item_size,
+	       ringbuf->_head,
+	       ringbuf->_tail,
+	       ringbuf->_buf);
 }
 
 #ifdef __cplusplus

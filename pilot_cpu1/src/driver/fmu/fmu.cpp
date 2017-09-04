@@ -37,7 +37,7 @@
  * Driver/configurator for the PX4 FMU multi-purpose port on v1 and v2 boards.
  */
 #include "device/cdev.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "math.h"
 #include "driver_define.h"
 #include "board_config.h"
@@ -252,7 +252,7 @@ PX4FMU::PX4FMU() :
 	memset(&_rc_in, 0, sizeof(_rc_in));
 	_rc_in.input_source = input_rc_s::RC_INPUT_SOURCE_PX4FMU_PPM;
 #endif
-    //Print_Info("timer=%d\n", USEC2TICK(CONTROL_INPUT_DROP_LIMIT_MS * 1000));
+    //pilot_info("timer=%d\n", USEC2TICK(CONTROL_INPUT_DROP_LIMIT_MS * 1000));
 	_work = xTimerCreate("FMU_Timer",
 						USEC2TICK(CONTROL_INPUT_DROP_LIMIT_MS * 1000),
 						pdTRUE,
@@ -422,7 +422,7 @@ PX4FMU::set_mode(Mode mode)
 int
 PX4FMU::set_pwm_rate(unsigned rate_map, unsigned default_rate, unsigned alt_rate)
 {
-	Print_Info("set_pwm_rate %x %u %u\n", rate_map, default_rate, alt_rate);
+	pilot_info("set_pwm_rate %x %u %u\n", rate_map, default_rate, alt_rate);
 
 	for (unsigned pass = 0; pass < 2; pass++) {
 		for (unsigned group = 0; group < _max_actuators; group++) {
@@ -486,7 +486,7 @@ PX4FMU::set_pwm_alt_channels(unsigned channels)
 int
 PX4FMU::set_i2c_bus_clock(unsigned bus, unsigned clock_hz)
 {
-	return DEV_FAILURE;
+	return ERROR;
 }
 
 void
@@ -753,7 +753,7 @@ PX4FMU::cycle()
 
 		for (uint8_t i = 0; i < _rc_in.channel_count; i++) {
 			_rc_in.values[i] = raw_rc_values[i];
-       //     Print_Info("value[%d]=%d\n", i, _rc_in.values[i]);
+       //     pilot_info("value[%d]=%d\n", i, _rc_in.values[i]);
 		}
 
 		_rc_in.timestamp_publication = hrt_absolute_time();
@@ -943,7 +943,7 @@ PX4FMU::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 		break;
 
 	case PWM_SERVO_SET_UPDATE_RATE:
-		Print_Info("all pwm update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", _pwm_default_rate, arg);
+		pilot_info("all pwm update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", _pwm_default_rate, arg);
 		ret = set_pwm_rate(_pwm_alt_rate_channels, _pwm_default_rate, arg);
 		break;
 
@@ -952,7 +952,7 @@ PX4FMU::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 		break;
 
 	case PWM_SERVO_SET_SELECT_UPDATE_RATE:
-		Print_Info("pwm %d update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", arg, _pwm_default_rate, _pwm_alt_rate);
+		pilot_info("pwm %d update rate: _pwm_default_rate=%d _pwm_alt_rate=%d\n", arg, _pwm_default_rate, _pwm_alt_rate);
 		ret = set_pwm_rate(arg, _pwm_default_rate, _pwm_alt_rate);
 		break;
 
@@ -1747,7 +1747,7 @@ fmu_main(int argc, char *argv[])
 		}
 
 		/* switch modes */
-		fmu_new_mode(new_mode);
+		return fmu_new_mode(new_mode);
 	}
 
 	if (!strcmp(verb, "test")) {

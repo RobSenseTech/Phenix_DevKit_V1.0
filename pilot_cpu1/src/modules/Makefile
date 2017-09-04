@@ -1,6 +1,15 @@
+UORB_PATH += $(MODULES_ROOT_PATH)/uORB/
+SRCS_UORB += $(shell find $(UORB_PATH) -name "*.cpp")
 
-MODULES_PATH += $(MODULES_ROOT_PATH)/uORB/
+OCM_PATH += $(MODULES_ROOT_PATH)/ocm/
+SRCS_OCM += $(OCM_PATH)/ocm.c
 
-SRCS_MODULES += $(shell find $(MODULES_PATH) -name "*.cpp")
+PERF_PATH += $(MODULES_ROOT_PATH)/perf/
+SRCS_PERF += $(PERF_PATH)/perf_counter.c
 
-OBJS_MODULES += $(SRCS_MODULES:%.cpp=%.o)
+OBJS_MODULES += $(SRCS_UORB:%.cpp=%.o)
+OBJS_MODULES += $(SRCS_OCM:%.c=%.o)
+OBJS_MODULES += $(SRCS_PERF:%.c=%.o)
+			
+
+

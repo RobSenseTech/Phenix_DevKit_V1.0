@@ -3,8 +3,9 @@
 #include "AP_HAL_PX4.h"
 #include "uORB/topics/actuator_outputs.h"
 #include "uORB/topics/actuator_armed.h"
+#include "perf/perf_counter.h"
 
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 
 #define PX4_NUM_OUTPUT_CHANNELS 16
 
@@ -39,6 +40,7 @@ private:
     uint16_t _period[PX4_NUM_OUTPUT_CHANNELS];
     volatile uint8_t _max_channel;
     volatile bool _need_update;
+    perf_counter_t  _perf_rcout;
     uint32_t _last_output;
     uint32_t _last_config_us;
     unsigned _servo_count;

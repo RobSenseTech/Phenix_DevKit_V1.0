@@ -6,7 +6,7 @@
 
 // uncomment this to force the optimisation of this code, note that
 // this makes debugging harder
-#pragma GCC optimize("O3")
+//#pragma GCC optimize("O3")
 
 #include "SoloGimbalEKF.h"
 #include <AP_Param/AP_Param.h>

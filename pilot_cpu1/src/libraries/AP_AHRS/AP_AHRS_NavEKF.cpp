@@ -657,7 +657,7 @@ bool AP_AHRS_NavEKF::healthy(void) const
     case 2: {
         bool ret = ekf2_started && EKF2.healthy();
         if (!ret) {
-            Print_Warn("ekf2_started=%d healthy=%d\n", ekf2_started, EKF2.healthy());
+            pilot_warn("ekf2_started=%d healthy=%d\n", ekf2_started, EKF2.healthy());
             return false;
         }
         if ((_vehicle_class == AHRS_VEHICLE_FIXED_WING ||

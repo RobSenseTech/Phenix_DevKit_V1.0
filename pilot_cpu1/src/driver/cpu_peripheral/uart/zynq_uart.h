@@ -33,6 +33,6 @@ typedef struct UartDataFormat
 
 #define UART_MODE_LOOP (1)
 
-uint32_t UartPsInit(int32_t iUartId);
+uint32_t uartps_init(int32_t iUartId);
 
 #endif

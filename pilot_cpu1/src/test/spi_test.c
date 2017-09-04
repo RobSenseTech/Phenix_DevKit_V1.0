@@ -1,11 +1,11 @@
-#include "FreeRTOS_Print.h" 
+#include "pilot_print.h" 
 #include "ringbuffer.h"
 #include "xuartps.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
-#include "spi/spi_backend.h"
+#include "spi/spi_drv.h"
 
 /* SPI protocol address bits */
 #define DIR_READ				(1<<7)
@@ -99,7 +99,7 @@
 #define I3G4250D_TEMP_OFFSET_CELSIUS		40
 
 
-struct SDeviceViaSpi _devInstance;
+struct spi_node test_spi;
 
 static void write_reg(unsigned reg, uint8_t value)
 {
@@ -108,7 +108,7 @@ static void write_reg(unsigned reg, uint8_t value)
 	cmd[0] = reg | DIR_WRITE;
 	cmd[1] = value;
 
-	SpiTransfer(&_devInstance, cmd, NULL, sizeof(cmd));
+	spi_transfer(&test_spi, cmd, NULL, sizeof(cmd));
 }
 
 static void write_checked_reg(unsigned reg, uint8_t value)
@@ -147,7 +147,7 @@ uint8_t read_reg(unsigned reg)
 	cmd[0] = reg | DIR_READ;
 	cmd[1] = 0;
 
-	SpiTransfer(&_devInstance, cmd, cmd, sizeof(cmd));
+	spi_transfer(&test_spi, cmd, cmd, sizeof(cmd));
 
 	return cmd[1];
 }
@@ -164,7 +164,7 @@ static void prvSpiTask( void *pvParameters )
 
 
 	_gyro_range_scale = new_range_scale_dps_digit / 180.0f * 3.14159265358979323846f;
-    Print_Err("reg4=%x\n", read_reg(ADDR_CTRL_REG4));
+    pilot_err("reg4=%x\n", read_reg(ADDR_CTRL_REG4));
     while(1)
     {
         v = read_reg(ADDR_WHO_AM_I);
@@ -186,8 +186,8 @@ static void prvSpiTask( void *pvParameters )
 	yf= (((float)yf* _gyro_range_scale)) * 1.0f;
 	zf= (((float)zf* _gyro_range_scale)) * 1.0f;
 
-        Print_Info("v=%x x=%f y=%f z=%f\n", v, xf, yf, zf);
-    //    Print_Info("v=%x x=%d y=%d z=%d\n", v, x, y, z);
+        pilot_info("v=%x x=%f y=%f z=%f\n", v, xf, yf, zf);
+    //    pilot_info("v=%x x=%d y=%d z=%d\n", v, x, y, z);
 		vTaskDelay( 500 / portTICK_RATE_MS );
     }
 }
@@ -218,7 +218,7 @@ static void prvSpiTask( void *pvParameters )
         /* fetch data from the sensor */
         memset(&raw_report, 0, sizeof(raw_report));
         raw_report.cmd = ADDR_OUT_TEMP | DIR_READ | ADDR_INCREMENT;
-        SpiTransfer(&_devInstance, (uint8_t *)&raw_report, (uint8_t *)&raw_report, sizeof(raw_report));
+        spi_transfer(&test_spi, (uint8_t *)&raw_report, (uint8_t *)&raw_report, sizeof(raw_report));
 
         x = (((int16_t)raw_report.x[1]) << 8) | raw_report.x[0];
         y = (((int16_t)raw_report.y[1]) << 8) | raw_report.y[0];
@@ -228,8 +228,8 @@ static void prvSpiTask( void *pvParameters )
         yf= ((y * _gyro_range_scale)) * 1.0f;
         zf= ((z * _gyro_range_scale)) * 1.0f;
 
-        Print_Info("len=%d x=%x y=%x z=%x xf=%f yf=%f zf=%f\n", sizeof(raw_report), x, y, z ,xf, yf, zf);
-    //    Print_Info("v=%x x=%d y=%d z=%d\n", v, x, y, z);
+        pilot_info("len=%d x=%x y=%x z=%x xf=%f yf=%f zf=%f\n", sizeof(raw_report), x, y, z ,xf, yf, zf);
+    //    pilot_info("v=%x x=%d y=%d z=%d\n", v, x, y, z);
         
         xl=read_reg(ADDR_OUT_X_L); 
         xh=read_reg(ADDR_OUT_X_H); 
@@ -245,11 +245,11 @@ static void prvSpiTask( void *pvParameters )
         yf= ((y * _gyro_range_scale)) * 1.0f;
         zf= ((z * _gyro_range_scale)) * 1.0f;
 
-        Print_Err("x=%x y=%x z=%x xf=%f yf=%f zf=%f\n", x, y, z, xf, yf, zf);
+        pilot_err("x=%x y=%x z=%x xf=%f yf=%f zf=%f\n", x, y, z, xf, yf, zf);
 
        // uint8_t a[9] = {0x01,0x23,0x45,0x67,0x89,0xab,0xcd, 0xef, 0x01};
       //  memcpy(&raw_report, a, sizeof(a));
-      //  Print_Warn("len=%d cmd =%x,tmp=%d, status=%x, x=%x y=%x z=%x\n",sizeof(raw_report), raw_report.cmd, raw_report.temp, raw_report.status,raw_report.x,raw_report.y,raw_report.z);
+      //  pilot_warn("len=%d cmd =%x,tmp=%d, status=%x, x=%x y=%x z=%x\n",sizeof(raw_report), raw_report.cmd, raw_report.temp, raw_report.status,raw_report.x,raw_report.y,raw_report.z);
 
 		vTaskDelay( 500 / portTICK_RATE_MS );
     }
@@ -257,12 +257,14 @@ static void prvSpiTask( void *pvParameters )
 #endif
 void SpiTest()
 {
-    _devInstance.spi_id = 1;
-	DeviceViaSpiCfgInitialize(&_devInstance,
-							ESPI_DEVICE_TYPE_GYRO, 
-							"i3g4250d",
-							ESPI_CLOCK_MODE_2,
-							(11*1000*1000));
+    test_spi.bus_id = 0;
+    test_spi.cs_pin = GPIO_SPI_CS_GYRO;
+    test_spi.frequency = 11*1000*1000;     //spi frequency
+
+    spi_cs_init(&test_spi);
+    spi_register_node(&test_spi);
+
+
     reset();
-	Print_Info("create spi task:%d\n", xTaskCreate(prvSpiTask, "spi read", configMINIMAL_STACK_SIZE*2, NULL, 1, NULL));
+	pilot_info("create spi task:%d\n", xTaskCreate(prvSpiTask, "spi read", configMINIMAL_STACK_SIZE*2, NULL, 1, NULL));
 }

@@ -247,7 +247,7 @@ static void poll_timeout(xTimerHandle xTimer)
     void *timer_id = pvTimerGetTimerID(xTimer);
     sem_t *sem = (sem_t *)timer_id;
 
- //   Print_Info("Times up, unlock\n");
+ //   pilot_info("Times up, unlock\n");
     poll_semgive(sem);
 }
 #if 0
@@ -314,7 +314,7 @@ int poll(FAR struct pollfd *fds, nfds_t nfds, int timeout)
            */
 
           timout_timer = xTimerCreate("poll timer", timeout/portTICK_RATE_MS, pdFALSE, (void *)&sem, poll_timeout);
-          //      Print_Info("Create timer over\n");
+          //      pilot_info("Create timer over\n");
           xTimerStart(timout_timer, portMAX_DELAY);
 
           poll_semtake(&sem);//上锁

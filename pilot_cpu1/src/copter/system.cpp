@@ -263,11 +263,11 @@ void Copter::init_ardupilot()
 void Copter::startup_INS_ground()
 {
     // initialise ahrs (may push imu calibration into the mpu6000 if using that device).
-    ahrs.init();
+    ahrs.init();//AP_AHRS::init
     ahrs.set_vehicle_class(AHRS_VEHICLE_COPTER);
 
     // Warm up and calibrate gyro offsets
-    ins.init(scheduler.get_loop_rate_hz());
+    ins.init(scheduler.get_loop_rate_hz());//AP_InertialSensor::init
 
     // reset ahrs including gyro bias
     ahrs.reset();

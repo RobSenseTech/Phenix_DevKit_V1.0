@@ -243,13 +243,13 @@ AP_GPS::detect_instance(uint8_t instance)
 #if UBLOX_RXM_RAW_LOGGING
         if(_raw_data != 0)
         {
-  //          Print_Info("baudrate=%d raw blob\n", baudrate);
+  //          pilot_info("baudrate=%d raw blob\n", baudrate);
             send_blob_start(instance, _initialisation_raw_blob, sizeof(_initialisation_raw_blob));
         }
         else
 #endif
         {
-//            Print_Info("baudrate=%d blob\n", baudrate);
+//            pilot_info("baudrate=%d blob\n", baudrate);
             send_blob_start(instance, _initialisation_blob, sizeof(_initialisation_blob));
         }
     }
@@ -311,7 +311,7 @@ AP_GPS::detect_instance(uint8_t instance)
 
 found_gps:
 	if (new_gps != NULL) {
-		Print_Info("instance:%d find GPS\n", instance);
+		pilot_info("instance:%d find GPS\n", instance);
         state[instance].status = NO_FIX;
         drivers[instance] = new_gps;
         timing[instance].last_message_time_ms = now;

@@ -97,7 +97,7 @@ orb_advert_t uORB::Manager::orb_advertise_multi(const struct orb_metadata *meta,
 	fd = node_open(PUBSUB, meta, data, true, instance, priority);
 
 	if (fd == ERROR) {
-        Print_Err("node open failed\n");
+        pilot_err("node open failed\n");
 		return NULL;
 	}
 
@@ -106,7 +106,7 @@ orb_advert_t uORB::Manager::orb_advertise_multi(const struct orb_metadata *meta,
 	close(fd);
 
 	if (result == ERROR) {
-        Print_Err("ioctl ORBIOCGADVERTISER failed!!\n");
+        pilot_err("ioctl ORBIOCGADVERTISER failed!!\n");
 		return NULL;
 	}
 
@@ -114,7 +114,7 @@ orb_advert_t uORB::Manager::orb_advertise_multi(const struct orb_metadata *meta,
 	result = orb_publish(meta, advertiser, data);
 
 	if (result == ERROR) {
-        Print_Err("initial publish failed!!\n");
+        pilot_err("initial publish failed!!\n");
 		return NULL;
 	}
 
@@ -198,7 +198,7 @@ int uORB::Manager::node_advertise
 	fd = open(TOPIC_MASTER_DEVICE_PATH, 0);
 
 	if (fd < 0) {
-        Print_Err("open %s failed, uorb may not start!!\n", TOPIC_MASTER_DEVICE_PATH);
+        pilot_err("open %s failed, uorb may not start!!\n", TOPIC_MASTER_DEVICE_PATH);
 		goto out;
 	}
 
@@ -322,7 +322,7 @@ uORBCommunicator::IChannel *uORB::Manager::get_uorb_communicator(void)
 int16_t uORB::Manager::process_add_subscription(const char *messageName,
 		int32_t msgRateInHz)
 {
-	Print_Warn("[posix-uORB::Manager::process_add_subscription(%d)] entering Manager_process_add_subscription: name: %s",
+	pilot_warn("[posix-uORB::Manager::process_add_subscription(%d)] entering Manager_process_add_subscription: name: %s",
 	      __LINE__, messageName);
 	int16_t rc = 0;
 	_remote_subscriber_topics.insert(messageName);
@@ -334,7 +334,7 @@ int16_t uORB::Manager::process_add_subscription(const char *messageName,
 		uORB::DeviceNode *node = uORB::DeviceMaster::GetDeviceNode(nodepath);
 
 		if (node == NULL) {
-			Print_Warn("[posix-uORB::Manager::process_add_subscription(%d)]DeviceNode(%s) not created yet",
+			pilot_warn("[posix-uORB::Manager::process_add_subscription(%d)]DeviceNode(%s) not created yet",
 			      __LINE__, messageName);
 
 		} else {
@@ -354,7 +354,7 @@ int16_t uORB::Manager::process_add_subscription(const char *messageName,
 int16_t uORB::Manager::process_remove_subscription(
 	const char *messageName)
 {
-	Print_Warn("[posix-uORB::Manager::process_remove_subscription(%d)] Enter: name: %s",
+	pilot_warn("[posix-uORB::Manager::process_remove_subscription(%d)] Enter: name: %s",
 	      __LINE__, messageName);
 	int16_t rc = -1;
 	_remote_subscriber_topics.erase(messageName);
@@ -366,7 +366,7 @@ int16_t uORB::Manager::process_remove_subscription(
 
 		// get the node name.
 		if (node == NULL) {
-			Print_Warn("[posix-uORB::Manager::process_remove_subscription(%d)]Error No existing subscriber found for message: [%s]",
+			pilot_warn("[posix-uORB::Manager::process_remove_subscription(%d)]Error No existing subscriber found for message: [%s]",
 			      __LINE__, messageName);
 
 		} else {
@@ -384,7 +384,7 @@ int16_t uORB::Manager::process_remove_subscription(
 int16_t uORB::Manager::process_received_message(const char *messageName,
 		int32_t length, uint8_t *data)
 {
-	//Print_Warn("[uORB::Manager::process_received_message(%d)] Enter name: %s", __LINE__, messageName );
+	//pilot_warn("[uORB::Manager::process_received_message(%d)] Enter name: %s", __LINE__, messageName );
 
 	int16_t rc = -1;
 	char nodepath[orb_maxpath];
@@ -395,7 +395,7 @@ int16_t uORB::Manager::process_received_message(const char *messageName,
 
 		// get the node name.
 		if (node == NULL) {
-			Print_Warn("[uORB::Manager::process_received_message(%d)]Error No existing subscriber found for message: [%s] nodepath:[%s]",
+			pilot_warn("[uORB::Manager::process_received_message(%d)]Error No existing subscriber found for message: [%s] nodepath:[%s]",
 			      __LINE__, messageName, nodepath);
 
 		} else {

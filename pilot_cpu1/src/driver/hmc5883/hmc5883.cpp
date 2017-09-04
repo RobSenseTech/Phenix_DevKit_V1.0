@@ -40,7 +40,7 @@
 #include "device/cdev.h"
 #include "ringbuffer.h"
 #include "drv_mag.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include <uORB/uORB.h>
 #include "conversion/rotation.h"
 #include "math.h"
@@ -63,6 +63,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <errno.h>
+#include "perf/perf_counter.h"
 
 #define HMC5883_DEVICE_PATH "/dev/hmc5883"
 #define HMC5883_EXT_DEVICE_PATH "/dev/hmc5883_ext"
@@ -125,9 +126,6 @@
 //# undef ERROR
 //#endif
 //static const int ERROR = -1;
-#define OK						0
-#define DEV_FAILURE				0
-#define DEV_SUCCESS				1
 
 //#ifndef CONFIG_SCHED_WORKQUEUE
 //# error This requires CONFIG_SCHED_WORKQUEUE.
@@ -163,7 +161,7 @@ private:
 	uint32_t		_frequency;
 	unsigned		_measure_ticks;
 
-	RingBuffer_t	*_reports;
+	ringbuf_t	*_reports;
 	mag_scale		_scale;
 	float 			_range_scale;
 	float 			_range_ga;
@@ -173,12 +171,12 @@ private:
 
 	orb_advert_t		_mag_topic;
 
-	//perf_counter_t		_sample_perf;
-	//perf_counter_t		_comms_errors;
-	//perf_counter_t		_buffer_overflows;
-	//perf_counter_t		_range_errors;
-	//perf_counter_t		_conf_errors;
-	iic_priv_s    *hmc5883;
+	perf_counter_t		_sample_perf;
+	perf_counter_t		_comms_errors;
+	perf_counter_t		_buffer_overflows;
+	perf_counter_t		_range_errors;
+	perf_counter_t		_conf_errors;
+	void *hmc5883_iic;
 	/* status reporting */
 	bool			_sensor_ok;		/**< sensor was found and reports ok */
 	bool			_calibrated;		/**< the calibration is valid */
@@ -362,7 +360,7 @@ extern "C" __EXPORT int hmc5883_main(int argc, char *argv[]);
 HMC5883::HMC5883(int bus, int dev_addr, uint32_t frequency, const char *path, enum Rotation rotation) :
 	CDev("hmc5883", path),
 //	_interface(interface),
-//	_work{},
+	_work(NULL),
 	_bus(bus),
 	_address(dev_addr),
 	_frequency(frequency),
@@ -375,11 +373,11 @@ HMC5883::HMC5883(int bus, int dev_addr, uint32_t frequency, const char *path, en
 	_class_instance(-1),
 	_orb_class_instance(-1),
 	_mag_topic(NULL),
-	//_sample_perf(perf_alloc(PC_ELAPSED, "hmc5883_read")),
-	//_comms_errors(perf_alloc(PC_COUNT, "hmc5883_comms_errors")),
-	//_buffer_overflows(perf_alloc(PC_COUNT, "hmc5883_buffer_overflows")),
-	//_range_errors(perf_alloc(PC_COUNT, "hmc5883_range_errors")),
-	//_conf_errors(perf_alloc(PC_COUNT, "hmc5883_conf_errors")),
+	_sample_perf(perf_alloc(PC_ELAPSED, "hmc5883_read")),
+	_comms_errors(perf_alloc(PC_COUNT, "hmc5883_comms_errors")),
+	_buffer_overflows(perf_alloc(PC_COUNT, "hmc5883_buffer_overflows")),
+	_range_errors(perf_alloc(PC_COUNT, "hmc5883_range_errors")),
+	_conf_errors(perf_alloc(PC_COUNT, "hmc5883_conf_errors")),
 	_sensor_ok(false),
 	_calibrated(false),
 	_rotation(rotation),
@@ -410,6 +408,7 @@ HMC5883::~HMC5883()
 	stop();
 
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 	}
 
@@ -418,19 +417,19 @@ HMC5883::~HMC5883()
 	}
 
 	// free perf counters
-	//perf_free(_sample_perf);
-	//perf_free(_comms_errors);
-	//perf_free(_buffer_overflows);
-	//perf_free(_range_errors);
-	//perf_free(_conf_errors);
+	perf_free(_sample_perf);
+	perf_free(_comms_errors);
+	perf_free(_buffer_overflows);
+	perf_free(_range_errors);
+	perf_free(_conf_errors);
 }
 
 int
 HMC5883::init()
 {
-	int ret = DEV_FAILURE;
+	int ret = ERROR;
 
-	hmc5883 = Iic_GetPriv(_bus, _address, _frequency);
+	hmc5883_iic = iic_register(_bus, _address, _frequency);
 
 	ret = CDev::init();
 
@@ -442,11 +441,12 @@ HMC5883::init()
 	/* allocate basic report buffers */
 //	_reports = new ringbuffer::RingBuffer(2, sizeof(mag_report));
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 		_reports = NULL;
 	}
-	_reports = (RingBuffer_t *) pvPortMalloc (sizeof(RingBuffer_t));
-	iRingBufferInit(_reports, 2, sizeof(mag_report));
+	_reports = (ringbuf_t *) pvPortMalloc (sizeof(ringbuf_t));
+	ringbuf_init(_reports, 2, sizeof(mag_report));
 	
 	
 	if (_reports == NULL) {
@@ -516,14 +516,14 @@ int HMC5883::set_range(unsigned range)
 	ret = write_reg(ADDR_CONF_B, (_range_bits << 5));
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	uint8_t range_bits_in = 0;
 	ret = read_reg(ADDR_CONF_B, range_bits_in);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	return !(range_bits_in == (_range_bits << 5));
@@ -542,16 +542,16 @@ void HMC5883::check_range(void)
 	ret = read_reg(ADDR_CONF_B, range_bits_in);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return;
 	}
 
 	if (range_bits_in != (_range_bits << 5)) {
-//		perf_count(_range_errors);
+		perf_count(_range_errors);
 		ret = write_reg(ADDR_CONF_B, (_range_bits << 5));
 
 		if (OK != ret) {
-//			perf_count(_comms_errors);
+			perf_count(_comms_errors);
 		}
 	}
 }
@@ -569,16 +569,16 @@ void HMC5883::check_conf(void)
 	ret = read_reg(ADDR_CONF_A, conf_reg_in);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return;
 	}
 
 	if (conf_reg_in != _conf_reg) {
-//		perf_count(_conf_errors);
+		perf_count(_conf_errors);
 		ret = write_reg(ADDR_CONF_A, _conf_reg);
 
 		if (OK != ret) {
-//			perf_count(_comms_errors);
+			perf_count(_comms_errors);
 		}
 	}
 }
@@ -596,14 +596,14 @@ HMC5883::hmc5883_iic_write(uint8_t address, uint8_t *data, unsigned count)
 	buf[0] = address;
 	memcpy(&buf[1], data, count);
 
-	return Iic_transfer(hmc5883, &buf[0], count + 1, NULL, 0,0);
+	return iic_transfer(hmc5883_iic, &buf[0], count + 1, NULL, 0);
 }
 
 
 int
 HMC5883::hmc5883_iic_read(uint8_t address, uint8_t *data, unsigned count)
 {
-	return Iic_transfer(hmc5883, &address, 1, data, count,0);
+	return iic_transfer(hmc5883_iic, &address, 1, data, count);
 }
 
 
@@ -628,7 +628,7 @@ HMC5883::read(struct file *filp, char *buffer, size_t buflen)
 		 */
 		while (count--) {
 //			if (_reports->get(mag_buf)) {
-			if (0 == xRingBufferGet(_reports, mag_buf, sizeof(struct mag_report))) {	
+			if (0 == ringbuf_get(_reports, mag_buf, sizeof(struct mag_report))) {	
 				ret += sizeof(struct mag_report);
 				mag_buf++;
 			}
@@ -641,7 +641,7 @@ HMC5883::read(struct file *filp, char *buffer, size_t buflen)
 	/* manual measurement - run one conversion */
 	/* XXX really it'd be nice to lock against other readers here */
 	do {
-		vRingBufferFlush(_reports);
+		ringbuf_flush(_reports);
 
 		/* trigger a measurement */
 		if (OK != measure()) {
@@ -658,7 +658,7 @@ HMC5883::read(struct file *filp, char *buffer, size_t buflen)
 			break;
 		}
 
-		if (0 == xRingBufferGet(_reports, mag_buf, sizeof(struct mag_report))) {
+		if (0 == ringbuf_get(_reports, mag_buf, sizeof(struct mag_report))) {
 			ret = sizeof(struct mag_report);
 		}
 	} while (0);
@@ -748,7 +748,7 @@ HMC5883::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 			
 
-			if (!xRingBufferResize(_reports, arg)) {
+			if (!ringbuf_resize(_reports, arg)) {
 				irqrestore(flags);
 				return -ENOMEM;
 			}
@@ -759,7 +759,7 @@ HMC5883::ioctl(struct file *filp, int cmd, unsigned long arg)
 		}
 
 	case SENSORIOCGQUEUEDEPTH:
-		return iRingBufferSize(_reports);
+		return ringbuf_size(_reports);
 
 	case SENSORIOCRESET:
 		return reset();
@@ -826,7 +826,7 @@ HMC5883::start()
 {
 	/* reset the report ring and state machine */
 	_collect_phase = false;
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 	
 	_work = xTimerCreate("poll_hmc5883", _measure_ticks, pdTRUE, this, &HMC5883::cycle_trampoline);
 
@@ -836,7 +836,8 @@ HMC5883::start()
 void
 HMC5883::stop()
 {
-    xTimerDelete(_work, portMAX_DELAY);
+    if(_work != NULL)
+        xTimerDelete(_work, portMAX_DELAY);
 }
 
 
@@ -849,20 +850,20 @@ HMC5883::probe()
 
 	
 	data[0] = 0x0a;
-	Iic_transfer(hmc5883, &data[0], 1, &data[0], 1, 0);
-	Print_Info("WHO AM I 0 = %c\r\n",data[0]);	
+	iic_transfer(hmc5883_iic, &data[0], 1, &data[0], 1);
+	pilot_info("WHO AM I 0 = %c\r\n",data[0]);	
 
 	data[1] = 0x0b;
-	Iic_transfer(hmc5883, &data[1], 1, &data[1], 1, 0);
-	Print_Info("WHO AM I 1 = %c\r\n",data[1]);		
+	iic_transfer(hmc5883_iic, &data[1], 1, &data[1], 1);
+	pilot_info("WHO AM I 1 = %c\r\n",data[1]);		
 
 	data[2] = 0x0c;
-	Iic_transfer(hmc5883, &data[2], 1, &data[2], 1, 0);
-	Print_Info("WHO AM I 2 = %c\r\n",data[2]);	
+	iic_transfer(hmc5883_iic, &data[2], 1, &data[2], 1);
+	pilot_info("WHO AM I 2 = %c\r\n",data[2]);	
 	
 
-	Print_Info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
-	Print_Info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
+	pilot_info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
+	pilot_info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
 	
 	
 	
@@ -873,8 +874,8 @@ HMC5883::probe()
 	usleep(100);
 	hmc5883_iic_read(ADDR_ID_C, &data[2], 1);	
 
-	Print_Info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
-	Print_Info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);	
+	pilot_info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
+	pilot_info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);	
 	
 	
 	
@@ -882,7 +883,7 @@ HMC5883::probe()
 	hmc5883_iic_read(ADDR_ID_A, &data[0], 3);
 		
 		
-	//Print_Info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
+	//pilot_info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
 //	data[0] = 0x0a;
 //	read_reg(ADDR_ID_A, data[0]);
 ////	usleep(10);
@@ -890,8 +891,8 @@ HMC5883::probe()
 ////	usleep(10);
 //	read_reg(ADDR_ID_C, data[2]);	
 
-	Print_Info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
-	Print_Info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
+	pilot_info("WHO AM I  = %d,%d,%d\r\n",data[0],data[1],data[2]);		
+	pilot_info("WHO AM I  = %c,%c,%c\r\n",data[0],data[1],data[2]);		
 	
 	
 	//if (hmc5883_iic_read(ADDR_ID_A, &data[0], 1) ||
@@ -928,7 +929,7 @@ HMC5883::cycle_trampoline(xTimerHandle xTimer)
 {
     void *timer_id = pvTimerGetTimerID(xTimer);
 	HMC5883 *dev = (HMC5883 *)timer_id;
-//	Print_Info("hmc5883-cycle_trampoline\r\n");		
+//	pilot_info("hmc5883-cycle_trampoline\r\n");		
 	dev->cycle();
 }
 
@@ -979,7 +980,7 @@ HMC5883::measure()
 	ret = write_reg(ADDR_MODE, MODE_REG_SINGLE_MODE);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	return ret;
@@ -1002,7 +1003,7 @@ HMC5883::collect()
 	int	ret;
 	uint8_t check_counter;
 
-//	perf_begin(_sample_perf);
+	perf_begin(_sample_perf);
 	struct mag_report new_report = {0};
 	bool sensor_is_onboard = false;
 
@@ -1012,7 +1013,7 @@ HMC5883::collect()
 
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
 	new_report.timestamp = hrt_absolute_time();
-//	new_report.error_count = perf_event_count(_comms_errors);
+	new_report.error_count = perf_event_count(_comms_errors);
 
 	/*
 	 * @note  We could read the status register here, which could tell us that
@@ -1026,7 +1027,7 @@ HMC5883::collect()
 	ret = hmc5883_iic_read(ADDR_DATA_OUT_X_MSB, (uint8_t *)&hmc_report, sizeof(hmc_report));
 
 	if (ret != OK) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		DEVICE_DEBUG("data/status read error");
 		goto out;
 	}
@@ -1043,7 +1044,7 @@ HMC5883::collect()
 	if ((abs(report.x) > 2048) ||
 	    (abs(report.y) > 2048) ||
 	    (abs(report.z) > 2048)) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		goto out;
 	}
 
@@ -1132,7 +1133,7 @@ HMC5883::collect()
 	/* z remains z */
 	new_report.z = ((zraw_f * _range_scale) - _scale.z_offset) * _scale.z_scale;
 	
-	Print_Info("report.x  = %f, report.y = %f, report.z = %f\r\n",new_report.x, new_report.y, new_report.z) ;
+	pilot_info("report.x  = %f, report.y = %f, report.z = %f\r\n",new_report.x, new_report.y, new_report.z) ;
 	if (!(_pub_blocked)) {
 
 		if (_mag_topic != NULL) {
@@ -1153,9 +1154,9 @@ HMC5883::collect()
 
 	/* post a report to the ring */
 	
-	if(xRingBufferForce(_reports, &new_report, sizeof(new_report))){
-//	if (_reports->force(&new_report)) {
-//		perf_count(_buffer_overflows);
+	if(ringbuf_force(_reports, &new_report, sizeof(new_report)))
+    {
+		perf_count(_buffer_overflows);
 	}
 
 	/* notify anyone waiting for data */
@@ -1169,7 +1170,7 @@ HMC5883::collect()
 	  vehicles have it is worth checking for.
 	 */
 //added by prj
-	//check_counter = perf_event_count(_sample_perf) % 256;
+	check_counter = perf_event_count(_sample_perf) % 256;
 
 	//if (check_counter == 0) {
 	//	check_range();
@@ -1182,7 +1183,7 @@ HMC5883::collect()
 	ret = OK;
 
 out:
-//	perf_end(_sample_perf);
+	perf_end(_sample_perf);
 	return ret;
 }
 
@@ -1422,7 +1423,7 @@ int HMC5883::set_excitement(unsigned enable)
 	ret = read_reg(ADDR_CONF_A, _conf_reg);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	_conf_reg &= ~0x03; // reset previous excitement mode
@@ -1440,7 +1441,7 @@ int HMC5883::set_excitement(unsigned enable)
 	ret = write_reg(ADDR_CONF_A, _conf_reg);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	uint8_t conf_reg_ret = 0;
@@ -1479,7 +1480,7 @@ int HMC5883::set_temperature_compensation(unsigned enable)
 	ret = read_reg(ADDR_CONF_A, _conf_reg);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return -EIO;
 	}
 
@@ -1493,14 +1494,14 @@ int HMC5883::set_temperature_compensation(unsigned enable)
 	ret = write_reg(ADDR_CONF_A, _conf_reg);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return -EIO;
 	}
 
 	uint8_t conf_reg_ret = 0;
 
 	if (read_reg(ADDR_CONF_A, conf_reg_ret) != OK) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return -EIO;
 	}
 
@@ -1542,9 +1543,9 @@ HMC5883::meas_to_float(uint8_t in[2])
 void
 HMC5883::print_info()
 {
-	//perf_print_counter(_sample_perf);
-	//perf_print_counter(_comms_errors);
-	//perf_print_counter(_buffer_overflows);
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_comms_errors);
+	perf_print_counter(_buffer_overflows);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	printf("output  (%.2f %.2f %.2f)\n", (double)_last_report.x, (double)_last_report.y, (double)_last_report.z);
 	printf("offsets (%.2f %.2f %.2f)\n", (double)_scale.x_offset, (double)_scale.y_offset, (double)_scale.z_offset);
@@ -1552,7 +1553,7 @@ HMC5883::print_info()
 	       (double)_scale.x_scale, (double)_scale.y_scale, (double)_scale.z_scale,
 	       (double)(1.0f / _range_scale), (double)_range_ga);
 	printf("temperature %.2f\n", (double)_last_report.temperature);
-	vRingBufferPrintInfo(_reports, "report queue");
+	ringbuf_printinfo(_reports, "report queue");
 }
 
 /**
@@ -1602,13 +1603,10 @@ start(bool external_bus, enum Rotation rotation)
 		} else {
 			g_dev[external_bus] = new HMC5883(PX4_I2C_BUS_ONBOARD, hmc5883_addr, 400000, HMC5883_DEVICE_PATH, rotation);
 		}
-		Print_Info("hmc5883-----start -----------1\r\n");
 		if (g_dev[external_bus] == NULL)
 			goto fail;
-		Print_Info("hmc5883-----start -----------2\r\n");		
 		if (OK != g_dev[external_bus]->init())
 			goto fail;
-		Print_Info("hmc5883-----start -----------3\r\n");		
 		
 		if (OK != g_dev[external_bus]->probe())
 			goto fail;
@@ -1625,7 +1623,7 @@ start(bool external_bus, enum Rotation rotation)
 		if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0)
 			goto fail;
 			
-		Print_Info("HMC5883 start   ------------end   \r\n");
+		pilot_info("HMC5883 start   ------------end   \r\n");
 		
 		close(fd);
 		return ;
@@ -1921,7 +1919,7 @@ hmc5883_main(int argc, char *argv[])
 			// compensation as non-fatal
 			hmc5883::temp_enable(external_bus, true);
 		}
-		Print_Info("HMC5883 start ------------out\r\n");
+		pilot_info("HMC5883 start ------------out\r\n");
 		return 0;
 	}
 

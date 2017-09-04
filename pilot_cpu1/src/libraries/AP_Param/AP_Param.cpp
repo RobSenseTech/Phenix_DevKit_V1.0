@@ -237,14 +237,14 @@ bool AP_Param::setup(void)
     struct EEPROM_header hdr;
 
     // check the header
-    Print_Info("check header\n");
+    pilot_info("check header\n");
     _storage.read_block(&hdr, 0, sizeof(hdr));
     if (hdr.magic[0] != k_EEPROM_magic0 ||
         hdr.magic[1] != k_EEPROM_magic1 ||
         hdr.revision != k_EEPROM_revision) {
         // header doesn't match. We can't recover any variables. Wipe
         // the header and setup the sentinal directly after the header
-        Print_Warn("bad header in setup - erasing:%x %x %x %x head size:%d\n", hdr.magic[0], hdr.magic[1], hdr.revision, hdr.spare, sizeof(hdr));
+        pilot_warn("bad header in setup - erasing:%x %x %x %x head size:%d\n", hdr.magic[0], hdr.magic[1], hdr.revision, hdr.spare, sizeof(hdr));
         erase_all();
     }
 

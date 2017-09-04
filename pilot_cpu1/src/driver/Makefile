@@ -1,17 +1,13 @@
 
 #新驱动直接把路径加在下面即可
 #DRIVER_PATH += $(DRV_ROOT_PATH)/mpu6000
-DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/ocm
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uart
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uartns550
-#DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/uartlite
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/hrt
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/gic
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/sd
-#DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/sd_test
 DRIVER_PATH += $(DRV_ROOT_PATH)/device
 DRIVER_PATH += $(DRV_ROOT_PATH)/rc
-#DRIVER_PATH += $(DRV_ROOT_PATH)/storage
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/spi
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/gpio
 DRIVER_PATH += $(DRV_ROOT_PATH)/cpu_peripheral/iic
@@ -22,8 +18,12 @@ DRIVER_PATH += $(DRV_ROOT_PATH)/lis3mdl
 DRIVER_PATH += $(DRV_ROOT_PATH)/hmc5883
 DRIVER_PATH += $(DRV_ROOT_PATH)/rgbled
 DRIVER_PATH += $(DRV_ROOT_PATH)/ms5611
+DRIVER_PATH += $(DRV_ROOT_PATH)/mpu6500
+DRIVER_PATH += $(DRV_ROOT_PATH)/l3gd20
 DRIVER_PATH += $(DRV_ROOT_PATH)/fmu
 DRIVER_PATH += $(DRV_ROOT_PATH)/pwm
+DRIVER_PATH += $(DRV_ROOT_PATH)/px4flow
+DRIVER_PATH += $(DRV_ROOT_PATH)/perf_cmd
 DRIVER_PATH += $(DRV_ROOT_PATH)/common/drv_unistd
 DRIVER_PATH += $(DRV_ROOT_PATH)/common/systemlib/mixer
 DRIVER_PATH += $(DRV_ROOT_PATH)/common/systemlib/pwm_limit

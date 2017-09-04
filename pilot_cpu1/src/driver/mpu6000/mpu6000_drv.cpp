@@ -23,7 +23,7 @@ public:
 	virtual int	poll(file_t *filp, struct pollfd *fds, bool setup);
 
     void measure_trampoline(void *arg);
-    RingBuffer_t *_accel_reports;
+    ringbuf_t *_accel_reports;
 private:
     struct hrt_call _call;
     int _accel_class_instance;
@@ -53,7 +53,7 @@ void MPU6000::measure_trampoline(void *arg)
     hb++;
     arb.timestamp = hb;
 
-  //  xRingBufferForce(_accel_reports, &arb, sizeof(arb)); 
+  //  ringbuf_force(_accel_reports, &arb, sizeof(arb)); 
 
     poll_notify(POLLIN);
     orb_publish(ORB_ID(sensor_accel), _accel_topic, &arb);
@@ -66,21 +66,21 @@ int MPU6000::init()
     ret = CDev::init();
     if(ret != 0)
     {
-        Print_Err("cdev init error\n");
+        pilot_err("cdev init error\n");
         goto out;
     }
 
     _accel_class_instance = register_class_devname(ACCEL_BASE_DEVICE_PATH);
 
-    _accel_reports = (RingBuffer_t *)pvPortMalloc(sizeof(RingBuffer_t));
-    iRingBufferInit(_accel_reports, 2, sizeof(struct sensor_accel_s));
+    _accel_reports = (ringbuf_t *)pvPortMalloc(sizeof(ringbuf_t));
+    ringbuf_init(_accel_reports, 2, sizeof(struct sensor_accel_s));
 
     struct sensor_accel_s arp;
-    xRingBufferGet(_accel_reports, &arp, sizeof(arp));
+    ringbuf_get(_accel_reports, &arp, sizeof(arp));
 
     _accel_topic = orb_advertise_multi(ORB_ID(sensor_accel), &arp, &_accel_orb_class_instance, ORB_PRIO_HIGH);
     if(_accel_topic == NULL)
-        Print_Err("ADVERT FAIL\n");
+        pilot_err("ADVERT FAIL\n");
 
     hrt_call_every(&_call, 1000, 1000, (hrt_callout)&MPU6000::measure_trampoline, this);
 
@@ -90,25 +90,25 @@ out:
 
 size_t MPU6000::read(file_t *filp, char *pcBuffer, size_t xBufLen)
 {
-    Print_Info("mpu6000 read\n");
+    pilot_info("mpu6000 read\n");
     return 0;
 }
 
 size_t MPU6000::write(file_t *filp, const char *pcBuffer, size_t xBufLen)
 {
-    Print_Info("mpu6000 write\n");
+    pilot_info("mpu6000 write\n");
     return 0;
 }
 
 int MPU6000::ioctl(file_t *filp, int iCmd, void *pvArg)
 {
-    Print_Info("mpu6000 ioctl\n");
+    pilot_info("mpu6000 ioctl\n");
     return 0;
 }
 
 int	MPU6000::poll(file_t *filp, struct pollfd *fds, bool setup)
 {
-    Print_Info("mpu6000 poll\n");
+    pilot_info("mpu6000 poll\n");
     return 0;
 }
 
@@ -125,22 +125,22 @@ static void prvMpu6000Task(void *pvParameters)
         fds[0].fd = accel_sub;
         fds[0].events = POLLIN;
 
-//        Print_Info("poll start:accel_sub=%x\n", (int)accel_sub);
+//        pilot_info("poll start:accel_sub=%x\n", (int)accel_sub);
         ret = poll(fds, sizeof(fds)/sizeof(fds[0]), 500);
         if(ret < 0)
-            Print_Err("poll error\n");
+            pilot_err("poll error\n");
         else if(ret == 0)
-            Print_Warn("poll timeout");
+            pilot_warn("poll timeout");
         else
         {
             if(fds[0].revents & POLLIN)
             {
                 orb_copy(ORB_ID(sensor_accel), accel_sub, &accel0);
-                Print_Info("get data:%d size=%x\n", accel0.timestamp, sizeof(struct sensor_accel_s));
+                pilot_info("get data:%d size=%x\n", accel0.timestamp, sizeof(struct sensor_accel_s));
             }
             else
             {
-                Print_Warn("revents=%x\n", fds[0].revents);
+                pilot_warn("revents=%x\n", fds[0].revents);
             }
         }
 
@@ -161,22 +161,22 @@ static void prvMpu6000Task2(void *pvParameters)
         fds[0].fd = accel_sub;
         fds[0].events = POLLIN;
 
-//        Print_Info("poll start:accel_sub=%x\n", (int)accel_sub);
+//        pilot_info("poll start:accel_sub=%x\n", (int)accel_sub);
         ret = poll(fds, sizeof(fds)/sizeof(fds[0]), 500);
         if(ret < 0)
-            Print_Err("poll error\n");
+            pilot_err("poll error\n");
         else if(ret == 0)
-            Print_Warn("poll timeout");
+            pilot_warn("poll timeout");
         else
         {
             if(fds[0].revents & POLLIN)
             {
                 orb_copy(ORB_ID(sensor_accel), accel_sub, &accel0);
-                Print_Info("task 2 get data:%d size=%x\n", accel0.timestamp, sizeof(struct sensor_accel_s));
+                pilot_info("task 2 get data:%d size=%x\n", accel0.timestamp, sizeof(struct sensor_accel_s));
             }
             else
             {
-                Print_Warn("revents=%x\n", fds[0].revents);
+                pilot_warn("revents=%x\n", fds[0].revents);
             }
         }
 
@@ -194,25 +194,25 @@ int mpu6000_main(int argc, char *argv[])
 	iFd = open(ACCEL0_DEVICE_PATH, 0);
     if(-1 == iFd)
     {
-        Print_Err("open %s failed\n", ACCEL0_DEVICE_PATH);
+        pilot_err("open %s failed\n", ACCEL0_DEVICE_PATH);
         return -1;
     }
 
-//    Print_Err("argv=%s\n", argv[1]);
+//    pilot_err("argv=%s\n", argv[1]);
 
     write(iFd, 0, 0);
     read(iFd, 0, 0);
     ioctl(iFd, 0, 0);
 
-//    Print_Info("create uorb recv task:%d\n", xTaskCreate(prvMpu6000Task, "uorb-recv", 4000, NULL, 1, NULL));
- //   Print_Info("create uorb recv task2:%d\n", xTaskCreate(prvMpu6000Task2, "uorb-recv2", 4000, NULL, 1, NULL));
+//    pilot_info("create uorb recv task:%d\n", xTaskCreate(prvMpu6000Task, "uorb-recv", 4000, NULL, 1, NULL));
+ //   pilot_info("create uorb recv task2:%d\n", xTaskCreate(prvMpu6000Task2, "uorb-recv2", 4000, NULL, 1, NULL));
 #if 0
     delete accel_dev;
 
     iFd = open(ACCEL0_DEVICE_PATH, 0);
     if(-1 == iFd)
     {
-        Print_Err("open %s failed\n", ACCEL0_DEVICE_PATH);
+        pilot_err("open %s failed\n", ACCEL0_DEVICE_PATH);
     }
 #endif
 

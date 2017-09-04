@@ -90,7 +90,7 @@ hrt_call call;
 static void block_test(void *arg)
 {
     char *name = (char *)arg;
-    Print_Err("task:%s is block!!\n", name);
+    pilot_err("task:%s is block!!\n", name);
 }
 */
 /*
@@ -115,7 +115,7 @@ void AP_Scheduler::run(uint16_t time_available)
             if (dt >= interval_ticks*2) {
                 // we've slipped a whole run of this task!
                 if (_debug > 1) {
-                    Print_Info("Scheduler slip task[%u-%s] (%u/%u/%u)\n",
+                    pilot_info("Scheduler slip task[%u-%s] (%u/%u/%u)\n",
                                           (unsigned)i,
                                           _tasks[i].name,
                                           (unsigned)dt,
@@ -145,7 +145,7 @@ void AP_Scheduler::run(uint16_t time_available)
                 if (time_taken > _task_time_allowed) {
                     // the event overran!
                     if (_debug > 2) {
-                        Print_Info("Scheduler overrun task[%u-%s] (%u/%u)\n",
+                        pilot_info("Scheduler overrun task[%u-%s] (%u/%u)\n",
                                               (unsigned)i,
                                               _tasks[i].name,
                                               (unsigned)time_taken,

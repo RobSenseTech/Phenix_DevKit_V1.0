@@ -1,0 +1,102 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <errno.h>
+#include <string.h>
+#include "ocm/ocm_internal.h"
+#include "ocm/ocm.h"
+#include "ocmfs.h"
+
+#define PAGE_SIZE ((size_t)getpagesize())
+
+uint32_t ocm_get_vir_addr(uint32_t phy_addr)
+{
+	int mem_fd;
+    uint32_t vir_addr;
+
+	mem_fd = open("/dev/mem", O_RDWR|O_SYNC);
+	if (mem_fd < 0) {
+		printf("open(/dev/mem) failed (%d)\n", errno);
+		return -1;
+	}
+
+    //mmap ocm physical address, 64k == 16 pages
+	vir_addr = (uint32_t)mmap(NULL, PAGE_SIZE*16, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, phy_addr);
+	if (vir_addr == MAP_FAILED) {
+		printf("mmap64(0x4@0x%x) failed (%d)\n", (uint32_t)phy_addr, errno);
+		return -1;
+	}
+
+    return vir_addr;
+}
+
+static void ocm_send_test()
+{
+    int i;
+    uint8_t a[100];
+
+    for(i = 0; i<100; i++)
+    {
+        a[i] = i;
+    }
+
+    while(1)
+    {
+        int32_t bytes = 0;
+        int32_t write_len = sizeof(a);
+        while(write_len > 0)
+        {
+            bytes = ocm_msg_send(0, &a[sizeof(a)-write_len], write_len);
+            pilot_warn("write %d bytes\n", bytes);
+            write_len -= bytes;
+            usleep(100000);
+        }
+        usleep(300000);
+    }
+
+}
+
+static void ocm_recv_test()
+{
+    int i;
+    uint8_t buf[33];
+
+    while(1)
+    {
+        int32_t bytes = 0;
+        bytes = ocm_msg_recv(0, buf, sizeof(buf));
+        if(bytes != 0)
+            pilot_info("recv %d bytes:\n", bytes);
+        for(i = 1; i < bytes; i++)
+        {
+            char delt = 0;
+            delt = buf[i] - buf[i-1];
+            if(delt != 1 && buf[i-1] != 99 && buf[i] != 0)        
+                pilot_err("lose data:%d %d\n", buf[i-1], buf[i]);
+        }
+
+		usleep(1000000);
+    }
+
+}
+
+int main()
+{
+    ocm_msg_init();
+
+    ocm_recv_test();
+//    ocm_send_test();
+    while(1)
+    {
+    ;
+    }
+    return 0;
+}
+
+
+

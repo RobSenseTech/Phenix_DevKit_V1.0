@@ -92,6 +92,7 @@ bool AP_InertialSensor_PX4::_init_sensor(void)
         switch(devid) {
             case DRV_GYR_DEVTYPE_MPU6000:
             case DRV_GYR_DEVTYPE_MPU9250:
+            case DRV_GYR_DEVTYPE_MPU6500:
                 // hardware LPF off
                 ioctl(fd, GYROIOCSHWLOWPASS, 256);
                 // khz sampling
@@ -132,6 +133,7 @@ bool AP_InertialSensor_PX4::_init_sensor(void)
         switch(devid) {
             case DRV_ACC_DEVTYPE_MPU6000:
             case DRV_ACC_DEVTYPE_MPU9250:
+            case DRV_ACC_DEVTYPE_MPU6500:
                 // hardware LPF off
                 ioctl(fd, ACCELIOCSHWLOWPASS, 256);
                 // khz sampling
@@ -309,7 +311,7 @@ bool AP_InertialSensor_PX4::_get_accel_sample(uint8_t i, struct accel_report &ac
         _accel_fd[i] != -1 && 
         ::read(_accel_fd[i], (char*)&accel_report, sizeof(accel_report)) == sizeof(accel_report) && 
         accel_report.timestamp != _last_accel_timestamp[i]) {
-//        Print_Info("x=%f y=%f z=%f\n", accel_report.x, accel_report.y, accel_report.z);
+//        pilot_info("x=%f y=%f z=%f\n", accel_report.x, accel_report.y, accel_report.z);
         return true;
     }
     return false;
@@ -321,7 +323,7 @@ bool AP_InertialSensor_PX4::_get_gyro_sample(uint8_t i, struct gyro_report &gyro
         _gyro_fd[i] != -1 && 
         ::read(_gyro_fd[i], (char*)&gyro_report, sizeof(gyro_report)) == sizeof(gyro_report) && 
         gyro_report.timestamp != _last_gyro_timestamp[i]) {
-//        Print_Info("x=%f y=%f z=%f\n", gyro_report.x, gyro_report.y, gyro_report.z);
+//        pilot_info("x=%f y=%f z=%f\n", gyro_report.x, gyro_report.y, gyro_report.z);
         return true;
     }
     return false;

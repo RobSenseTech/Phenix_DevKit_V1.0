@@ -18,10 +18,10 @@ enum{
 
 extern XScuGic xInterruptController;//整个系统公用一个InterruptController，不然会重复初始化导致中断错误
 
-void GicBindInterruptToCpu(int32_t iIntrId, int32_t iCpuId);
-int32_t GicIsrHandlerRegister(int32_t iIntrId, Xil_InterruptHandler Handler, void *CallBackRef);
-void GicInterruptEnable(int32_t iIntrId);
-void GicSetTriggerType(uint32_t iIntrId, uint8_t Trigger);
-void GicInit();
+void gic_bind_interrupt_to_cpu(int32_t intr_id, int32_t cpu_id);
+int32_t gic_isr_register(int32_t intr_id, Xil_InterruptHandler Handler, void *CallBackRef);
+void gic_interrupt_enable(int32_t intr_id);
+void gic_set_trigger_type(uint32_t intr_id, uint8_t Trigger);
+void gic_init();
 #endif 
 

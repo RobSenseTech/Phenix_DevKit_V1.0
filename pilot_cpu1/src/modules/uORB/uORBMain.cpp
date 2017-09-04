@@ -46,7 +46,7 @@ extern "C" { __EXPORT int uorb_main(); }
 static uORB::DeviceMaster *g_dev = NULL;
 static void usage()
 {
-	Print_Info("Usage: uorb 'start', 'test', 'latency_test' or 'status'");
+	pilot_info("Usage: uorb 'start', 'test', 'latency_test' or 'status'");
 }
 
 
@@ -68,7 +68,7 @@ uorb_main()
 	{
 
 		if (g_dev != NULL) {
-			Print_Warn("already loaded");
+			pilot_warn("already loaded");
 			/* user wanted to start uorb, its already running, no error */
 			return 0;
 		}
@@ -77,12 +77,12 @@ uorb_main()
 		g_dev = new uORB::DeviceMaster(uORB::PUBSUB);
 
 		if (g_dev == NULL) {
-			Print_Warn("driver alloc failed");
+			pilot_warn("driver alloc failed");
 			return -ENOMEM;
 		}
 
 		if (0 != g_dev->init()) {
-			Print_Warn("driver init failed");
+			pilot_warn("driver init failed");
 			delete g_dev;
 			g_dev = NULL;
 			return -EIO;

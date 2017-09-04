@@ -4,7 +4,7 @@
 #include "xparameters.h"
 #include "xstatus.h"
 #include "xttcps.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "driver.h"
 
 /**
@@ -30,7 +30,7 @@
 /* 将计数器值转换成微妙 目前是乘以7, 由于要在中断调用，用移位运算，速度快*/
 #define HRT_COUNTER_SCALE(_c)	(_c)	//(((_c) << 3) + _c)
 
-static XTtcPs xTtcPsInst;	//One timer counter
+static XTtcPs ttcps;	//One timer counter
 static struct list_head callout_queue;
 static uint16_t			latency_baseline;
 
@@ -60,8 +60,8 @@ static void		hrt_call_invoke(void);
 
 static void hrt_tim_isr(void *CallBackRef)
 {
-	int32_t iStatusEvent;
-	XTtcPs *xTimer = &xTtcPsInst;
+	int32_t statusEvent;
+	XTtcPs *ttcps_ptr = &ttcps;
 #ifdef HRT_DEBUG
 	unsigned long hb=0;
 	uint32_t CounterValue = 0;
@@ -69,23 +69,23 @@ static void hrt_tim_isr(void *CallBackRef)
 	static x = 0;
 #endif
 
-	iStatusEvent = XTtcPs_GetInterruptStatus(xTimer);
-	XTtcPs_ClearInterruptStatus(xTimer, iStatusEvent);
+	statusEvent = XTtcPs_GetInterruptStatus(ttcps_ptr);
+	XTtcPs_ClearInterruptStatus(ttcps_ptr, statusEvent);
 
-	if((XTTCPS_IXR_MATCH_0_MASK & iStatusEvent) != 0)
+	if((XTTCPS_IXR_MATCH_0_MASK & statusEvent) != 0)
 	{
 	#ifdef HRT_DEBUG
 		x++;
-		CounterValue = XTtcPs_GetCounterValue(xTimer);
+		CounterValue = XTtcPs_GetCounterValue(ttcps_ptr);
 		if(lastCount - CounterValue >= 1000)
 		{
 			hb = (CounterValue+1000) & 0xffff;	
 			if(x >= 1000)
 			{
-				Print_Info("CounterValue=%d lastCount=%d next match:%d x=%d\n", CounterValue, lastCount, hb, x);
+				pilot_info("CounterValue=%d lastCount=%d next match:%d x=%d\n", CounterValue, lastCount, hb, x);
 				x = 0;
 			}
-			XTtcPs_SetMatchValue(xTimer, 0, hb);//每1us,定时器counter加7,默认每1ms中断一次
+			XTtcPs_SetMatchValue(ttcps_ptr, 0, hb);//每1us,定时器counter加7,默认每1ms中断一次
 			lastCount = CounterValue;
 		}
 	#endif
@@ -99,59 +99,59 @@ static void hrt_tim_isr(void *CallBackRef)
 		hrt_call_reschedule();
 	}
 
-//	Print_Info("ttc test iStatusEvent:%x \n",iStatusEvent);
+//	pilot_info("ttc test statusEvent:%x \n",statusEvent);
 }
 
 int hrt_init()
 {
-	int iStatus = 0;
-	XTtcPs_Config *pxConfig;
-	XTtcPs *xTimer = &xTtcPsInst;
+	int status = 0;
+	XTtcPs_Config *xil_config;
+	XTtcPs *ttcps_ptr = &ttcps;
 
 	//初始化驱动队列
 	INIT_LIST_HEAD(&callout_queue);	
 
-	pxConfig = XTtcPs_LookupConfig(XPAR_XTTCPS_0_DEVICE_ID);
-	if(pxConfig == NULL)
+	xil_config = XTtcPs_LookupConfig(XPAR_XTTCPS_0_DEVICE_ID);
+	if(xil_config == NULL)
 	{
-		Print_Err("There is no ttc config\n");
+		pilot_err("There is no ttc config\n");
 		return XST_FAILURE;
 	}
 
-	iStatus = XTtcPs_CfgInitialize(xTimer, pxConfig, pxConfig->BaseAddress);
-	if(iStatus != XST_SUCCESS)
+	status = XTtcPs_CfgInitialize(ttcps_ptr, xil_config, xil_config->BaseAddress);
+	if(status != XST_SUCCESS)
 	{
-		Print_Err("Init ttcps cfg failed:%d\n", iStatus);
+		pilot_err("Init ttcps cfg failed:%d\n", status);
 		return XST_FAILURE;
 	}
 
 	/*设置定时器工作模式*/
-	XTtcPs_SetOptions(xTimer, XTTCPS_OPTION_EXTERNAL_CLK | XTTCPS_OPTION_MATCH_MODE | XTTCPS_OPTION_WAVE_DISABLE);
+	XTtcPs_SetOptions(ttcps_ptr, XTTCPS_OPTION_EXTERNAL_CLK | XTTCPS_OPTION_MATCH_MODE | XTTCPS_OPTION_WAVE_DISABLE);
 
 	//定时器输入时钟由PL提供8Mhz，分频8倍转成1Mhz
-	XTtcPs_SetPrescaler(xTimer, 2);
+	XTtcPs_SetPrescaler(ttcps_ptr, 2);
 
 	/*设置match寄存器的值*/
-	XTtcPs_SetMatchValue(xTimer, 0, 1000);//每1us,定时器counter加1,初始化成每1ms中断一次
+	XTtcPs_SetMatchValue(ttcps_ptr, 0, 1000);//每1us,定时器counter加1,初始化成每1ms中断一次
 
 	/*设置定时器中断目标为cpu1*/
-	GicBindInterruptToCpu(XPAR_XTTCPS_0_INTR, CPU_1_TARGETED);
+	gic_bind_interrupt_to_cpu(XPAR_XTTCPS_0_INTR, CPU_1_TARGETED);
 
 	/*注册中断处理函数*/
-	iStatus = GicIsrHandlerRegister(XPAR_XTTCPS_0_INTR, (Xil_ExceptionHandler)hrt_tim_isr, (void *)xTimer);
-	if(iStatus != XST_SUCCESS)
+	status = gic_isr_register(XPAR_XTTCPS_0_INTR, (Xil_ExceptionHandler)hrt_tim_isr, (void *)ttcps_ptr);
+	if(status != XST_SUCCESS)
 	{
-		Print_Err("Set ttc interrupt handler failed:%d\n", iStatus);
+		pilot_err("Set ttc interrupt handler failed:%d\n", status);
 		return XST_FAILURE;
 	}
 	
-	GicInterruptEnable(XPAR_XTTCPS_0_INTR);
+	gic_interrupt_enable(XPAR_XTTCPS_0_INTR);
 
 	/*使能match模式中断*/
-	XTtcPs_EnableInterrupts(xTimer, XTTCPS_IXR_MATCH_0_MASK);
+	XTtcPs_EnableInterrupts(ttcps_ptr, XTTCPS_IXR_MATCH_0_MASK);
 
 	/*启动定时器*/
-	XTtcPs_Start(xTimer);
+	XTtcPs_Start(ttcps_ptr);
 
 	return XST_SUCCESS;
 }
@@ -171,7 +171,7 @@ hrt_abstime hrt_absolute_time(void)
 	/* 保存并关中断，防止重入*/
 	flags = irqsave();
 
-	count = XTtcPs_GetCounterValue(&xTtcPsInst);
+	count = XTtcPs_GetCounterValue(&ttcps);
 
 	/*
 	 * 判断计数器是否已经溢出过
@@ -426,7 +426,7 @@ static void hrt_call_reschedule()
 
 	/* set the new compare value and remember it for latency tracking */
 	latency_baseline = HRT_COUNTER_SCALE(deadline) & 0xffff;
-	XTtcPs_SetMatchValue(&xTtcPsInst, 0, HRT_COUNTER_SCALE(deadline) & 0xffff);
+	XTtcPs_SetMatchValue(&ttcps, 0, HRT_COUNTER_SCALE(deadline) & 0xffff);
 }
 
 static void hrt_latency_update(void)

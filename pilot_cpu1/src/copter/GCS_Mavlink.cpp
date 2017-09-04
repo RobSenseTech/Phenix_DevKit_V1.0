@@ -2050,13 +2050,13 @@ void Copter::gcs_send_mission_item_reached_message(uint16_t mission_index)
  */
 void Copter::gcs_data_stream_send(void)
 {
-    //Print_Info("\n");
+    //pilot_info("\n");
     for (uint8_t i=0; i<num_gcs; i++) {
         if (gcs[i].initialised) {
             gcs[i].data_stream_send();
         }
     }
-    //Print_Info("\n");
+    //pilot_info("\n");
 }
 
 /*

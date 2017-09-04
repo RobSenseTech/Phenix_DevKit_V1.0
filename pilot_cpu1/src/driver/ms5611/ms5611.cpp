@@ -39,7 +39,7 @@
 #include "device/cdev.h"
 #include "ringbuffer.h"
 #include "drv_baro.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include <uORB/uORB.h>
 #include "conversion/rotation.h"
 #include "math.h"
@@ -52,6 +52,7 @@
 #include "sleep.h"
 #include "timers.h"
 #include "driver.h"
+#include "perf/perf_counter.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -68,10 +69,6 @@
 #define MS5611_BARO_DEVICE_PATH_INT	"/dev/ms5611_int"
 
 //using namespace pilot::driver;
-
-#define OK						0
-#define DEV_FAILURE				0
-#define DEV_SUCCESS				1
 
 /* SPI protocol address bits */
 #define DIR_READ				(1<<7)
@@ -101,7 +98,7 @@
 class MS5611 : public device::CDev
 {
 public:
-	MS5611(int bus, const char* path, ESpi_device_id device);
+	MS5611(int bus, const char* path);
 	virtual ~MS5611();
 
 	virtual int		init();
@@ -123,7 +120,7 @@ protected:
     xTimerHandle    _work;
 	unsigned		_measure_ticks;
 
-	RingBuffer_t	*_reports;
+	ringbuf_t	*_reports;
 
 	bool			_collect_phase;
 	unsigned		_measure_phase;
@@ -142,12 +139,13 @@ protected:
 	int			_orb_class_instance;
 	int			_class_instance;
 
-//	perf_counter_t		_sample_perf;
-//	perf_counter_t		_measure_perf;
-//	perf_counter_t		_comms_errors;
-//	perf_counter_t		_buffer_overflows;
+	perf_counter_t		_sample_perf;
+	perf_counter_t		_measure_perf;
+	perf_counter_t		_comms_errors;
+	perf_counter_t		_buffer_overflows;
+     perf_counter_t     _perf_interval;
 
-	struct SDeviceViaSpi _devInstance;
+    struct spi_node ms5611_spi;
 	/**
 	 * Initialize the automatic measurement state machine and start it.
 	 *
@@ -217,8 +215,9 @@ protected:
  */
 extern "C"  __EXPORT int ms5611_main(int argc, char *argv[]);
 
-MS5611::MS5611(int bus, const char* path, ESpi_device_id device) :
+MS5611::MS5611(int bus, const char* path) :
 	CDev("ms5611", path),
+    _work(NULL),
 	_measure_ticks(0),
 	_reports(NULL),
 	_collect_phase(false),
@@ -229,19 +228,21 @@ MS5611::MS5611(int bus, const char* path, ESpi_device_id device) :
 	_msl_pressure(101325),
 	_baro_topic(NULL),
 	_orb_class_instance(-1),
-	_class_instance(-1)
-//	_sample_perf(perf_alloc(PC_ELAPSED, "ms5611_read")),
-//	_measure_perf(perf_alloc(PC_ELAPSED, "ms5611_measure")),
-//	_comms_errors(perf_alloc(PC_COUNT, "ms5611_comms_errors")),
-//	_buffer_overflows(perf_alloc(PC_COUNT, "ms5611_buffer_overflows"))
+	_class_instance(-1),
+	_sample_perf(perf_alloc(PC_ELAPSED, "ms5611_read")),
+	_measure_perf(perf_alloc(PC_ELAPSED, "ms5611_measure")),
+	_comms_errors(perf_alloc(PC_COUNT, "ms5611_comms_errors")),
+	_buffer_overflows(perf_alloc(PC_COUNT, "ms5611_buffer_overflows")),
+	_perf_interval(perf_alloc(PC_INTERVAL, "ms5611_call_interval"))
 //added by prj
 {
-	_devInstance.spi_id = bus;
-	DeviceViaSpiCfgInitialize(&_devInstance,
-							  device, 
-							  "ms5611",
-							  ESPI_CLOCK_MODE_2,
-							  (11*1000*1000));
+    ms5611_spi.bus_id = bus;
+    ms5611_spi.cs_pin = GPIO_SPI_CS_BARO;
+    ms5611_spi.frequency = 11*1000*1000;     //spi frequency
+
+    spi_cs_init(&ms5611_spi);
+    spi_register_node(&ms5611_spi);
+
 	_class_instance = 0;
 }
 
@@ -256,14 +257,17 @@ MS5611::~MS5611()
 
 	/* free any existing reports */
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 	}
 
+    spi_deregister_node(&ms5611_spi);
 	// free perf counters
-//	perf_free(_sample_perf);
-//	perf_free(_measure_perf);
-//	perf_free(_comms_errors);
-//	perf_free(_buffer_overflows);
+	perf_free(_sample_perf);
+	perf_free(_measure_perf);
+	perf_free(_comms_errors);
+	perf_free(_buffer_overflows);
+	perf_free(_perf_interval);
 
 }
 
@@ -273,7 +277,7 @@ MS5611::_reg16(unsigned reg)
 {
 	uint8_t cmd[3] = { (uint8_t)(reg | DIR_READ), 0, 0 };
 
-	SpiTransfer(&_devInstance, cmd, cmd, sizeof(cmd));
+	spi_transfer(&ms5611_spi, cmd, cmd, sizeof(cmd));
 
 	return (uint16_t)(((uint16_t)cmd[1] << 8) | cmd[2]);
 }
@@ -288,7 +292,7 @@ int MS5611::spi_read(unsigned address, void *data, unsigned count)
 
 	buf[0] = address | DIR_READ | ADDR_INCREMENT;
 
-	int ret = SpiTransfer(&_devInstance, &buf[0], &buf[0], count + 1);
+	int ret = spi_transfer(&ms5611_spi, &buf[0], &buf[0], count + 1);
 	memcpy(data, &buf[1], count);
 	return ret;
 }
@@ -303,7 +307,7 @@ int MS5611::spi_write(unsigned address, void *data, unsigned count)
 
 	buf[0] = address | DIR_WRITE;
 	memcpy(&buf[1], data, count);
-	return SpiTransfer(&_devInstance, &buf[0], &buf[0], count + 1);
+	return spi_transfer(&ms5611_spi, &buf[0], &buf[0], count + 1);
 }
 
 int
@@ -337,12 +341,12 @@ MS5611::_read_prom()
             all_zero = false;
         }
         memcpy(&_prom.s, temp, sizeof(temp));
-	    Print_Info("temp[%d] = %u\n", i, temp[i]);
+	    pilot_info("temp[%d] = %u\n", i, temp[i]);
     }
 	//for (int i = 0; i < 8; i++) {
 	//	uint8_t cmd = (ADDR_PROM_SETUP + (i * 2));
 	//	_prom.c[i] = _reg16(cmd);
-	//	Print_Info("_prom.c[%d] = %d\r\n",i,_prom.c[i]);
+	//	pilot_info("_prom.c[%d] = %d\r\n",i,_prom.c[i]);
 	//	if (_prom.c[i] != 0) {
 	//		all_zero = false;
 	//	}
@@ -354,11 +358,11 @@ MS5611::_read_prom()
 	int ret = ms5611::crc4(&_prom.c[0]) ? OK : -EIO;
 
 	if (ret != OK) {
-		Print_Err("crc failed");
+		pilot_err("crc failed");
 	}
 
 	if (all_zero) {
-		Print_Err("prom all zero");
+		pilot_err("prom all zero");
 		ret = -EIO;
 	}
 
@@ -371,8 +375,8 @@ MS5611::reset_sensor()
 {
 	u8 cmd = ADDR_RESET_CMD | DIR_WRITE;
 
-	  SpiTransfer(&_devInstance, &cmd, &cmd, 1);
-	  Print_Info("cmd = %d\r\n",cmd);
+	spi_transfer(&ms5611_spi, &cmd, &cmd, 1);
+	pilot_info("cmd = %d\r\n",cmd);
 	return OK;
 //	return	write_reg(cmd,0);
 	
@@ -381,40 +385,41 @@ MS5611::reset_sensor()
 int
 MS5611::init()
 {
-	int ret = DEV_FAILURE;
+	int ret = ERROR;
 
 	ret = reset_sensor();
 	if (ret != OK) {
-		Print_Err("reset sensor failed\n");
+		pilot_err("reset sensor failed\n");
 		goto out;
 	}
 	
-	ret = _read_prom();
-	if (ret != OK) {
-		Print_Err("read prom failed\n");
-		goto out;
-	}
-	
+    ret = _read_prom();
+    if (ret != OK) {
+        pilot_err("read prom failed\n");
+        goto out;
+    }
+    
 	ret = CDev::init();
 
 	if (ret != OK) {
-		Print_Err("CDev init failed\n");
+		pilot_err("CDev init failed\n");
 		goto out;
 	}
 
 	/* allocate basic report buffers */
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 		_reports = NULL;
 	}
-	_reports = (RingBuffer_t *) pvPortMalloc (sizeof(RingBuffer_t));
-	iRingBufferInit(_reports, 2, sizeof(sensor_baro_s));
+	_reports = (ringbuf_t *) pvPortMalloc (sizeof(ringbuf_t));
+	ringbuf_init(_reports, 2, sizeof(sensor_baro_s));
 
 //	_reports = new ringbuffer::RingBuffer(2, sizeof(sensor_baro_s));
 
 
 	if (_reports == NULL) {
-		Print_Err("can't get memory for reports\n");
+		pilot_err("can't get memory for reports\n");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -425,14 +430,14 @@ MS5611::init()
 	struct baro_report brp;
 	/* do a first measurement cycle to populate reports with valid data */
 	_measure_phase = 0;
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 //	_reports->flush();
 
 	/* this do..while is goto without goto */
 	do {
 		/* do temperature first */
 		if (OK != measure()) {
-            Print_Err("measure temperature failed\n");
+            pilot_err("measure temperature failed\n");
 			ret = -EIO;
 			break;
 		}
@@ -446,7 +451,7 @@ MS5611::init()
 
 		/* now do a pressure measurement */
 		if (OK != measure()) {
-            Print_Err("measure pressure failed\n");
+            pilot_err("measure pressure failed\n");
 			ret = -EIO;
 			break;
 		}
@@ -454,13 +459,13 @@ MS5611::init()
 		usleep(MS5611_CONVERSION_INTERVAL);
 
 		if (OK != collect()) {
-            Print_Err("collect failed\n");
+            pilot_err("collect failed\n");
 			ret = -EIO;
 			break;
 		}
 
 		/* state machine will have generated a report, copy it out */
-		xRingBufferGet(_reports, &brp, sizeof(brp));
+		ringbuf_get(_reports, &brp, sizeof(brp));
 
 		ret = OK;
 
@@ -499,7 +504,10 @@ MS5611::read(struct file *filp, char *buffer, size_t buflen)
 		 * we are careful to avoid racing with them.
 		 */
 		while (count--) {
-			if (0 == xRingBufferGet(_reports, brp, sizeof(struct baro_report))) {
+			if (0 == ringbuf_get(_reports, brp, sizeof(struct baro_report))) {
+
+                //if(brp->pressure > 1100.0 || brp->pressure < 1000)
+                //    pilot_warn("pressure=%10.4f altitude=%10.4f temp=%.3f\n", brp->pressure, brp->altitude, brp->temperature);
 				ret += sizeof(struct baro_report);
 				brp++;
 			}
@@ -512,7 +520,7 @@ MS5611::read(struct file *filp, char *buffer, size_t buflen)
 	/* manual measurement - run one conversion */
 	do {
 		_measure_phase = 0;
-		vRingBufferFlush(_reports);	
+		ringbuf_flush(_reports);	
 
 		/* do temperature first */
 		if (OK != measure()) {
@@ -542,7 +550,7 @@ MS5611::read(struct file *filp, char *buffer, size_t buflen)
 
 		/* state machine will have generated a report, copy it out */
 //		if (_reports->get(brp)) {		
-		if (0 == xRingBufferGet(_reports, brp, sizeof(struct baro_report))) {
+		if (0 == ringbuf_get(_reports, brp, sizeof(struct baro_report))) {
 			ret = sizeof(*brp);
 		}
 
@@ -631,7 +639,7 @@ MS5611::ioctl(struct file *filp, int cmd, unsigned long arg)
 			irqstate_t flags = irqsave();
 
 //			if (!_reports->resize(arg)) {
-			if (!xRingBufferResize(_reports, arg)) {
+			if (!ringbuf_resize(_reports, arg)) {
 				irqrestore(flags);
 				return -ENOMEM;
 			}
@@ -642,7 +650,7 @@ MS5611::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 	case SENSORIOCGQUEUEDEPTH:
 //		return _reports->size();
-		return iRingBufferSize(_reports);
+		return ringbuf_size(_reports);
 		
 	case SENSORIOCRESET:
 		/*
@@ -684,7 +692,7 @@ MS5611::ms5611_spi_read(unsigned offset, void *data, unsigned count)
 	uint8_t buf[4] = { 0 | DIR_WRITE, 0, 0, 0 };
 
 	/* read the most recent measurement */
-	int ret = SpiTransfer(&_devInstance, &buf[0], &buf[0], sizeof(buf));
+	int ret = spi_transfer(&ms5611_spi, &buf[0], &buf[0], sizeof(buf));
 
 	if (ret == OK) {
 		/* fetch the raw value */
@@ -707,7 +715,7 @@ MS5611::start_cycle(unsigned delay_ticks)
 	/* reset the report ring and state machine */
 	_collect_phase = false;
 	_measure_phase = 0;
-	vRingBufferFlush(_reports);	
+	ringbuf_flush(_reports);	
 	_work = xTimerCreate("poll_ms5611", USEC2TICK(_measure_ticks * 1000), pdTRUE, this, &MS5611::cycle_trampoline);
 	xTimerStart(_work, portMAX_DELAY);
 	
@@ -717,7 +725,8 @@ MS5611::start_cycle(unsigned delay_ticks)
 void
 MS5611::stop_cycle()
 {
-	xTimerStop(_work, portMAX_DELAY);
+    if(_work != NULL)
+        xTimerStop(_work, portMAX_DELAY);
 }
 
 void
@@ -754,7 +763,7 @@ MS5611::cycle()
 			/* issue a reset command to the sensor */
 //added by prj
 			uint8_t cmd = ADDR_RESET_CMD | DIR_WRITE;
-			SpiTransfer(&_devInstance, &cmd, NULL, 1);
+			spi_transfer(&ms5611_spi, &cmd, NULL, 1);
 			/* reset the collection state machine and try again - we need
 			 * to wait 2.8 ms after issuing the sensor reset command
 			 * according to the MS5611 datasheet
@@ -785,7 +794,7 @@ MS5611::cycle()
 		/* issue a reset command to the sensor */
 		//added by  prj
 		uint8_t cmd = ADDR_RESET_CMD | DIR_WRITE;
-		SpiTransfer(&_devInstance, &cmd, NULL, 1);
+		spi_transfer(&ms5611_spi, &cmd, NULL, 1);
 		/* reset the collection state machine and try again 
 		start_cycle();
         */
@@ -801,6 +810,8 @@ MS5611::measure()
 {
 	int ret;
 
+	perf_begin(_measure_perf);
+
 	/*
 	 * In phase zero, request temperature; in other phases, request pressure.
 	 */
@@ -811,7 +822,13 @@ MS5611::measure()
 	 */
 	//added by prj
 	addr |= DIR_WRITE;
-	ret = SpiTransfer(&_devInstance, &addr, NULL, 1);
+	ret = spi_transfer(&ms5611_spi, &addr, NULL, 1);
+	if (OK != ret) 
+    {
+		perf_count(_comms_errors);
+	}
+
+	perf_end(_measure_perf);
 
 	return ret;
 }
@@ -821,21 +838,27 @@ MS5611::collect()
 {
 	int ret;
 	uint32_t raw;
-
-//	perf_begin(_sample_perf);
+    static hrt_abstime last_time;
 
 	struct baro_report report = {0};
 	/* this should be fairly close to the end of the conversion, so the best approximation of the time */
 	report.timestamp = hrt_absolute_time();
-//	report.error_count = perf_event_count(_comms_errors);
+	report.error_count = perf_event_count(_comms_errors);
+
+    //some times freertos timer is not correct
+    if(report.timestamp - last_time < MS5611_CONVERSION_INTERVAL)
+        return 0;
+
+	perf_begin(_sample_perf);
+    perf_count(_perf_interval);
 
 	/* read the most recent measurement - read offset/size are hardcoded in the interface */
 //added by prj
 	ret = ms5611_spi_read(0, (void *)&raw, 0);
 	
 	if (ret < 0) {
-		//perf_count(_comms_errors);
-		//perf_end(_sample_perf);
+		perf_count(_comms_errors);
+		perf_end(_sample_perf);
 		return ret;
 	}
 
@@ -926,18 +949,19 @@ MS5611::collect()
 			orb_publish(ORB_ID(sensor_baro), _baro_topic, &report);
 		}
 
-		if (xRingBufferForce(_reports, &report, sizeof(report))) {
-	//		perf_count(_buffer_overflows);
+		if (ringbuf_force(_reports, &report, sizeof(report))) {
+			perf_count(_buffer_overflows);
 		}
 
 		/* notify anyone waiting for data */
 		poll_notify(POLLIN);
 	}
 
+    last_time = report.timestamp;
 	/* update the measurement state machine */
 	INCREMENT(_measure_phase, MS5611_MEASUREMENT_RATIO + 1);
 
-//	perf_end(_sample_perf);
+	perf_end(_sample_perf);
 
 	return OK;
 }
@@ -945,11 +969,12 @@ MS5611::collect()
 void
 MS5611::print_info()
 {
-	//perf_print_counter(_sample_perf);
-	//perf_print_counter(_comms_errors);
-	//perf_print_counter(_buffer_overflows);
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_comms_errors);
+	perf_print_counter(_buffer_overflows);
+	perf_print_counter(_perf_interval);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
-	vRingBufferPrintInfo(_reports, "report queue");
+	ringbuf_printinfo(_reports, "report queue");
 	printf("TEMP:           %d\n", _TEMP);
 	printf("SENS:           %lld\n", _SENS);
 	printf("OFF:            %lld\n", _OFF);
@@ -1042,7 +1067,7 @@ start(bool external_bus)
 {
 	int fd;
 //	prom_u prom_buf;
-	Print_Info("MS5611 -------------------------Into start ");
+	pilot_info("MS5611 -------------------------Into start ");
 	
 	if (g_dev[external_bus] != NULL)
 	{
@@ -1052,13 +1077,13 @@ start(bool external_bus)
 	/* create the driver */
 	if (external_bus) {
 #ifdef PX4_SPI_BUS_EXT
-		g_dev[external_bus] = new MS5611(PX4_SPI_BUS_EXT, MS5611_BARO_DEVICE_PATH_EXT, (ESpi_device_id)ESPI_DEVICE_TYPE_BARO);
+		g_dev[external_bus] = new MS5611(PX4_SPI_BUS_EXT, MS5611_BARO_DEVICE_PATH_EXT);
 #else
 		errx(0, "External SPI not available");
 		return;
 #endif
 	} else {
-		g_dev[external_bus] = new MS5611(SPI_DEVICE_ID_FOR_SENSOR, MS5611_BARO_DEVICE_PATH_INT, (ESpi_device_id)ESPI_DEVICE_TYPE_BARO);
+		g_dev[external_bus] = new MS5611(SPI_DEVICE_ID_FOR_SENSOR, MS5611_BARO_DEVICE_PATH_INT);
 	}
 	if (g_dev[external_bus] == NULL)
 		goto fail;
@@ -1112,15 +1137,19 @@ test(bool external_bus)
 	{
 		fd = open(MS5611_BARO_DEVICE_PATH_EXT, O_RDONLY);
 		if (fd < 0)
-			Print_Err("%s open failed\n", MS5611_BARO_DEVICE_PATH_EXT);
+        {
+			pilot_err("%s open failed\n", MS5611_BARO_DEVICE_PATH_EXT);
 			return;
+        }
 	}
 	else
 	{
 		fd = open(MS5611_BARO_DEVICE_PATH_INT, O_RDONLY);
 		if (fd < 0)
-			Print_Err("%s open failed\n", MS5611_BARO_DEVICE_PATH_INT);
+        {
+			pilot_err("%s open failed\n", MS5611_BARO_DEVICE_PATH_INT);
 			return;
+        }
 	}
 	
 	
@@ -1128,25 +1157,25 @@ test(bool external_bus)
 	sz = read(fd, (char*)&report, sizeof(report));
 
 	if (sz != sizeof(report)) {
-		Print_Err("immediate read failed\n");
+		pilot_err("immediate read failed\n");
 		return ;
 	}
 
-	Print_Info("single read\n");
-	Print_Info("pressure:    %10.4f\n", (double)report.pressure);
-	Print_Info("altitude:    %11.4f\n", (double)report.altitude);
-	Print_Info("temperature: %8.4f\n", (double)report.temperature);
-	Print_Info("time:        %lld\n", report.timestamp);
+	pilot_info("single read\n");
+	pilot_info("pressure:    %10.4f\n", (double)report.pressure);
+	pilot_info("altitude:    %11.4f\n", (double)report.altitude);
+	pilot_info("temperature: %8.4f\n", (double)report.temperature);
+	pilot_info("time:        %lld\n", report.timestamp);
 
 	/* set the queue depth to 10 */
 	if (OK != ioctl(fd, SENSORIOCSQUEUEDEPTH,10)) {
-		Print_Err("failed to set queue depth\n");
+		pilot_err("failed to set queue depth\n");
 		return ;
 	}
 
 	/* start the sensor polling at 2Hz */
 	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2)) {
-		Print_Err("failed to set 2Hz poll rate\n");
+		pilot_err("failed to set 2Hz poll rate\n");
 		return ;
 	}
 
@@ -1160,7 +1189,7 @@ test(bool external_bus)
 		ret = poll(&fds, 1, 2000);
 
 		if (ret != 1) {
-			Print_Err("timed out waiting for sensor data\n");
+			pilot_err("timed out waiting for sensor data\n");
 			return;
 		}
 
@@ -1168,15 +1197,15 @@ test(bool external_bus)
 		sz = read(fd, (char*)&report, sizeof(report));
 
 		if (sz != sizeof(report)) {
-			Print_Err("periodic read failed\n");
+			pilot_err("periodic read failed\n");
 			return ;
 		}
 
-		Print_Info("periodic read %u\n", i);
-		Print_Info("pressure:    %10.4f\n", (double)report.pressure);
-		Print_Info("altitude:    %11.4f\n", (double)report.altitude);
-		Print_Info("temperature: %8.4f\n", (double)report.temperature);
-		Print_Info("time:        %lld\n", report.timestamp);
+		pilot_info("periodic read %u\n", i);
+		pilot_info("pressure:    %10.4f\n", (double)report.pressure);
+		pilot_info("altitude:    %11.4f\n", (double)report.altitude);
+		pilot_info("temperature: %8.4f\n", (double)report.temperature);
+		pilot_info("time:        %lld\n", report.timestamp);
 	}
 
 	close(fd);
@@ -1353,7 +1382,7 @@ int ms5611_main(int argc, char *argv[])
 	/*
 	 * Start/load the driver.
 	 */
-	Print_Info("verb=%s external_bus = %d\r\n",verb, external_bus);
+	pilot_info("verb=%s external_bus = %d\r\n",verb, external_bus);
 	if (!strcmp(verb, "start")) {
 		ms5611::start(external_bus);
 			return 0;

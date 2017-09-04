@@ -39,6 +39,7 @@
  *
  ****************************************************************************/
 
+#ifdef CONFIG_FS_FAT
 /****************************************************************************
  * Included Files
  ****************************************************************************/
@@ -91,7 +92,7 @@ static int     fat_rewinddir(struct inode *mountpt, struct fs_dirent_s *dir);
 static int     fat_bind(FAR struct inode *blkdriver, const void *data,
                         void **handle);
 static int     fat_unbind(void *handle, FAR struct inode **blkdriver);
-static int     fat_statfs(struct inode *mountpt, struct statfs *buf);
+static int     fat_statfs(struct inode *mountpt, const char *relpath, struct statfs *buf);
 
 static int     fat_unlink(struct inode *mountpt, const char *relpath);
 static int     fat_mkdir(struct inode *mountpt, const char *relpath,
@@ -1842,10 +1843,10 @@ static int fat_unbind(void *handle, FAR struct inode **blkdriver)
           fat_io_free(fs->fs_buffer, fs->fs_hwsectorsize);
         }
 
-      kfree(fs);
     }
 
   fat_semgive(fs);
+  kfree(fs);
   return ret;
 }
 
@@ -1856,7 +1857,7 @@ static int fat_unbind(void *handle, FAR struct inode **blkdriver)
  *
  ****************************************************************************/
 
-static int fat_statfs(struct inode *mountpt, struct statfs *buf)
+static int fat_statfs(struct inode *mountpt, const char *relpath, struct statfs *buf)
 {
   struct fat_mountpt_s *fs;
   int                   ret;
@@ -2485,3 +2486,4 @@ errout_with_semaphore:
  * Public Functions
  ****************************************************************************/
 
+#endif//CONFIG_FS_FAT

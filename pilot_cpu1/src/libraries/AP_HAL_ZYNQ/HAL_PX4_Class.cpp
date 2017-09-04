@@ -39,11 +39,11 @@ static PX4GPIO gpioDriver;
 
 static Empty::I2CDeviceManager i2c_mgr_instance;
 
-#define UARTA_DEFAULT_DEVICE "/dev/uartns2"         //uart4 maclink console
+#define UARTA_DEFAULT_DEVICE "/dev/uartns2"         //serial3 maclink console
 #define UARTB_DEFAULT_DEVICE "/dev/uartns3"         //1st GPS
-#define UARTC_DEFAULT_DEVICE "/dev/uartns0"         //uart2 telem1
-#define UARTD_DEFAULT_DEVICE "/dev/uartns1"         //uart3 telem2
-#define UARTE_DEFAULT_DEVICE "/dev/uartns4"         //
+#define UARTC_DEFAULT_DEVICE "/dev/uartns0"         //serial1 telem1
+#define UARTD_DEFAULT_DEVICE "/dev/uartns1"         //serial2 telem2
+#define UARTE_DEFAULT_DEVICE "/dev/null"         //
 
 // 3 UART drivers, for GPS plus two mavlink-enabled devices
 static PX4UARTDriver uartADriver(UARTA_DEFAULT_DEVICE, "APM_uartA");
@@ -87,7 +87,7 @@ extern const AP_HAL::HAL& hal;
  */
 void hal_px4_set_priority(uint8_t priority)
 {
-//    vTaskPrioritySet(daemon_task, priority);
+    vTaskPrioritySet(daemon_task, priority);
 }
 
 /*
@@ -96,9 +96,9 @@ void hal_px4_set_priority(uint8_t priority)
   sketch - probably waiting on a low priority driver. Set the priority
   of the APM task low to let the driver run.
  */
-static void loop_overtime(xTimerHandle xTimer, void *)
+static void loop_overtime(void *)
 {
-    hal_px4_set_priority(APM_OVERTIME_PRIORITY);
+//    hal_px4_set_priority(APM_OVERTIME_PRIORITY);
     px4_ran_overtime = true;
 }
 
@@ -117,7 +117,7 @@ static void main_loop(void *pvParameters)
 //    hal.analogin->init();
  //   hal.gpio->init();
 
-    Print_Info("in main loop\n");
+    pilot_info("in main loop\n");
 
     /*
       run setup() at low priority to ensure CLI doesn't hang the
@@ -130,8 +130,10 @@ static void main_loop(void *pvParameters)
     g_callbacks->setup();
     hal.scheduler->system_initialized();
 
+    perf_counter_t perf_loop = perf_alloc(PC_ELAPSED, "APM_loop");
+    perf_counter_t perf_overrun = perf_alloc(PC_COUNT, "APM_overrun");
 //    struct hrt_call loop_overtime_call;
-    xTimerHandle loop_overtime_call;
+//    xTimerHandle loop_overtime_call;
 
     thread_running = true;
 
@@ -142,9 +144,10 @@ static void main_loop(void *pvParameters)
 
 //    loop_overtime_call = xTimerCreate("loop overtime", 100/portTICK_RATE_MS, pdTRUE, NULL, loop_overtime, NULL);
  //   xTimerStart(loop_overtime_call, portMAX_DELAY);
-    Print_Info("main loop start thread\n");
+    pilot_info("main loop start thread\n");
     while (!_px4_thread_should_exit) {
-        
+        perf_begin(perf_loop);
+
         /*
           this ensures a tight loop waiting on a lower priority driver
           will eventually give up some time for the driver to run. It
@@ -161,9 +164,11 @@ static void main_loop(void *pvParameters)
               to let a driver run. Set it back to high priority now.
              */
             hal_px4_set_priority(APM_MAIN_PRIORITY);
+            perf_count(perf_overrun);
             px4_ran_overtime = false;
         }
 
+        perf_end(perf_loop);
 
         /*
           give up 250 microseconds of time, to ensure drivers get a
@@ -177,13 +182,13 @@ static void main_loop(void *pvParameters)
 
 static void usage(void)
 {
-    Print_Info("Usage: %s [options] {start,stop,status}\n", SKETCHNAME);
-    Print_Info("Options:\n");
-    Print_Info("\t-d  DEVICE         set terminal device (default %s)\n", UARTA_DEFAULT_DEVICE);
-    Print_Info("\t-d2 DEVICE         set second terminal device (default %s)\n", UARTC_DEFAULT_DEVICE);
-    Print_Info("\t-d3 DEVICE         set 3rd terminal device (default %s)\n", UARTD_DEFAULT_DEVICE);
-    Print_Info("\t-d4 DEVICE         set 2nd GPS device (default %s)\n", UARTE_DEFAULT_DEVICE);
-    Print_Info("\n");
+    pilot_info("Usage: %s [options] {start,stop,status}\n", SKETCHNAME);
+    pilot_info("Options:\n");
+    pilot_info("\t-d  DEVICE         set terminal device (default %s)\n", UARTA_DEFAULT_DEVICE);
+    pilot_info("\t-d2 DEVICE         set second terminal device (default %s)\n", UARTC_DEFAULT_DEVICE);
+    pilot_info("\t-d3 DEVICE         set 3rd terminal device (default %s)\n", UARTD_DEFAULT_DEVICE);
+    pilot_info("\t-d4 DEVICE         set 2nd GPS device (default %s)\n", UARTE_DEFAULT_DEVICE);
+    pilot_info("\n");
 }
 
 
@@ -196,7 +201,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
     const char *deviceE = UARTE_DEFAULT_DEVICE;
 
     if (argc < 1) {
-        Print_Info("%s: missing command (try '%s start')", 
+        pilot_info("%s: missing command (try '%s start')", 
                SKETCHNAME, SKETCHNAME);
         usage();
         return;
@@ -208,7 +213,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
     for (i=0; i<argc; i++) {
         if (strcmp(argv[i], "start") == 0) {
             if (thread_running) {
-                Print_Info("%s already running\n", SKETCHNAME);
+                pilot_info("%s already running\n", SKETCHNAME);
                 /* this is not an error */
                 return;
             }
@@ -217,7 +222,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
             uartCDriver.set_device_path(deviceC);
             uartDDriver.set_device_path(deviceD);
             uartEDriver.set_device_path(deviceE);
-            Print_Info("Starting %s uartA=%s uartC=%s uartD=%s uartE=%s\n", 
+            pilot_info("Starting %s uartA=%s uartC=%s uartD=%s uartE=%s\n", 
                    SKETCHNAME, deviceA, deviceC, deviceD, deviceE);
 
             _px4_thread_should_exit = false;
@@ -234,11 +239,11 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
  
         if (strcmp(argv[i], "status") == 0) {
             if (_px4_thread_should_exit && thread_running) {
-                Print_Info("\t%s is exiting\n", SKETCHNAME);
+                pilot_info("\t%s is exiting\n", SKETCHNAME);
             } else if (thread_running) {
-                Print_Info("\t%s is running\n", SKETCHNAME);
+                pilot_info("\t%s is running\n", SKETCHNAME);
             } else {
-                Print_Info("\t%s is not started\n", SKETCHNAME);
+                pilot_info("\t%s is not started\n", SKETCHNAME);
             }
             return;
         }
@@ -248,7 +253,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
             if (argc > i + 1) {
                 deviceA = strdup(argv[i+1]);
             } else {
-                Print_Info("missing parameter to -d DEVICE\n");
+                pilot_info("missing parameter to -d DEVICE\n");
                 usage();
                 return;
             }
@@ -259,7 +264,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
             if (argc > i + 1) {
                 deviceC = strdup(argv[i+1]);
             } else {
-                Print_Warn("missing parameter to -d2 DEVICE\n");
+                pilot_warn("missing parameter to -d2 DEVICE\n");
                 usage();
                 return;
             }
@@ -270,7 +275,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
             if (argc > i + 1) {
                 deviceD = strdup(argv[i+1]);
             } else {
-                Print_Warn("missing parameter to -d3 DEVICE\n");
+                pilot_warn("missing parameter to -d3 DEVICE\n");
                 usage();
                 return;
             }
@@ -281,7 +286,7 @@ void HAL_PX4::run(int argc, char * const argv[], Callbacks* callbacks) const
             if (argc > i + 1) {
                 deviceE = strdup(argv[i+1]);
             } else {
-                Print_Warn("missing parameter to -d4 DEVICE\n");
+                pilot_warn("missing parameter to -d4 DEVICE\n");
                 usage();
                 return;
             }

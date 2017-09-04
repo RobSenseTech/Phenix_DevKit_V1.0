@@ -36,6 +36,7 @@
 #ifndef __FS_FAT_FS_FAT32_H
 #define __FS_FAT_FS_FAT32_H
 
+#ifdef CONFIG_FS_FAT
 /****************************************************************************
  * Included Files
  ****************************************************************************/
@@ -932,4 +933,5 @@ EXTERN int    fat_currentsector(struct fat_mountpt_s *fs, struct fat_file_s *ff,
 }
 #endif
 
+#endif//CONFIG_FS_FAT
 #endif /* __FS_FAT_FS_FAT32_H */

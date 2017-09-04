@@ -71,7 +71,7 @@ void PublicationBase::update(void *data)
 	if (_handle != NULL) {
 		int ret = orb_publish(getMeta(), getHandle(), data);
 
-		if (ret != 0) { Print_Warn("publish fail"); }
+		if (ret != 0) { pilot_warn("publish fail"); }
 
 	} else {
 		orb_advert_t handle;
@@ -89,7 +89,7 @@ void PublicationBase::update(void *data)
 			setHandle(handle);
 
 		} else {
-			Print_Warn("advert fail");
+			pilot_warn("advert fail");
 		}
 	}
 }

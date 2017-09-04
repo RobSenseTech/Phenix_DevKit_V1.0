@@ -40,7 +40,7 @@
 #include "device/cdev.h"
 #include "ringbuffer.h"
 #include "drv_mag.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include <uORB/uORB.h>
 #include "conversion/rotation.h"
 #include "math.h"
@@ -54,6 +54,7 @@
 #include "timers.h"
 #include "irq.h"
 #include "driver.h"
+#include "perf/perf_counter.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -76,9 +77,6 @@
 #endif
 static const int ERROR = -1;
 
-#define OK						0
-#define DEV_FAILURE				0
-#define DEV_SUCCESS				1
 /*
  * LIS3MDL internal constants and data structures.
  */
@@ -178,7 +176,7 @@ static const uint8_t INVALID_REGISTER = 0;
 class LIS3MDL : public device::CDev
 {
 public:
-	LIS3MDL(int bus, const char* path, ESpi_device_id device, enum Rotation rotation);
+	LIS3MDL(int bus, const char* path, enum Rotation rotation);
 	virtual ~LIS3MDL();
 
 	virtual int		init();
@@ -200,7 +198,7 @@ private:
     xTimerHandle    _work;
 	unsigned		_measure_ticks;
 
-	RingBuffer_t	*_reports;
+	ringbuf_t	*_reports;
 	mag_scale		_scale;
 	float 			_range_scale;
 	float 			_range_ga;
@@ -210,11 +208,11 @@ private:
 
 	orb_advert_t		_mag_topic;
 
-	//perf_counter_t		_sample_perf;
-	//perf_counter_t		_comms_errors;
-	//perf_counter_t		_buffer_overflows;
-	//perf_counter_t		_range_errors;
-	//perf_counter_t		_conf_errors;
+	perf_counter_t		_sample_perf;
+	perf_counter_t		_comms_errors;
+	perf_counter_t		_buffer_overflows;
+	perf_counter_t		_range_errors;
+	perf_counter_t		_conf_errors;
 
 	/* status reporting */
 	bool			_sensor_ok;		/**< sensor was found and reports ok */
@@ -229,7 +227,7 @@ private:
 	uint8_t			_temperature_counter;
 	uint8_t			_temperature_error_count;
 
-	struct SDeviceViaSpi _devInstance;	
+    struct spi_node     lis3mdl_spi;
 	/**
 	 * Initialise the automatic measurement state machine and start it.
 	 *
@@ -407,10 +405,10 @@ private:
 extern "C" __EXPORT int lis3mdl_main(int argc, char *argv[]);
 
 
-LIS3MDL::LIS3MDL(int bus, const char* path, ESpi_device_id device, enum Rotation rotation) :
+LIS3MDL::LIS3MDL(int bus, const char* path, enum Rotation rotation) :
 	CDev("lis3mdl", path),
 //	_interface(interface),
-//	_work{},
+	_work(NULL),
 	_measure_ticks(0),
 	_reports(NULL),
 	_scale{},
@@ -420,11 +418,11 @@ LIS3MDL::LIS3MDL(int bus, const char* path, ESpi_device_id device, enum Rotation
 	_class_instance(-1),
 	_orb_class_instance(-1),
 	_mag_topic(NULL),
-	//_sample_perf(perf_alloc(PC_ELAPSED, "lis3mdl_read")),
-	//_comms_errors(perf_alloc(PC_COUNT, "lis3mdl_comms_errors")),
-	//_buffer_overflows(perf_alloc(PC_COUNT, "lis3mdl_buffer_overflows")),
-	//_range_errors(perf_alloc(PC_COUNT, "lis3mdl_range_errors")),
-	//_conf_errors(perf_alloc(PC_COUNT, "lis3mdl_conf_errors")),
+	_sample_perf(perf_alloc(PC_ELAPSED, "lis3mdl_read")),
+	_comms_errors(perf_alloc(PC_COUNT, "lis3mdl_comms_errors")),
+	_buffer_overflows(perf_alloc(PC_COUNT, "lis3mdl_buffer_overflows")),
+	_range_errors(perf_alloc(PC_COUNT, "lis3mdl_range_errors")),
+	_conf_errors(perf_alloc(PC_COUNT, "lis3mdl_conf_errors")),
 	_sensor_ok(false),
 	_calibrated(false),
 	_rotation(rotation),
@@ -433,13 +431,15 @@ LIS3MDL::LIS3MDL(int bus, const char* path, ESpi_device_id device, enum Rotation
 	_temperature_counter(0),
 	_temperature_error_count(0)
 {
-	_devInstance.spi_id = bus;
-	DeviceViaSpiCfgInitialize(&_devInstance,
-							  device, 
-							  "lis3mdl",
-							  ESPI_CLOCK_MODE_2,
-							  (11*1000*1000));
-	_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_LIS3MDL;
+
+    lis3mdl_spi.bus_id = bus;
+    lis3mdl_spi.cs_pin = GPIO_SPI_CS_MAG;
+    lis3mdl_spi.frequency = 11*1000*1000;     //spi frequency
+
+    spi_cs_init(&lis3mdl_spi);
+    spi_register_node(&lis3mdl_spi);
+
+    _device_id.devid_s.devtype = DRV_MAG_DEVTYPE_LIS3MDL;
 
 	// enable debug() calls
 //	_debug_enabled = false;
@@ -468,6 +468,7 @@ LIS3MDL::~LIS3MDL()
 	stop();
 
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 	}
 
@@ -475,29 +476,31 @@ LIS3MDL::~LIS3MDL()
 		unregister_class_devname(MAG_BASE_DEVICE_PATH, _class_instance);
 	}
 
+    spi_deregister_node(&lis3mdl_spi);
 	// free perf counters
-	//perf_free(_sample_perf);
-	//perf_free(_comms_errors);
-	//perf_free(_buffer_overflows);
-	//perf_free(_range_errors);
-	//perf_free(_conf_errors);
+	perf_free(_sample_perf);
+	perf_free(_comms_errors);
+	perf_free(_buffer_overflows);
+	perf_free(_range_errors);
+	perf_free(_conf_errors);
 }
 
 int
 LIS3MDL::init()
 {
-	int ret = DEV_FAILURE;
+	int ret = ERROR;
 
 	if (CDev::init() != OK)
 		goto out;
 	/* allocate basic report buffers */
 //	_reports = new ringbuffer::RingBuffer(2, sizeof(mag_report));
 	if (_reports != NULL) {
+        ringbuf_deinit(_reports);
 		vPortFree(_reports);
 		_reports = NULL;
 	}
-	_reports = (RingBuffer_t *) pvPortMalloc (sizeof(RingBuffer_t));
-	iRingBufferInit(_reports, 2, sizeof(mag_report));
+	_reports = (ringbuf_t *) pvPortMalloc (sizeof(ringbuf_t));
+	ringbuf_init(_reports, 2, sizeof(mag_report));
 	
 	if (_reports == NULL) {
 		goto out;
@@ -529,10 +532,10 @@ LIS3MDL::probe()
 	ret = read_reg(ADDR_ID,v);
 	if (v == ID_WHO_AM_I) {
 		success = true;
-		Print_Info("LIS3MDL_I2C::probe: ID byte match (%02x)\r\n", v);
+		pilot_info("LIS3MDL_I2C::probe: ID byte match (%02x)\r\n", v);
 		return OK;
 	}
-	Print_Info("LIS3MDL_I2C:: ID byte mismatch (%02x)\r\n", v);
+	pilot_info("LIS3MDL_I2C:: ID byte mismatch (%02x)\r\n", v);
 	return -EIO;
 }
 
@@ -565,17 +568,17 @@ int LIS3MDL::set_range(unsigned range)
 	ret = write_reg(ADDR_CONF_CTRL_REG2, (_range_bits << 5));
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 	uint8_t range_bits_in = 0;
 	ret = read_reg(ADDR_CONF_CTRL_REG2, range_bits_in);
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	if ((range_bits_in & 0x60) != (_range_bits << 5))
 	{
-		return DEV_FAILURE;
+		return ERROR;
 	}
 	return OK;
 }
@@ -593,16 +596,16 @@ void LIS3MDL::check_range(void)
 	ret = read_reg(ADDR_CONF_CTRL_REG2, range_bits_in);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return;
 	}
 
 	if ((range_bits_in & 0x60)!= (_range_bits << 5)) {
-//		perf_count(_range_errors);
+		perf_count(_range_errors);
 		ret = write_reg(ADDR_CONF_CTRL_REG2, (_range_bits << 5));
 
 		if (OK != ret) {
-//			perf_count(_comms_errors);
+			perf_count(_comms_errors);
 		}
 	}
 }
@@ -628,22 +631,22 @@ void LIS3MDL::check_conf(void)
 
 	
 		if (OK != ret) {
-//			perf_count(_comms_errors);
+			perf_count(_comms_errors);
 			return;
 		}
 
 		uint8_t local_config_reg = get_config_register(config_reg[i]);
 		if (local_config_reg != INVALID_REGISTER) {
-//			perf_count(_conf_errors);
+			perf_count(_conf_errors);
 			return;
 		}
 
 		if (conf_reg_in != local_config_reg) {
-//			perf_count(_conf_errors);
+			perf_count(_conf_errors);
 			ret = write_reg(config_reg[i], local_config_reg);
 
 			if (OK != ret) {
-//				perf_count(_comms_errors);
+				perf_count(_comms_errors);
 			}
 		}
 	}
@@ -675,7 +678,7 @@ int LIS3MDL::set_config_to_device(uint8_t config_register, uint8_t val)
 	ret = write_reg(config_register, val);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return ERROR;
 	}
 	return OK;
@@ -688,7 +691,7 @@ int LIS3MDL::get_config_from_device(uint8_t config_register, uint8_t &val)
 	ret = read_reg(config_register, val);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return ERROR;
 	}
 	return OK;
@@ -704,7 +707,7 @@ int LIS3MDL::spi_write(unsigned address, void *data, unsigned count)
 
 	buf[0] = address | DIR_WRITE;
 	memcpy(&buf[1], data, count);
-	return SpiTransfer(&_devInstance, &buf[0], &buf[0], count + 1);
+	return spi_transfer(&lis3mdl_spi, &buf[0], &buf[0], count + 1);
 }
 
 int LIS3MDL::spi_read(unsigned address, void *data, unsigned count)
@@ -717,7 +720,7 @@ int LIS3MDL::spi_read(unsigned address, void *data, unsigned count)
 
 	buf[0] = address | DIR_READ | ADDR_INCREMENT;
 
-	int ret = SpiTransfer(&_devInstance, &buf[0], &buf[0], count + 1);
+	int ret = spi_transfer(&lis3mdl_spi, &buf[0], &buf[0], count + 1);
 	memcpy(data, &buf[1], count);
 	return ret;
 }
@@ -742,7 +745,7 @@ LIS3MDL::read(struct file *filp, char *buffer, size_t buflen)
 		 * we are careful to avoid racing with them.
 		 */
 		while (count--) {
-			if (0 == xRingBufferGet(_reports, mag_buf, sizeof(mag_report))) {	
+			if (0 == ringbuf_get(_reports, mag_buf, sizeof(mag_report))) {	
 				ret += sizeof(struct mag_report);
 				mag_buf++;
 			}
@@ -755,7 +758,7 @@ LIS3MDL::read(struct file *filp, char *buffer, size_t buflen)
 	/* manual measurement - run one conversion */
 	/* XXX really it'd be nice to lock against other readers here */
 	do {
-		vRingBufferFlush(_reports);
+		ringbuf_flush(_reports);
 		/* trigger a measurement */
 		if (OK != measure()) {
 			ret = -EIO;
@@ -771,7 +774,7 @@ LIS3MDL::read(struct file *filp, char *buffer, size_t buflen)
 			break;
 		}
 
-		if (0 == xRingBufferGet(_reports, mag_buf, sizeof(struct mag_report))) {
+		if (0 == ringbuf_get(_reports, mag_buf, sizeof(struct mag_report))) {
 			ret = sizeof(struct mag_report);
 		}
 	} while (0);
@@ -860,7 +863,7 @@ LIS3MDL::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 			irqstate_t flags = irqsave();
 
-			if (!xRingBufferResize(_reports, arg)) {
+			if (!ringbuf_resize(_reports, arg)) {
 				irqrestore(flags);
 				return -ENOMEM;
 			}
@@ -871,7 +874,7 @@ LIS3MDL::ioctl(struct file *filp, int cmd, unsigned long arg)
 		}
 
 	case SENSORIOCGQUEUEDEPTH:
-		return iRingBufferSize(_reports);
+		return ringbuf_size(_reports);
 
 	case SENSORIOCRESET:
 		return reset();
@@ -938,7 +941,7 @@ LIS3MDL::start()
 {
 	/* reset the report ring and state machine */
 	_collect_phase = false;
-	vRingBufferFlush(_reports);
+	ringbuf_flush(_reports);
 
 	_work = xTimerCreate("poll_lis3mdl", _measure_ticks, pdTRUE, this, &LIS3MDL::cycle_trampoline);	
 	xTimerStart(_work, portMAX_DELAY);
@@ -948,7 +951,8 @@ LIS3MDL::start()
 void
 LIS3MDL::stop()
 {
-    xTimerDelete(_work, portMAX_DELAY);
+    if(_work != NULL)
+        xTimerDelete(_work, portMAX_DELAY);
 }
 
 int
@@ -1026,7 +1030,7 @@ LIS3MDL::measure()
 	ret = write_reg(ADDR_CONF_CTRL_REG3, LIS3MDL_REG3_SINGLE_CONVERSION_MODE);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 	}
 
 	return ret;
@@ -1049,7 +1053,7 @@ LIS3MDL::collect()
 	int	ret;
 	uint8_t check_counter;
 
-//	perf_begin(_sample_perf);
+	perf_begin(_sample_perf);
 	struct mag_report new_report = {0};
 	bool sensor_is_onboard = false;
 
@@ -1059,7 +1063,7 @@ LIS3MDL::collect()
 
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
 	new_report.timestamp = hrt_absolute_time();
-//	new_report.error_count = perf_event_count(_comms_errors);
+	new_report.error_count = perf_event_count(_comms_errors);
 
 	/*
 	 * @note  We could read the status register here, which could tell us that
@@ -1073,7 +1077,7 @@ LIS3MDL::collect()
 
 
 	if (ret != OK) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		DEVICE_DEBUG("data/status read error");
 		goto out;
 	}
@@ -1093,7 +1097,7 @@ LIS3MDL::collect()
 	if ((abs(report.x) > 25600) ||
 	    (abs(report.y) > 25600) ||
 	    (abs(report.z) > 25600)) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		goto out;
 	}
 
@@ -1159,7 +1163,7 @@ LIS3MDL::collect()
 	new_report.z = ((zraw_f * _range_scale) - _scale.z_offset) * _scale.z_scale;
 
 	
-	//Print_Info("report.x  = %f, report.y = %f, report.z = %f\r\n",new_report.x, new_report.y, new_report.z) ;
+	//pilot_info("report.x  = %f, report.y = %f, report.z = %f\r\n",new_report.x, new_report.y, new_report.z) ;
 	
 	if (!(_pub_blocked)) {
 
@@ -1180,9 +1184,9 @@ LIS3MDL::collect()
 	_last_report = new_report;
 
 	/* post a report to the ring */
-	if(xRingBufferForce(_reports, &new_report, sizeof(new_report))){
-//	if (_reports->force(&new_report)) {
-//		perf_count(_buffer_overflows);
+	if(ringbuf_force(_reports, &new_report, sizeof(new_report)))
+    {
+		perf_count(_buffer_overflows);
 	}
 
 	/* notify anyone waiting for data */
@@ -1195,7 +1199,7 @@ LIS3MDL::collect()
 	  doesn't happen often, but given the poor cables some
 	  vehicles have it is worth checking for.
 	 */
-	//check_counter = perf_event_count(_sample_perf) % 256;
+	check_counter = perf_event_count(_sample_perf) % 256;
 
 	//if (check_counter == 0) {
 	//	check_range();
@@ -1208,7 +1212,7 @@ LIS3MDL::collect()
 	ret = OK;
 
 out:
-//	perf_end(_sample_perf);
+	perf_end(_sample_perf);
 	return ret;
 }
 
@@ -1279,7 +1283,7 @@ int LIS3MDL::set_temperature(unsigned enable)
 	ret = read_reg(ADDR_CONF_CTRL_REG1, _conf_reg[0]);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return -EIO;
 	}
 
@@ -1293,14 +1297,14 @@ int LIS3MDL::set_temperature(unsigned enable)
 	ret = write_reg(ADDR_CONF_CTRL_REG1, _conf_reg[0]);
 
 	if (OK != ret) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return -EIO;
 	}
 
 	uint8_t conf_reg_ret = 0;
 
 	if (read_reg(ADDR_CONF_CTRL_REG1, conf_reg_ret) != OK) {
-//		perf_count(_comms_errors);
+		perf_count(_comms_errors);
 		return -EIO;
 	}
 
@@ -1340,9 +1344,9 @@ LIS3MDL::meas_to_float(uint8_t in[2])
 void
 LIS3MDL::print_info()
 {
-	//perf_print_counter(_sample_perf);
-	//perf_print_counter(_comms_errors);
-	//perf_print_counter(_buffer_overflows);
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_comms_errors);
+	perf_print_counter(_buffer_overflows);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	printf("output  (%.2f %.2f %.2f)\n", (double)_last_report.x, (double)_last_report.y, (double)_last_report.z);
 	printf("offsets (%.2f %.2f %.2f)\n", (double)_scale.x_offset, (double)_scale.y_offset, (double)_scale.z_offset);
@@ -1350,7 +1354,7 @@ LIS3MDL::print_info()
 	       (double)_scale.x_scale, (double)_scale.y_scale, (double)_scale.z_scale,
 	       (double)(1.0f / _range_scale), (double)_range_ga);
 	printf("temperature %.2f\n", (double)_last_report.temperature);
-	vRingBufferPrintInfo(_reports, "report queue");
+	ringbuf_printinfo(_reports, "report queue");
 }
 
 /**
@@ -1392,13 +1396,13 @@ start(bool external_bus, enum Rotation rotation)
 	
 	if (external_bus) {
 #ifdef PX4_SPI_BUS_EXT
-		g_dev[external_bus] = new LIS3MDL(PX4_SPI_BUS_EXT, LIS3MDL_EXT_DEVICE_PATH, (ESpi_device_id)ESPI_DEVICE_TYPE_MAG, rotation);
+		g_dev[external_bus] = new LIS3MDL(PX4_SPI_BUS_EXT, LIS3MDL_EXT_DEVICE_PATH, rotation);
 #else
 		errx(0, "External SPI not available");
 		return ;
 #endif
 	} else {
-		g_dev[external_bus] = new LIS3MDL(SPI_DEVICE_ID_FOR_SENSOR, LIS3MDL_DEVICE_PATH, (ESpi_device_id)ESPI_DEVICE_TYPE_MAG, rotation);
+		g_dev[external_bus] = new LIS3MDL(SPI_DEVICE_ID_FOR_SENSOR, LIS3MDL_DEVICE_PATH, rotation);
 	}
 	
 	if (g_dev[external_bus] == NULL)
@@ -1426,7 +1430,7 @@ start(bool external_bus, enum Rotation rotation)
 	return ;
 	
 fail:
-	Print_Info("start :go fail \r\n");
+	pilot_info("start :go fail \r\n");
 	if (g_dev[external_bus] != NULL) {
 		delete g_dev[external_bus];
 		g_dev[external_bus] = NULL;
@@ -1451,7 +1455,7 @@ test(bool external_bus)
 	int ret;
 	int fd;
 	unsigned i = 0;	
-		Print_Info("LIS3MDL test ------------1\r\n");	
+		pilot_info("LIS3MDL test ------------1\r\n");	
 //		vTaskStartScheduler();
 	/* get the driver */
 	if(external_bus)
@@ -1472,16 +1476,16 @@ test(bool external_bus)
 			return ;
 		}
 	}	
-		Print_Info("LIS3MDL test ------------read\r\n");	
+		pilot_info("LIS3MDL test ------------read\r\n");	
 	/* do a simple demand read */
 	sz = read(fd, (char*)&report, sizeof(report));
-		Print_Info("LIS3MDL test ------------2\r\n");	
+		pilot_info("LIS3MDL test ------------2\r\n");	
 	if (sz != sizeof(report)) {
 		err(1, "immediate read failed");
 			return ;
 	}
 
-	Print_Info("LIS3MDL test ------------3\r\n");	
+	pilot_info("LIS3MDL test ------------3\r\n");	
 	
 	warnx("single read\r\n");
 	warnx("measurement: %.6f  %.6f  %.6f\r\n", (double)report.x, (double)report.y, (double)report.z);
@@ -1493,7 +1497,7 @@ test(bool external_bus)
 			return ;
 	}
 
-	Print_Info("ret = %x/r/n",ret);	
+	pilot_info("ret = %x/r/n",ret);	
 	
 	warnx("device active: %s", ret ? "external" : "onboard\r\n");
 
@@ -1502,7 +1506,7 @@ test(bool external_bus)
 		errx(1, "failed to set queue depth");
 			return ;
 	}
-	Print_Info("LIS3MDL test ------------6\r\n");	
+	pilot_info("LIS3MDL test ------------6\r\n");	
 	/* start the sensor polling at 2Hz */
 	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2)) {
 		errx(1, "failed to set 2Hz poll rate");
@@ -1510,24 +1514,24 @@ test(bool external_bus)
 	}
 
 	
-	Print_Info("LIS3MDL test ------------7\r\n");	
+	pilot_info("LIS3MDL test ------------7\r\n");	
 
 	/* read the sensor 5x and report each value */
 	for(i = 0; i < 5; i++) {
 		/* wait for data to be ready */
 		fds.fd = fd;
 		fds.events = POLLIN;
-		Print_Info("LIS3MDL test ------------9\r\n");	
+		pilot_info("LIS3MDL test ------------9\r\n");	
 		ret = poll(&fds, 1, 2000);
-		Print_Info("LIS3MDL test ------------10\r\n");	
+		pilot_info("LIS3MDL test ------------10\r\n");	
 		if (ret != 1) {
 			errx(1, "timed out waiting for sensor data");
 			return ;
 		}
-	Print_Info("LIS3MDL test ------------11\r\n");	
+	pilot_info("LIS3MDL test ------------11\r\n");	
 		/* now go get it */
 		sz = read(fd, (char*)&report, sizeof(report));
-	Print_Info("LIS3MDL test ------------12\r\n");	
+	pilot_info("LIS3MDL test ------------12\r\n");	
 		if (sz != sizeof(report)) {
 			err(1, "periodic read failed");
 			return ;

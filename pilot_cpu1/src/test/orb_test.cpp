@@ -23,7 +23,7 @@ ORBTest::ORBTest(const char *path) :
     CDev("ORBTest_accel", path),
     _class_instance(-1)
 {
-   Print_Info("ORBTest construct func\n");
+   pilot_info("ORBTest construct func\n");
 }
 
 ORBTest::~ORBTest()
@@ -39,12 +39,12 @@ int ORBTest::init()
     ret = CDev::init();
     if(ret != 0)
     {
-        Print_Err("cdev init error\n");
+        pilot_err("cdev init error\n");
         goto out;
     }
 
     _class_instance = register_class_devname("/dev/orbtest");
-    Print_Info("_class_instance = %d\n", _class_instance);
+    pilot_info("_class_instance = %d\n", _class_instance);
 
     struct sensor_accel_s ;
 
@@ -54,19 +54,19 @@ out:
 
 size_t ORBTest::read(Handle_t *pHandle, char *pcBuffer, size_t xBufLen)
 {
-    Print_Info("ORBTest read\n");
+    pilot_info("ORBTest read\n");
     return 0;
 }
 
 size_t ORBTest::write(Handle_t *pHandle, const char *pcBuffer, size_t xBufLen)
 {
-    Print_Info("ORBTest write\n");
+    pilot_info("ORBTest write\n");
     return 0;
 }
 
 int ORBTest::ioctl(Handle_t *pHandle, int iCmd, void *pvArg)
 {
-    Print_Info("ORBTest ioctl\n");
+    pilot_info("ORBTest ioctl\n");
     return 0;
 }
 

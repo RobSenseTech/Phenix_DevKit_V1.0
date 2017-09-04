@@ -27,7 +27,7 @@ void init()
 
 void panic(const char *errormsg, ...)
 {
-    Print_Err("%s\n", errormsg);
+    pilot_err("%s\n", errormsg);
     return;
     va_list ap;
 

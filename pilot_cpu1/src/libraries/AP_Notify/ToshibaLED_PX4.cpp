@@ -37,7 +37,7 @@ bool ToshibaLED_PX4::hw_init()
     // open the rgb led device
     _rgbled_fd = open(RGBLED0_DEVICE_PATH, 0);
     if (_rgbled_fd == -1) {
-        Print_Err("Unable to open " RGBLED0_DEVICE_PATH);
+        pilot_err("Unable to open " RGBLED0_DEVICE_PATH);
         return false;
     }
     ioctl(_rgbled_fd, RGBLED_SET_MODE, (unsigned long)RGBLED_MODE_ON);

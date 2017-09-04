@@ -49,7 +49,7 @@
 #include <unistd.h>
 
 #include "mixer.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 
 MixerGroup::MixerGroup(ControlCallback control_cb, uintptr_t cb_handle) :
 	Mixer(control_cb, cb_handle),

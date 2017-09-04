@@ -53,8 +53,6 @@ struct px4_parameters_t px4_parameters = {
 #define  ERROR                 -1
 
 #define OK						0
-#define DEV_FAILURE				0
-#define DEV_SUCCESS				1
 
 // class instance for primary driver of each class
 enum CLASS_DEVICE {

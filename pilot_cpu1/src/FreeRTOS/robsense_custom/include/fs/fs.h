@@ -46,7 +46,7 @@
 #include "semphr.h"
 #include "custom_sem.h"
 #include "errno.h"
-#include "FreeRTOS_Print.h"
+#include "pilot_print.h"
 #include "mm.h"
 #include <sys/types.h>
 #include <compiler.h>
@@ -185,7 +185,7 @@ struct mountpt_operations
   int     (*bind)(FAR struct inode *blkdriver, FAR const void *data, FAR void **handle);
   int     (*unbind)(FAR void *handle, FAR struct inode **blkdriver);
 
-  int     (*statfs)(FAR struct inode *mountpt, FAR struct statfs *buf);
+  int     (*statfs)(FAR struct inode *mountpt, FAR const char *relpath, FAR struct statfs *buf);
 
   /* Operations on paths */
 

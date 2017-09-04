@@ -13,6 +13,7 @@
 #include "Storage.h"
 #include "RCOutput.h"
 #include "RCInput.h"
+#include "Phx_define.h"
 //#include <AP_Scheduler/AP_Scheduler.h>
 
 using namespace PX4;
@@ -21,7 +22,11 @@ extern const AP_HAL::HAL& hal;
 
 extern bool _px4_thread_should_exit;
 
-PX4Scheduler::PX4Scheduler() 
+PX4Scheduler::PX4Scheduler() :
+    _perf_timers(perf_alloc(PC_ELAPSED, "APM_timers")),
+    _perf_io_timers(perf_alloc(PC_ELAPSED, "APM_IO_timers")),
+    _perf_storage_timer(perf_alloc(PC_ELAPSED, "APM_storage_timers")),
+	_perf_delay(perf_alloc(PC_ELAPSED, "APM_delay"))
 {}
 
 void PX4Scheduler::init()
@@ -42,12 +47,29 @@ void PX4Scheduler::init()
     xTaskCreate(&PX4Scheduler::_storage_thread, "storate thread", 2048, this, APM_STORAGE_PRIORITY, &_storage_thread_ctx);
 }
 
+static void sem_post_micro(xTimerHandle xTimer)
+{
+    void *timer_id = pvTimerGetTimerID(xTimer);
+    sem_t *sem = (sem_t *)timer_id;
+
+    sem_post(sem);
+}
 /**
    delay for a specified number of microseconds using a semaphore wait
  */
 void PX4Scheduler::delay_microseconds_semaphore(uint16_t usec) 
 {
     sem_t wait_semaphore;
+#if 1
+    xTimerHandle    wait_call;
+
+    sem_init(&wait_semaphore, 0, 0);
+	wait_call = xTimerCreate("delay micro sem ", USEC2TICK(usec), pdFALSE, (void *)&wait_semaphore, sem_post_micro);
+    xTimerStart(wait_call, portMAX_DELAY);
+    sem_wait(&wait_semaphore);
+    xTimerDelete(wait_call, portMAX_DELAY);
+    sem_destroy(&wait_semaphore);
+#else
     struct hrt_call wait_call;
     
     sem_init(&wait_semaphore, 0, 0);
@@ -55,20 +77,30 @@ void PX4Scheduler::delay_microseconds_semaphore(uint16_t usec)
     hrt_call_after(&wait_call, usec, (hrt_callout)sem_post, (void *)&wait_semaphore);
     sem_wait(&wait_semaphore);
     sem_destroy(&wait_semaphore);
+#endif
 
 }
 
 
 void PX4Scheduler::delay_microseconds(uint16_t usec) 
 {
+    perf_begin(_perf_delay);
     delay_microseconds_semaphore(usec);
+    perf_end(_perf_delay);
 }
 
 /*
   wrapper around sem_post that boosts main thread priority
  */
+#if 0
 static void sem_post_boost(sem_t *sem)
+#else
+static void sem_post_boost(xTimerHandle xTimer)
+#endif
 {
+    void *timer_id = pvTimerGetTimerID(xTimer);
+    sem_t *sem = (sem_t *)timer_id;
+
     hal_px4_set_priority(APM_MAIN_PRIORITY_BOOST);
     sem_post(sem);
 }
@@ -76,7 +108,11 @@ static void sem_post_boost(sem_t *sem)
 /*
   return the main thread to normal priority
  */
+#if 0
 static void set_normal_priority(void *sem)
+#else
+static void set_normal_priority(xTimerHandle xTimer)
+#endif
 {
     hal_px4_set_priority(APM_MAIN_PRIORITY);
 }
@@ -90,6 +126,7 @@ static void set_normal_priority(void *sem)
  */
 void PX4Scheduler::delay_microseconds_boost(uint16_t usec) 
 {
+#if 0
     sem_t wait_semaphore;
     static struct hrt_call wait_call;
     sem_init(&wait_semaphore, 0, 0);
@@ -97,15 +134,32 @@ void PX4Scheduler::delay_microseconds_boost(uint16_t usec)
     sem_wait(&wait_semaphore);
     hrt_call_after(&wait_call, APM_MAIN_PRIORITY_BOOST_USEC, (hrt_callout)set_normal_priority, NULL);
     sem_destroy(&wait_semaphore);
+#else
+    sem_t wait_semaphore;
+    xTimerHandle    wait_call;
+    sem_init(&wait_semaphore, 0, 0);
+
+	wait_call = xTimerCreate("delay boost", USEC2TICK(usec), pdFALSE, (void *)&wait_semaphore, sem_post_boost);
+    xTimerStart(wait_call, portMAX_DELAY);
+    sem_wait(&wait_semaphore);
+    xTimerDelete(wait_call, portMAX_DELAY);
+
+    wait_call = NULL;
+	wait_call = xTimerCreate("delay boost", USEC2TICK(APM_MAIN_PRIORITY_BOOST_USEC), pdFALSE, NULL, set_normal_priority);
+    xTimerStart(wait_call, portMAX_DELAY);
+    sem_destroy(&wait_semaphore);
+    xTimerDelete(wait_call, portMAX_DELAY);
+#endif
 }
 
 
 void PX4Scheduler::delay(uint16_t ms)
 {
     if (in_timerprocess()) {
-        Print_Err("ERROR: delay() from timer process\n");
+        pilot_err("ERROR: delay() from timer process\n");
         return;
     }
+    perf_begin(_perf_delay);
 	uint64_t start = AP_HAL::micros64();
     
     while ((AP_HAL::micros64() - start)/1000 < ms && 
@@ -118,6 +172,7 @@ void PX4Scheduler::delay(uint16_t ms)
         }
     }
 
+    perf_end(_perf_delay);
     if (_px4_thread_should_exit) {
         return;
     }
@@ -143,7 +198,7 @@ void PX4Scheduler::register_timer_process(AP_HAL::MemberProc proc)
         _num_timer_procs++;
     } else {
       //  hal.console->printf("Out of timer processes\n");
-      Print_Info("Out of timer processes\n");
+      pilot_info("Out of timer processes\n");
     }
 }
 
@@ -184,7 +239,7 @@ void PX4Scheduler::resume_timer_procs()
 
 void PX4Scheduler::reboot(bool hold_in_bootloader) 
 {
-    Print_Warn("Called system reset");
+    pilot_warn("Called system reset");
 //	px4_systemreset(hold_in_bootloader);
 }
 
@@ -231,7 +286,9 @@ void PX4Scheduler::_timer_thread(void *arg)
         sched->delay_microseconds_semaphore(1000);
 
         // run registered timers
+        perf_begin(sched->_perf_timers);
         sched->_run_timers(true);
+        perf_end(sched->_perf_timers);
 
         // process any pending RC output requests
         ((PX4RCOutput *)hal.rcout)->_timer_tick();
@@ -296,7 +353,9 @@ void PX4Scheduler::_io_thread(void *arg)
         poll(NULL, 0, 1);
 
         // run registered IO processes
+        perf_begin(sched->_perf_io_timers);
         sched->_run_io();
+        perf_end(sched->_perf_io_timers);
     }
     return ;
 }
@@ -312,7 +371,9 @@ void PX4Scheduler::_storage_thread(void *arg)
         poll(NULL, 0, 10);
 
         // process any pending storage writes
+        perf_begin(sched->_perf_storage_timer);
         ((PX4Storage *)hal.storage)->_timer_tick();
+        perf_end(sched->_perf_storage_timer);
     }
     return ;
 }

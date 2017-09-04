@@ -22,6 +22,7 @@ PX4UARTDriver::PX4UARTDriver(const char *devpath, const char *perf_name) :
     _baudrate(57600),
     _initialised(false),
     _in_timer(false),
+    _perf_uart(perf_alloc(PC_ELAPSED, perf_name)),
     _os_start_auto_space(-1),
     _flow_control(FLOW_CONTROL_DISABLE)
 {
@@ -105,7 +106,7 @@ void PX4UARTDriver::begin(uint32_t baudrate, uint16_t rxS, uint16_t txS)
 	if (_fd == -1) {
         _fd = open(_devpath, O_RDWR);
 		if (_fd == -1) {
-            Print_Err("open:%s err\n", _devpath);
+            pilot_err("open:%s err\n", _devpath);
 			return;
 		}
 	}
@@ -118,7 +119,7 @@ void PX4UARTDriver::begin(uint32_t baudrate, uint16_t rxS, uint16_t txS)
 		ret = ioctl(_fd, UART_IOC_SET_DATA_FORMAT, (unsigned long)&data_format);
         if(ret != 0)
         {
-            Print_Err("set %s baudrate failed!!\n", _devpath);
+            pilot_err("set %s baudrate failed!!\n", _devpath);
         }
     }
 
@@ -261,7 +262,7 @@ int16_t PX4UARTDriver::read()
 { 
 	uint8_t c;
     if (_uart_owner_task != xTaskGetCurrentTaskHandle()){
-        Print_Err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
+        pilot_err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
         return -1;
     }
     if (!_initialised) {
@@ -285,7 +286,7 @@ int16_t PX4UARTDriver::read()
 size_t PX4UARTDriver::write(uint8_t c) 
 { 
     if (_uart_owner_task != xTaskGetCurrentTaskHandle()){
-        Print_Err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
+        pilot_err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
         return 0;
     }
     if (!_initialised) {
@@ -295,7 +296,7 @@ size_t PX4UARTDriver::write(uint8_t c)
     uint16_t _head;
 
     while (BUF_SPACE(_writebuf) == 0) {
-        Print_Warn("buffer full wait _nonblocking_writes=%d\n", _nonblocking_writes);
+        pilot_warn("buffer full wait _nonblocking_writes=%d\n", _nonblocking_writes);
         if (_nonblocking_writes) {
             return 0;
         }
@@ -313,7 +314,7 @@ size_t PX4UARTDriver::write(const uint8_t *buffer, size_t size)
 {
     //main loop中调用
     if (_uart_owner_task != xTaskGetCurrentTaskHandle()){
-        Print_Err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
+        pilot_err("uart owner err[%x, %x]!!\n", _uart_owner_task, xTaskGetCurrentTaskHandle());
         return 0;
     }
 	if (!_initialised) {
@@ -504,6 +505,7 @@ void PX4UARTDriver::_timer_tick(void)
     n = BUF_AVAILABLE(_writebuf);
     if (n > 0) {
         uint16_t n1 = _writebuf_size - _writebuf_head;
+        perf_begin(_perf_uart);
         if (n1 >= n) {
             // do as a single write
             _write_fd(&_writebuf[_writebuf_head], n);
@@ -514,6 +516,7 @@ void PX4UARTDriver::_timer_tick(void)
                 _write_fd(&_writebuf[_writebuf_head], n - n1);                
             }
         }
+        perf_end(_perf_uart);
     }
 
     // try to fill the read buffer
@@ -521,6 +524,7 @@ void PX4UARTDriver::_timer_tick(void)
     n = BUF_SPACE(_readbuf);
     if (n > 0) {
         uint16_t n1 = _readbuf_size - _readbuf_tail;
+        perf_begin(_perf_uart);
         if (n1 >= n) {
             // one read will do
             assert(_readbuf_tail+n <= _readbuf_size);
@@ -533,6 +537,7 @@ void PX4UARTDriver::_timer_tick(void)
                 _read_fd(&_readbuf[_readbuf_tail], n - n1);                
             }
         }
+        perf_end(_perf_uart);
     }
 
     _in_timer = false;

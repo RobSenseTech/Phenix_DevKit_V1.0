@@ -1,0 +1,417 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/statfs.h>
+
+#include <stdlib.h>
+#include <string.h>
+
+#include <fs/fs.h>
+#include <fs/fat.h>
+#include <fcntl.h>
+#include "ocmfs.h"
+#include "custom_sem.h"
+#include "hrt/drv_hrt.h"
+
+#ifdef CONFIG_FS_OCMFS 
+
+
+struct ocmfs_mountpt_s{
+    int ocm_chn;
+    sem_t fs_sem;
+};
+
+/****************************************************************************
+ * Private Function Prototypes
+ ****************************************************************************/
+
+static int     ocmfs_open(FAR struct file *filep, const char *relpath,
+                          int oflags, mode_t mode);
+static int     ocmfs_close(FAR struct file *filep);
+static ssize_t ocmfs_read(FAR struct file *filep, char *buffer, size_t buflen);
+static ssize_t ocmfs_write(FAR struct file *filep, const char *buffer,
+                           size_t buflen);
+static off_t   ocmfs_seek(FAR struct file *filep, off_t offset, int whence);
+static int     ocmfs_ioctl(FAR struct file *filep, int cmd, unsigned long arg);
+
+static int     ocmfs_sync(FAR struct file *filep);
+static int     ocmfs_dup(FAR const struct file *oldp, FAR struct file *newp);
+
+static int     ocmfs_opendir(struct inode *mountpt, const char *relpath,
+                             struct fs_dirent_s *dir);
+static int     ocmfs_readdir(struct inode *mountpt, struct fs_dirent_s *dir);
+static int     ocmfs_rewinddir(struct inode *mountpt, struct fs_dirent_s *dir);
+
+static int     ocmfs_bind(FAR struct inode *blkdriver, const void *data,
+                          void **handle);
+static int     ocmfs_unbind(void *handle, FAR struct inode **blkdriver);
+static int     ocmfs_statfs(struct inode *mountpt, struct statfs *buf);
+
+static int     ocmfs_unlink(struct inode *mountpt, const char *relpath);
+static int     ocmfs_mkdir(struct inode *mountpt, const char *relpath,
+                           mode_t mode);
+static int     ocmfs_rmdir(struct inode *mountpt, const char *relpath);
+static int     ocmfs_rename(struct inode *mountpt, const char *oldrelpath,
+                            const char *newrelpath);
+static int     ocmfs_stat(struct inode *mountpt, const char *relpath, struct stat *buf);
+
+/****************************************************************************
+ * Private Variables
+ ****************************************************************************/
+
+/****************************************************************************
+ * Public Variables
+ ****************************************************************************/
+
+/* See fs_mount.c -- this structure is explicitly externed there.
+ * We use the old-fashioned kind of initializers so that this will compile
+ * with any compiler.
+ */
+
+const struct mountpt_operations ocmfs_operations =
+{
+  ocmfs_open,          /* open */
+  ocmfs_close,         /* close */
+  ocmfs_read,          /* read */
+  ocmfs_write,         /* write */
+  ocmfs_seek,          /* seek */
+  ocmfs_ioctl,         /* ioctl */
+
+  ocmfs_sync,          /* sync */
+  ocmfs_dup,           /* dup */
+
+  ocmfs_opendir,       /* opendir */
+  NULL,              /* closedir */
+  ocmfs_readdir,       /* readdir */
+  ocmfs_rewinddir,     /* rewinddir */
+
+  ocmfs_bind,          /* bind */
+  ocmfs_unbind,        /* unbind */
+  ocmfs_statfs,        /* statfs */
+
+  ocmfs_unlink,        /* unlinke */
+  ocmfs_mkdir,         /* mkdir */
+  ocmfs_rmdir,         /* rmdir */
+  ocmfs_rename,        /* rename */
+  ocmfs_stat           /* stat */
+};
+
+int ocmfs_msg_trans(struct ocmfs_msg *send_msg, struct ocmfs_msg *recv_msg)
+{
+    int tmp_len = 0;
+    int ret = 0;
+    hrt_abstime start = 0;
+
+    //send cmd
+    tmp_len = OCMFS_MSG_HEAD_LEN + sizeof(send_msg->cmd.id) + send_msg->cmd.args_len;
+    memcpy(send_msg->cmd.msg_head, OCMFS_MSG_HEAD, OCMFS_MSG_HEAD_LEN);
+    //align
+    tmp_len = OCMFS_ALIGN(tmp_len);
+    ret = ocm_msg_send(OCM_CHN_FS, (char *)&send_msg->cmd, tmp_len);
+    if(ret == 0)
+        return -1;
+    
+    if(send_msg->data_len != 0)
+    {
+        tmp_len = sizeof(send_msg->data_len) + send_msg->data_len;
+        ret = ocm_msg_send(OCM_CHN_FS, (char *)&send_msg->data_len, sizeof(send_msg->data_len));
+        //align
+        tmp_len = OCMFS_ALIGN(tmp_len);
+        ret = ocm_msg_send(OCM_CHN_FS, send_msg->data, tmp_len);
+    }
+
+//    ocm_msg_send(OCM_CHN_FS, (char *)send_msg, tmp_len);
+
+    start = hrt_absolute_time();
+    while(recv_msg != NULL)
+    {
+        //check timout
+        if(hrt_absolute_time() - start > 500000)
+        {
+//            return -1;
+        }
+
+        if(recv_msg->data_len == 0)
+        {
+            ret = ocm_msg_recv(OCM_CHN_FS, (char *)&recv_msg->data_len, sizeof(recv_msg->data_len));
+            if(ret == 0)
+            {
+                continue;
+            }
+        }
+        else
+        {
+            tmp_len = OCMFS_ALIGN(recv_msg->data_len);
+            ret = ocm_msg_recv(OCM_CHN_FS, (char *)recv_msg->data, tmp_len);
+//            pilot_info("ret=%d\n", ret);
+            if(ret != 0)
+                break;
+        }
+
+    }   
+
+    return 0;
+}
+
+void ocmfs_semtake(struct ocmfs_mountpt_s *fs)
+{
+  /* Take the semaphore (perhaps waiting) */
+
+  while (sem_wait(&fs->fs_sem) != 0)
+    {
+      /* The only case that an error should occur here is if
+       * the wait was awakened by a signal.
+       */
+
+    }
+}
+
+void ocmfs_semgive(struct ocmfs_mountpt_s *fs)
+{
+   sem_post(&fs->fs_sem);
+}
+
+/****************************************************************************
+ * Name: ocmfs_mount
+ *
+ * Desciption: This function is called only when the mountpoint is first
+ *   established.  It initializes the mountpoint structure and verifies
+ *   that a valid filesystem is provided by the block driver.
+ *
+ *   The caller should hold the mountpoint semaphore
+ *
+ ****************************************************************************/
+static int ocmfs_mount(struct ocmfs_mountpt_s *fs, bool writeable)
+{
+    int ret = 0;
+
+    ret = ocm_msg_chn_init(OCM_CHN_FS, "ocmfs");
+    if(ret != 0)
+    {
+        pilot_err("ocmfs mount failed!!\n");
+        return -1;
+    }
+
+    fs->ocm_chn = OCM_CHN_FS;
+
+    return 0;
+}
+
+static int ocmfs_bind(struct inode *blkdriver, const void *data, void **handle)
+{
+    struct ocmfs_mountpt_s *fs = NULL;
+    int ret;
+
+    /* Create an instance of the mountpt state structure */
+    fs = (struct ocmfs_mountpt_s *)kzalloc(sizeof(struct ocmfs_mountpt_s));
+    if (!fs)
+    {
+        return -ENOMEM;
+    }
+
+    sem_init(&fs->fs_sem, 0, 0);   /* Initialize the semaphore that controls access */
+
+    ret = ocmfs_mount(fs, true);
+    if (ret != 0)
+    {
+        sem_destroy(&fs->fs_sem);
+        kfree(fs);
+        return ret;
+    }
+
+    *handle = (void*)fs;
+    ocmfs_semgive(fs);
+
+    return OK;
+}
+
+static int ocmfs_open(FAR struct file *filep, const char *relpath, int oflags, mode_t mode)
+{
+    struct inode         *inode;
+    struct ocmfs_mountpt_s *fs;
+    struct ocmfs_msg msg = {0};
+    struct ocmfs_msg recv = {0};
+    struct ocmfs_cmd *p_cmd = &msg.cmd;
+    struct ocmfs_file_s ff = {0};
+    int offset = 0;
+    int path_len = strlen(relpath)+1;
+    int ret = 0;
+    hrt_abstime now = 0;
+    hrt_abstime start = 0;
+
+    /* Sanity checks */
+
+    DEBUGASSERT(filep->f_priv == NULL && filep->f_inode != NULL);
+
+    /* Get the mountpoint inode reference from the file structure and the
+     * mountpoint private data from the inode structure
+     */
+
+    inode = filep->f_inode;
+    fs    = inode->i_private;
+
+    DEBUGASSERT(fs != NULL);
+
+    p_cmd->id = OCMFS_CMD_OPEN;
+    memcpy(&p_cmd->args[offset], relpath, path_len);
+    offset += path_len;
+
+    memcpy(&p_cmd->args[offset], &oflags, sizeof(oflags));
+    offset += sizeof(oflags);
+
+    memcpy(&p_cmd->args[offset], &mode, sizeof(mode));
+    offset += sizeof(mode);
+
+    p_cmd->args_len = offset;
+
+    char a[512] = {0xff};
+    msg.data_len = 512;
+    msg.data = a;//NULL;
+
+    recv.data_len = 0;
+    recv.data = (char *)&ff;
+
+    start = hrt_absolute_time();
+    ocmfs_semtake(fs);
+    ret = ocmfs_msg_trans(&msg, &recv);
+    if(recv.data_len != sizeof(ff) || ret != 0)
+    {
+        pilot_err("recv err: len=%d ret=%d\n", msg.data_len, ret);
+        ret = -1;
+        goto out_with_semaphore;
+    }
+    else
+    {
+        pilot_err("fd=%d oflags=%x\n", ff.fd, ff.oflags);
+    }
+    now = hrt_absolute_time();
+    pilot_info("use %d\n", now - start);
+
+    filep->f_priv = &ff;
+
+out_with_semaphore:
+    ocmfs_semgive(fs);
+    return ret;
+}
+
+static int ocmfs_close(FAR struct file *filep)
+{
+   return 0; 
+}
+
+static ssize_t ocmfs_read(FAR struct file *filep, char *buffer, size_t buflen)
+{
+   return 0; 
+}
+
+static ssize_t ocmfs_write(FAR struct file *filep, const char *buffer, size_t buflen)
+{
+    struct inode         *inode;
+    struct ocmfs_mountpt_s *fs;
+    struct ocmfs_file_s    *ff;
+    struct ocmfs_msg msg = {0};
+    int offset = 0;
+    int ret = 0;
+
+    /* Sanity checks */
+
+    DEBUGASSERT(filep->f_priv == NULL && filep->f_inode != NULL);
+    
+    /* Recover our private data from the struct file instance */
+
+    ff    = filep->f_priv;
+    inode = filep->f_inode;
+    fs    = inode->i_private;
+
+    DEBUGASSERT(fs != NULL);
+
+    ocmfs_semtake(fs);
+    /* Check if the file was opened for write access */
+    if ((ff->oflags & O_WROK) == 0)
+    {
+        ret = -EACCES;
+        goto errout_with_semaphore;
+    }
+
+    msg.cmd.id = OCMFS_CMD_WRITE;
+
+errout_with_semaphore:
+    ocmfs_semgive(fs);
+    return ret;
+}
+
+static off_t ocmfs_seek(FAR struct file *filep, off_t offset, int whence)
+{
+   return 0; 
+}
+
+static int ocmfs_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
+{
+   return 0; 
+}
+
+
+static int ocmfs_sync(FAR struct file *filep)
+{
+   return 0; 
+}
+
+static int ocmfs_dup(FAR const struct file *oldp, FAR struct file *newp)
+{
+   return 0; 
+}
+
+
+static int ocmfs_opendir(struct inode *mountpt, const char *relpath, struct fs_dirent_s *dir)
+{
+   return 0; 
+}
+
+static int ocmfs_readdir(struct inode *mountpt, struct fs_dirent_s *dir)
+{
+   return 0; 
+}
+
+static int ocmfs_rewinddir(struct inode *mountpt, struct fs_dirent_s *dir)
+{
+   return 0; 
+}
+
+static int ocmfs_unbind(void *handle, FAR struct inode **blkdriver)
+{
+   return 0; 
+}
+
+static int ocmfs_statfs(struct inode *mountpt, struct statfs *buf)
+{
+   return 0; 
+}
+
+
+static int ocmfs_unlink(struct inode *mountpt, const char *relpath)
+{
+   return 0; 
+}
+
+static int ocmfs_mkdir(struct inode *mountpt, const char *relpath, mode_t mode)
+{
+   return 0; 
+}
+
+static int ocmfs_rmdir(struct inode *mountpt, const char *relpath)
+{
+   return 0; 
+}
+
+static int ocmfs_rename(struct inode *mountpt, const char *oldrelpath, const char *newrelpath)
+{
+   return 0; 
+}
+
+static int ocmfs_stat(struct inode *mountpt, const char *relpath, struct stat *buf)
+{
+   return 0; 
+}
+
+
+
+#endif

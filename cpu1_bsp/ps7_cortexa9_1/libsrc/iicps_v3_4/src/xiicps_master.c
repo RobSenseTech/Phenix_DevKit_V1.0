@@ -682,6 +682,7 @@ void XIicPs_DisableSlaveMonitor(XIicPs *InstancePtr)
 * @note 	None.
 *
 ****************************************************************************/
+int iic_rx_err = 0;
 void XIicPs_MasterInterruptHandler(XIicPs *InstancePtr)
 {
 	u32 IntrStatusReg;
@@ -749,8 +750,8 @@ void XIicPs_MasterInterruptHandler(XIicPs *InstancePtr)
 
 		while ((XIicPs_ReadReg(BaseAddr, (u32)XIICPS_SR_OFFSET) &
 				XIICPS_SR_RXDV_MASK) != 0U) {
-			if (((InstancePtr->RecvByteCount <
-				XIICPS_DATA_INTR_DEPTH)!= 0U)  && (IsHold != 0)  &&
+			if ((InstancePtr->RecvByteCount <
+				XIICPS_DATA_INTR_DEPTH) && (IsHold != 0)  &&
 				((!InstancePtr->IsRepeatedStart)!= 0) &&
 				(InstancePtr->UpdateTxSize == 0)) {
 				IsHold = 0;
@@ -759,11 +760,24 @@ void XIicPs_MasterInterruptHandler(XIicPs *InstancePtr)
 						XIICPS_CR_OFFSET) &
 						(~XIICPS_CR_HOLD_MASK));
 			}
-			XIicPs_RecvByte(InstancePtr);
-			ByteCnt--;
+
+            /******************Robsense modify**********************/
+            if(ByteCnt > 0)
+            {
+                XIicPs_RecvByte(InstancePtr);
+                ByteCnt--;
+            }
+            else
+            {
+				/*This should not happen, but in pxflow, it does happen sometime, so we have to do this to prevent buffer overflow*/
+                u8 Value; 
+                iic_rx_err++;
+                Value = (u8)(XIicPs_In32((InstancePtr)->Config.BaseAddress + (u32)XIICPS_DATA_OFFSET));
+            }
+            /*******************************************************/
 
 			if (Platform == (u32)XPLAT_ZYNQ) {
-			    if ((InstancePtr->UpdateTxSize != 0) &&
+			    if (/*(InstancePtr->UpdateTxSize != 0) &&   Robsense modify: transfer 22bytes also will cause issue AR#61664*/
 				    (ByteCnt == (XIICPS_FIFO_DEPTH + 1))) {
 				    break;
 				}
@@ -771,7 +785,7 @@ void XIicPs_MasterInterruptHandler(XIicPs *InstancePtr)
 		}
 
 		if (Platform == (u32)XPLAT_ZYNQ) {
-			if ((InstancePtr->UpdateTxSize != 0) &&
+			if (/*(InstancePtr->UpdateTxSize != 0) &&    Robsense modify: transfer 22bytes also will cause issue AR#61664*/
 				(ByteCnt == (XIICPS_FIFO_DEPTH + 1))) {
 				/* wait while fifo is full */
 				while (XIicPs_ReadReg(BaseAddr,

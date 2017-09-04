@@ -11,6 +11,7 @@
 #include "AP_HAL_PX4.h"
 #include "drv_rc_input.h"            //下层提供
 #include "semphr.h"
+#include "perf/perf_counter.h"
 
 
 #ifndef RC_INPUT_MAX_CHANNELS
@@ -40,6 +41,7 @@ private:
     int _rc_sub;
     uint64_t _last_read;
     bool _override_valid;
+    perf_counter_t _perf_rcin;
     SemaphoreHandle_t rcin_mutex;           //用SemaphoreHandle_t替换掉pthread_mutex_t
 };
 
