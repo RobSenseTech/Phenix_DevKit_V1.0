@@ -87,7 +87,7 @@ extern const AP_HAL::HAL& hal;
  */
 void hal_px4_set_priority(uint8_t priority)
 {
-    vTaskPrioritySet(daemon_task, priority);
+    //vTaskPrioritySet(daemon_task, priority);
 }
 
 /*
